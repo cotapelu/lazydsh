@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/nuskey8/lazydsh/actions/workflows/ci.yml/badge.svg)](https://github.com/nuskey8/lazydsh/avctions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/nuskey8/lazydsh)](https://github.com/nuskey8/lazydsh/releases/latest)
-[![npm](https://img.shields.io/npm/v/lazydsh-js)](https://www.npmjs.com/package/lazydsh)
+[![npm](https://img.shields.io/npm/v/lazydsh)](https://www.npmjs.com/package/lazydsh)
 
 [English](README.md) | [日本語](README.ja.md) | 简体中文
 
