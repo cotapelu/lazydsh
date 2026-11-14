@@ -19,7 +19,7 @@ test("ask cancels and fails rather than waiting for human approval or questions"
             { questions: [] },
             { signal: new AbortController().signal },
           );
-        else await callbacks.onApproval!({});
+        else await callbacks.onApproval!({ toolName: "test" });
         return { finishReason: "aborted", finalResponse: "" };
       },
       cancel: async () => {

@@ -158,12 +158,13 @@ test("streaming, authentication and history", async () => {
     const route = {provider:"opencode-go",model:"test-model"};
     let authCalls = 0;
     let approvalCalls = 0;
+    const approvals = [];
     ctx.on("agent/pre-step", async ({agent}, next) => {
-      assert.equal(await ctx.approval.request({agent, toolName:"test"}), "rejected");
+      assert.equal(await ctx.approval.request({agent, toolName:"test", reason:"pre-step"}), "rejected");
       return next();
     });
     const callbacks = { onAuth: async () => { authCalls++; reject = false; return "test-only"; },
-      onApproval: async () => { approvalCalls++; return {outcome:"rejected"}; },
+      onApproval: async (params) => { approvalCalls++; approvals.push(params); return {outcome:"rejected"}; },
     };
     const id=await runtime.open(route,callbacks);
     assert.equal(requests.length,0);
@@ -177,6 +178,8 @@ test("streaming, authentication and history", async () => {
     assert.equal(result.finalResponse,"Hello from dsh.");
     assert.equal(authCalls,1);
     assert.ok(approvalCalls > 0);
+    assert.ok(approvals.every(item=>item.toolName==="test"));
+    assert.ok(approvals.some(item=>item.reason==="pre-step"));
     assert.equal(requests.length,2);
     assert.ok(requests.every(req=>req.messages.some(item=>JSON.stringify(item).includes("Say hello."))));
     const delta=order.findIndex(event=>event.method==="assistant.delta");
