@@ -305,6 +305,9 @@ test("sessions, jobs and file references", async () => {
   await nativeTest(
     executable,
     `
+    await mkdir(join(directory,".agents/skills/test-skill"),{recursive:true});
+    await writeFile(join(directory,".agents/skills/test-skill/SKILL.md"),"---\\nname: test-skill\\ndescription: Reference test skill\\n---\\nRead the test skill.");
+    await writeFile(join(directory,"reference file.txt"),"test");
     const route = {provider:"deepseek-official",model:models("deepseek-official")[0].id};
     const first = await runtime.open(route);
     assert.equal(await runtime.renameSession(first,"First session"),"First session");
@@ -346,9 +349,6 @@ test("sessions, jobs and file references", async () => {
     assert.equal(cancelled,1);
     await foreign.dispose();
     await runtime.cd(directory);
-    await mkdir(join(directory,".agents/skills/test-skill"),{recursive:true});
-    await writeFile(join(directory,".agents/skills/test-skill/SKILL.md"),"---\\nname: test-skill\\ndescription: Reference test skill\\n---\\nRead the test skill.");
-    await writeFile(join(directory,"reference file.txt"),"test");
     const refs=await runtime.references("reference",new AbortController().signal);
     assert.ok(refs.some(item=>item.value==='@"reference file.txt"'),JSON.stringify(refs));
     const skills=await runtime.references("skill:test-skill",new AbortController().signal);
