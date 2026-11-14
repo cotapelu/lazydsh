@@ -70,8 +70,6 @@ Flags:
   -h, --help              Show help
 ```
 
-`lazydsh resume` で `<session-id>` を省略すると、TUI を起動する前に保存済みセッションの選択画面が開きます。
-
 ## コマンド
 
 | コマンド      | 引数                                                        | 説明                                                               |

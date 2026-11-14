@@ -71,8 +71,6 @@ Flags:
 
 ```
 
-Omit `<session-id>` from `lazydsh resume` to choose a saved session in a standalone picker before the TUI starts.
-
 ## Commands
 
 | Command       | Arguments          | Description                                                            |

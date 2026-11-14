@@ -71,8 +71,6 @@ Flags:
 
 ```
 
-省略 `lazydsh resume` 中的 `<session-id>` 后，会在启动 TUI 前打开已保存会话的选择界面。
-
 ## 命令
 
 | 命令          | 参数               | 说明                                                   |
