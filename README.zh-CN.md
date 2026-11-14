@@ -153,6 +153,6 @@ Flags:
 | Z.AI                          | `zai`                           | API 密钥                    |
 | Z.AI Coding CN                | `zai-coding-cn`                 | API 密钥                    |
 
-# 许可证
+## 许可证
 
 lazydsh 遵循 [MIT 许可证](LICENSE) 开源。

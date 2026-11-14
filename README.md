@@ -153,6 +153,6 @@ Supported providers are as follows:
 | Z.AI                          | `zai`                           | API Key                           |
 | Z.AI Coding CN                | `zai-coding-cn`                 | API Key                           |
 
-# License
+## License
 
 lazydsh is open-sourced under the [MIT License](LICENSE).
