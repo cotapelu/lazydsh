@@ -41,7 +41,7 @@ import { safeText, accent, dim } from "./theme.ts";
 
 const identity = (text: string) => text;
 const bold = (text: string) => `\x1b[1m${text}\x1b[0m`;
-const markdownTheme = {
+export const markdownTheme = {
   highlightCode,
   heading: bold,
   link: accent,

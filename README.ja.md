@@ -8,7 +8,7 @@
 
 A lazier terminal UI for DeepSeek Harness.
 
-![header](assets/header.png)
+![demo](assets/demo.png)
 
 ## 概要
 
