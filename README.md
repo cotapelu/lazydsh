@@ -8,7 +8,7 @@ English | [简体中文](README.zh-CN.md) | [日本語](README.ja.md)
 
 A lazier terminal UI for DeepSeek Harness.
 
-![header](assets/header.png)
+![demo](assets/demo.png)
 
 ## Overview
 

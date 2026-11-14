@@ -41,6 +41,7 @@
   "scripts": {
     "prepublishOnly": "vp check && vp test run",
     "start": "node src/cli.ts",
+    "demo": "node scripts/demo.ts",
     "build": "vp pack",
     "check": "vp check",
     "test": "vp test run",

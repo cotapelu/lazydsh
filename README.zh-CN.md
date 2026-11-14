@@ -8,6 +8,8 @@
 
 A lazier terminal UI for DeepSeek Harness.
 
+![demo](assets/demo.png)
+
 ## 简介
 
 lazydsh 是一个以 [DeepSeek Harness](https://deepseek.com/en/harness/) 作为后端的 TUI 客户端。它仅包含在 TUI 中操作 DeepSeek Harness 所需的最小功能，与 [dsh-TUI](https://dshtui.com/en) 等其他 DeepSeek Harness 的 TUI 相比，运行更加轻量。
