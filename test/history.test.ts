@@ -1,0 +1,112 @@
+import { test } from "vite-plus/test";
+import assert from "node:assert/strict";
+import { stripVTControlCharacters } from "node:util";
+import { accent } from "../src/theme.ts";
+import type { SessionEvent } from "@deepseek-ai/dsh-session";
+import { historyRows, continuationCommand } from "../src/history.ts";
+import { ToolRow } from "../src/tools.ts";
+
+test("saved history restores prompts, replies and collapsed tool results in order", () => {
+  const events = [
+    { type: "turn/start", time: 1000, data: {} },
+    {
+      type: "user/message",
+      time: 1000,
+      data: { source: { kind: "user" }, content: [{ type: "text", text: "read file" }] },
+    },
+    { type: "step/start", time: 1000, data: {} },
+    {
+      type: "tool/call",
+      time: 1200,
+      data: { callId: "a", name: "read", arguments: '{"path":"file.ts"}' },
+    },
+    {
+      type: "tool/result",
+      time: 1500,
+      data: {
+        message: { toolCallId: "a", content: [{ type: "text", text: "private file contents" }] },
+      },
+    },
+    {
+      type: "assistant/message",
+      time: 2000,
+      data: {
+        message: {
+          content: [
+            { type: "reasoning", text: "private reasoning" },
+            { type: "text", text: "answer" },
+          ],
+        },
+        usage: { inputTokens: 2, outputTokens: 13 },
+        stream: [],
+      },
+    },
+    { type: "turn/end", time: 3000, data: {} },
+  ] as unknown as SessionEvent[];
+  const rows = historyRows(events, "session");
+  assert.deepEqual(rows[0], { kind: "user", text: "read file" });
+  assert.ok(rows[1] instanceof ToolRow);
+  assert.equal(rows[1].summary, "✓ read file.ts");
+  assert.deepEqual(rows[2], { kind: "assistant", text: "answer" });
+  assert.deepEqual(rows[3], { kind: "metrics", text: "2s (↑2 ↓13)" });
+  assert.ok(!JSON.stringify(rows).includes("private file contents"));
+  const large = structuredClone(events);
+  const reply = large.find((event) => event.type === "assistant/message")!;
+  if (reply.type === "assistant/message")
+    reply.data.usage = { inputTokens: 1200, cacheReadTokens: 300, outputTokens: 3200000 };
+  assert.deepEqual(historyRows(large, "session").at(-1), {
+    kind: "metrics",
+    text: "2s (↑1.5K ↓3.2M)",
+  });
+});
+
+test("continuation indents the command and highlights its quoted session ID", () => {
+  assert.equal(
+    stripVTControlCharacters(continuationCommand("session-id")),
+    "Continue session with:\n  lazydsh resume session-id",
+  );
+  assert.equal(
+    stripVTControlCharacters(continuationCommand("session-id", ["--home", "/path with spaces"])),
+    "Continue session with:\n  lazydsh resume session-id --home '/path with spaces'",
+  );
+  assert.ok(continuationCommand("session-id").includes(accent("session-id")));
+  assert.ok(continuationCommand("session'id").includes(accent("'session'\\''id'")));
+});
+
+test("resume hides internal user-role messages by source without stripping actual user text", () => {
+  const message = (kind: string | undefined, text: string) => ({
+    type: "user/message",
+    time: 1000,
+    data: { ...(kind ? { source: { kind } } : {}), content: [{ type: "text", text }] },
+  });
+  const events = [
+    message("agent-instructions", "<system-reminder>Read instructions</system-reminder>"),
+    message("working-directory", "Internal cwd transition"),
+    message("goal", "Internal goal reminder"),
+    message("compaction", "Internal summary"),
+    message("schedule", "Scheduled internal prompt"),
+    message("unrecognized-plugin", "Internal plugin text"),
+    message(undefined, "Unknown origin"),
+    message("user", "Explain <system-reminder> in this file"),
+  ] as unknown as SessionEvent[];
+  assert.deepEqual(historyRows(events, "session"), [
+    { kind: "user", text: "Explain <system-reminder> in this file" },
+  ]);
+});
+
+test("internal-only turns do not leave orphaned duration rows on resume", () => {
+  const events = [
+    { type: "turn/start", time: 1000, data: {} },
+    {
+      type: "user/message",
+      time: 1000,
+      data: {
+        source: { kind: "agent-instructions" },
+        content: [{ type: "text", text: "internal" }],
+      },
+    },
+    { type: "step/start", time: 1000, data: {} },
+    { type: "turn/end", time: 2000, data: {} },
+  ] as unknown as SessionEvent[];
+  assert.deepEqual(historyRows(events, "session"), []);
+});

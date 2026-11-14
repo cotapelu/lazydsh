@@ -1,0 +1,19 @@
+import { stripVTControlCharacters } from "node:util";
+
+export const accent = (text: string) => `\x1b[38;2;77;107;254m${text}\x1b[0m`;
+export const dim = (text: string) => `\x1b[2m${text}\x1b[0m`;
+
+export function safeText(value: unknown) {
+  // oxlint-disable-next-line no-control-regex -- Preserve tabs/newlines while removing terminal controls.
+  return stripVTControlCharacters(String(value)).replace(/[\x00-\x08\x0b-\x1f\x7f]/g, "");
+}
+
+export function terminalColor(stream: { isTTY?: boolean }) {
+  return Boolean(stream.isTTY && process.env.NO_COLOR === undefined && process.env.TERM !== "dumb");
+}
+
+export function formatNotification(label: string, text: unknown, color = true) {
+  const icon = /error/i.test(label) ? "✗" : "✓";
+  const prefix = safeText(label).toLowerCase() + ":";
+  return `${color ? accent(icon) : icon} ${color ? dim(prefix) : prefix} ${safeText(text)}`;
+}
