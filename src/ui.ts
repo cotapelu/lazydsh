@@ -1,4 +1,5 @@
 import { QuestionPanel } from "./question.ts";
+import { ApprovalPanel } from "./approval.ts";
 import { historyRows, continuationCommand } from "./history.ts";
 import { openAuthUrl } from "./terminal-login.ts";
 import { homedir } from "node:os";
@@ -275,10 +276,36 @@ export async function runUI(
       return ask(message, signal);
     },
     onApproval: async (params) => {
-      const answer = await ask(
-        `Tool: ${typeof params.toolName === "string" ? params.toolName : "unknown"}\n${typeof params.reason === "string" ? params.reason : ""}\nAllow this operation once? Type yes to allow; anything else rejects.`,
-      );
-      return { outcome: answer?.trim().toLowerCase() === "yes" ? "allowed-once" : "rejected" };
+      if (closing || params.signal?.aborted) return { outcome: "cancelled" };
+      if (decision) throw new Error("Another question is already awaiting an answer.");
+      return new Promise<{ outcome: "allowed-once" | "rejected" | "cancelled" }>((resolve) => {
+        const panel = new ApprovalPanel({
+          toolName: params.toolName,
+          reason: params.displayReason?.en ?? params.reason,
+        });
+        let settled = false;
+        const settle = (outcome: "allowed-once" | "rejected" | "cancelled") => {
+          if (settled) return;
+          settled = true;
+          params.signal?.removeEventListener("abort", abort);
+          decision = undefined;
+          dismissPanel();
+          add(
+            "Permission",
+            outcome === "allowed-once"
+              ? `${params.toolName}: allowed once`
+              : `${params.toolName}: ${outcome}`,
+          );
+          resolve({ outcome });
+        };
+        const abort = () => settle("cancelled");
+        panel.onSelect = settle;
+        panel.onCancel = abort;
+        decision = abort;
+        params.signal?.addEventListener("abort", abort, { once: true });
+        showPanel(panel);
+        update();
+      });
     },
     onUserQuestion: async (request, { signal }) => {
       if (closing || signal.aborted) return { cancelled: true };

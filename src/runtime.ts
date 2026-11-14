@@ -62,6 +62,13 @@ export type RuntimeOptions = {
   reasoningEffort?: ReasoningEffortId;
   signal?: AbortSignal;
 };
+export type ApprovalRequest = {
+  toolName: string;
+  reason?: string;
+  displayReason?: { en: string; [locale: string]: string };
+  callId?: string;
+  signal?: AbortSignal;
+};
 export type Callbacks = {
   resume?: string;
   onAuth?: (
@@ -70,7 +77,7 @@ export type Callbacks = {
     signal?: AbortSignal,
   ) => Promise<unknown>;
   onApproval?: (
-    params: Record<string, unknown>,
+    params: ApprovalRequest,
   ) => Promise<{ outcome: "allowed-once" | "rejected" | "cancelled" }>;
   onUserQuestion?: (
     request: AskUserQuestionRequest,
@@ -106,8 +113,17 @@ export class Runtime {
     ctx.on("approval/request", async (request, next) => {
       if (!this.owns(request.agent)) return next();
       return (
-        (await this.callbacks.onApproval?.({ toolName: request.toolName, reason: request.reason }))
-          ?.outcome ?? "rejected"
+        (
+          await this.callbacks.onApproval?.({
+            toolName: request.toolName,
+            ...(request.reason === undefined ? {} : { reason: request.reason }),
+            ...(request.displayReason === undefined
+              ? {}
+              : { displayReason: request.displayReason }),
+            ...(request.callId === undefined ? {} : { callId: String(request.callId) }),
+            ...(request.signal === undefined ? {} : { signal: request.signal }),
+          })
+        )?.outcome ?? "rejected"
       );
     });
     ctx.on("user-questions/request", async (request, next) => {
