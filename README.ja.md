@@ -52,7 +52,7 @@ Usage:
 
 Commands:
   ask [prompt]            Run one noninteractive request
-  resume <session-id>     Continue a saved conversation
+  resume [session-id]     Continue a saved conversation
   login [provider]        Sign in with OAuth or an API key
   logout [provider]       Remove saved provider credentials
   upgrade                 Update lazydsh to the latest version
@@ -69,6 +69,8 @@ Flags:
   --list                  List providers and model IDs
   -h, --help              Show help
 ```
+
+`lazydsh resume` で `<session-id>` を省略すると、TUI を起動する前に保存済みセッションの選択画面が開きます。
 
 ## コマンド
 

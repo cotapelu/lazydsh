@@ -48,6 +48,7 @@ test("CLI help and validation", async () => {
     "Commands:",
     "Flags:",
     "ask [prompt]",
+    "resume [session-id]",
     "login [provider]",
     "logout [provider]",
     "upgrade",
@@ -65,8 +66,12 @@ test("CLI help and validation", async () => {
   assert.doesNotMatch(unknown.stderr, /A lazier terminal UI|Usage:|Commands:|Flags:/);
   const missingSession = await cli(executable, ["resume"]);
   assert.equal(missingSession.code, 1);
-  assert.match(missingSession.stderr, /Missing session ID/);
+  assert.match(missingSession.stderr, /interactive terminal/);
   assert.doesNotMatch(missingSession.stderr, /A lazier terminal UI/);
+  const tooManySessions = await cli(executable, ["resume", "first", "second"]);
+  assert.equal(tooManySessions.code, 1);
+  assert.match(tooManySessions.stderr, /at most one session ID/);
+  assert.doesNotMatch(tooManySessions.stderr, /A lazier terminal UI/);
   const tooMany = await cli(executable, ["login", "codex", "extra"]);
   assert.equal(tooMany.code, 1);
   assert.match(tooMany.stderr, /at most one provider/);
@@ -94,6 +99,7 @@ test("subcommand help", async () => {
     if (["login", "logout", "upgrade"].includes(command))
       assert.doesNotMatch(result.stdout, /--model|--effort|--permission/);
     if (command === "ask") assert.match(result.stdout, /--permission/);
+    if (command === "resume") assert.match(result.stdout, /resume \[session-id\]/);
     if (command === "upgrade") assert.doesNotMatch(result.stdout, /--home|--cwd|--patch/);
   }
   const unknown = await cli(executable, ["unknown", "--help"]);

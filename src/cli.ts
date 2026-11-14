@@ -36,7 +36,7 @@ ${heading("Usage:")}
 
 ${heading("Commands:")}
 ${row("ask [prompt]", "Run one noninteractive request")}
-${row("resume <session-id>", "Continue a saved conversation")}
+${row("resume [session-id]", "Continue a saved conversation")}
 ${row("login [provider]", "Sign in with OAuth or an API key")}
 ${row("logout [provider]", "Remove saved provider credentials")}
 ${row("upgrade", "Update lazydsh to the latest version")}
@@ -65,8 +65,8 @@ function commandHelp(command: string): string {
     },
     resume: {
       description: "Continue a saved conversation in the TUI.",
-      usage: "resume <session-id> [flags]",
-      argument: ["<session-id>", "ID of the conversation to continue"],
+      usage: "resume [session-id] [flags]",
+      argument: ["[session-id]", "ID of the conversation to continue; omit to choose a session"],
       flags: connectionFlags,
     },
     login: {
@@ -122,12 +122,10 @@ async function main() {
   if (command !== undefined && !["ask", "resume", "login", "logout", "upgrade"].includes(command))
     throw new Error(`Unknown command: ${command}. Run lazydsh --help for available commands.`);
   if (values.help) return console.log(command ? commandHelp(command) : help);
-  if (command === "resume" && (args.length !== 1 || !args[0].trim()))
-    throw new Error(
-      args.length
-        ? "resume requires exactly one session ID. Run lazydsh resume --help."
-        : "Missing session ID. Usage: lazydsh resume <session-id>.",
-    );
+  if (command === "resume" && args.length > 1)
+    throw new Error("resume accepts at most one session ID. Run lazydsh resume --help.");
+  if (command === "resume" && args.length === 1 && !args[0].trim())
+    throw new Error("Session ID must not be empty. Run lazydsh resume --help.");
   if (command === "login" || command === "logout") {
     if (args.length > 1)
       throw new Error(`${command} accepts at most one provider. Run lazydsh ${command} --help.`);
@@ -146,7 +144,8 @@ async function main() {
     return;
   }
   if (command && values.list) throw new Error("Use --list without a subcommand.");
-  if (command === "resume" && values.resume) throw new Error("Specify the session ID only once.");
+  if (command === "resume" && args.length && values.resume)
+    throw new Error("Specify the session ID only once.");
   if (values.permission && command !== "ask")
     throw new Error("--permission is only available with ask.");
   if (
@@ -226,7 +225,8 @@ async function main() {
           home: values.home && resolve(values.home),
           provider,
           model,
-          resume: command === "resume" ? args[0] : values.resume,
+          resume: command === "resume" ? (args[0] ?? values.resume) : values.resume,
+          pickSession: command === "resume" && !args.length && values.resume === undefined,
           effort: values.effort,
           command:
             command === "ask" || command === "login" || command === "logout" ? command : undefined,

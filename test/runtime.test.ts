@@ -312,6 +312,7 @@ test("sessions, jobs and file references", async () => {
     await writeFile(join(directory,".agents/skills/test-skill/SKILL.md"),"---\\nname: test-skill\\ndescription: Reference test skill\\n---\\nRead the test skill.");
     await writeFile(join(directory,"reference file.txt"),"test");
     const route = {provider:"deepseek-official",model:models("deepseek-official")[0].id};
+    assert.deepEqual((await runtime.choices("sessions")).options, []);
     const first = await runtime.open(route);
     assert.equal(await runtime.renameSession(first,"First session"),"First session");
     await ctx.sessionPersistence.flush();
@@ -320,6 +321,8 @@ test("sessions, jobs and file references", async () => {
     assert.ok((await runtime.sessions()).find(item=>item.id===first).pinned);
     await runtime.manageSession(first,"unpin");
     assert.ok(!(await runtime.sessions()).find(item=>item.id===first).pinned);
+    await runtime.close();
+    assert.ok((await runtime.choices("sessions")).options.some(item=>item.value===first));
     await runtime.open(route);
     const current=runtime.session.id;
     assert.equal(await runtime.renameSession(first,"Renamed saved session"),"Renamed saved session");
