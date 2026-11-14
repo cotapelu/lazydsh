@@ -152,6 +152,6 @@ Flags:
 | Z.AI                          | `zai`                           | APIキー                       |
 | Z.AI Coding CN                | `zai-coding-cn`                 | APIキー                       |
 
-# ライセンス
+## ライセンス
 
 lazydshは[MITライセンス](LICENSE)の下で公開されています。
