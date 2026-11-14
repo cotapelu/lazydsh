@@ -31,6 +31,7 @@ export interface PluginOptions {
   provider?: string;
   model?: string;
   resume?: string;
+  pickSession?: boolean;
   effort?: string;
   resumeArgs?: string[];
   command?: "ask" | "login" | "logout";
@@ -81,13 +82,19 @@ export function apply(ctx: Context, config: PluginOptions = {}) {
       );
       return;
     }
+    let resume = config.resume;
+    if (config.pickSession) {
+      const { selectSession } = await import("./session-select.ts");
+      resume = (await selectSession(runtime, lifetime.signal)) ?? undefined;
+      if (!resume) return;
+    }
     const { runUI } = await import("./ui.ts");
     await runUI(
       options,
       {
         provider,
         model,
-        resume: config.resume,
+        resume,
         resumeArgs: config.resumeArgs ?? (config.home ? ["--home", resolve(config.home)] : []),
       },
       runtime,

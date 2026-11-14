@@ -388,12 +388,12 @@ export class Runtime {
     options: { value: string; label: string; description?: string }[];
   }> {
     const ctx = this.ctx;
-    const agent = this.agent;
     if (kind === "sessions") {
       const records = await this.sessions();
+      const current = this.session?.id;
       return {
         options: records
-          .filter((record) => !record.archived && record.id !== agent.session.id)
+          .filter((record) => !record.archived && record.id !== current)
           .sort((a, b) => Number(b.pinned) - Number(a.pinned))
           .map((record) => ({
             value: record.id,
@@ -402,6 +402,7 @@ export class Runtime {
           })),
       };
     }
+    const agent = this.agent;
     if (kind === "directories") {
       const entries = await readdir(await this.cd(), { withFileTypes: true });
       return {
