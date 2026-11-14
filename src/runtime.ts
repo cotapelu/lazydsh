@@ -225,18 +225,36 @@ export class Runtime {
     const query = this.ctx.get("sessionQuery");
     if (!query) throw new Error("Session history unavailable");
     const workspace = this.ctx.get("workspaceRegistry");
-    const records = await query.listSessions();
-    return Promise.all(
-      records
-        .filter((record) => record.persisted && record.header.origin !== "subagent")
-        .map(async (record) => ({
-          id: record.header.id,
-          title: (await query.readTitle(record.header.id))?.title ?? record.header.id,
-          directory: record.header.cwd,
-          archived: workspace?.archivedSessionIds.includes(record.header.id) ?? false,
-          pinned: workspace?.pinnedSessionIds.includes(record.header.id) ?? false,
-        })),
+    const cache = this.ctx.get("sessionProjectionCache");
+    const records = (await query.listSessions()).filter(
+      (record) => record.persisted && record.header.origin !== "subagent",
     );
+    const titles = new Map<string, string>();
+    const missing: SessionId[] = [];
+    for (const record of records) {
+      const cached =
+        cache?.cachedSnapshot(record.header, ["title"]) ??
+        cache?.cachedPredecessorTitle(record.header);
+      if (!cached) {
+        missing.push(record.header.id);
+        continue;
+      }
+      const title = cached.values.title;
+      if (typeof title === "string" && title) titles.set(record.header.id, title);
+    }
+    if (missing.length) {
+      const snapshots = await query.readTitleSnapshots(missing);
+      for (const snapshot of snapshots)
+        if (snapshot.status === "fulfilled" && snapshot.value.title)
+          titles.set(snapshot.sessionId, snapshot.value.title.title);
+    }
+    return records.map((record) => ({
+      id: record.header.id,
+      title: titles.get(record.header.id) ?? record.header.id,
+      directory: record.header.cwd,
+      archived: workspace?.archivedSessionIds.includes(record.header.id) ?? false,
+      pinned: workspace?.pinnedSessionIds.includes(record.header.id) ?? false,
+    }));
   }
   async renameSession(id: string, title: string) {
     const titles = this.ctx.get("sessionTitle");
