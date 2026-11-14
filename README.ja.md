@@ -4,7 +4,7 @@
 [![Release](https://img.shields.io/github/v/release/nuskey8/lazydsh)](https://github.com/nuskey8/lazydsh/releases/latest)
 [![npm](https://img.shields.io/npm/v/lazydsh-js)](https://www.npmjs.com/package/lazydsh)
 
-[English](README.md) | [简体中文](README.zh-CN.md) | 日本語 
+[English](README.md) | [简体中文](README.zh-CN.md) | 日本語
 
 A lazier terminal UI for DeepSeek Harness.
 
