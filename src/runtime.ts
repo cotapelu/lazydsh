@@ -600,12 +600,28 @@ export class Runtime {
   async hasCredentials(provider?: string, signal?: AbortSignal) {
     return (await this.credentialSource(provider, signal)).kind !== "none";
   }
+  /**
+   * Sign in to a provider.
+   *
+   * Explicit requests (`/login` and `lazydsh login`) refuse to replace a
+   * working sign-in. Automatic recovery from an expired token passes
+   * `reauthenticate: true` so it is never blocked.
+   *
+   * Returns a short notice when sign-in was skipped because it is unnecessary
+   * or already active; `undefined` means the flow completed.
+   */
   async authenticate(
     signal?: AbortSignal,
-    options?: { provider: string; onAuth: Callbacks["onAuth"] },
-  ) {
+    options?: { provider?: string; onAuth?: Callbacks["onAuth"]; reauthenticate?: boolean },
+  ): Promise<string | undefined> {
     const ctx = this.ctx;
     const provider = options?.provider ?? this.agent.model.current()!.provider;
+    if (!options?.reauthenticate) {
+      const source = await this.credentialSource(provider, signal);
+      if (source.kind === "keyless") return `${provider} does not require credentials.`;
+      if (source.kind !== "none" && source.kind !== "unknown")
+        return `Already logged in to ${provider}.`;
+    }
     const onAuth = options?.onAuth ?? this.callbacks.onAuth;
     const selections: string[] = [];
     let cursor = 0;
@@ -715,8 +731,17 @@ export class Runtime {
       }
     }
     this.authFailed = false;
+    return undefined;
   }
-  async logout(provider: string) {
+  /**
+   * Remove saved credentials.
+   *
+   * Returns the credential refs that remain configured, or `undefined` when
+   * there was nothing to sign out of.
+   */
+  async logout(provider: string): Promise<string[] | undefined> {
+    const source = await this.credentialSource(provider);
+    if (source.kind === "none" || source.kind === "keyless") return undefined;
     if (provider === "deepseek-official")
       await this.ctx.credentials.unset(credentialRef("DEEPSEEK_API_KEY"));
     else {
@@ -773,7 +798,10 @@ export class Runtime {
           if (isAuthFailure(failure)) {
             this.authFailed = true;
             if (attempt === 0) {
-              await this.authenticate(signal);
+              await this.authenticate(signal, {
+                provider: current.provider,
+                reauthenticate: true,
+              });
               continue;
             }
           }
@@ -950,7 +978,10 @@ export class Runtime {
                 `Authentication is required. Run lazydsh login ${agent.model.current()!.provider} in a terminal first.`,
               );
             retriedAuth = true;
-            await this.authenticate(request.signal);
+            await this.authenticate(request.signal, {
+              provider: agent.model.current()!.provider,
+              reauthenticate: true,
+            });
             return { kind: "retry" };
           }),
         ];

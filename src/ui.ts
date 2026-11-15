@@ -617,10 +617,7 @@ export async function runUI(
     }
     if (announcedAuth.has(provider)) return;
     announcedAuth.add(provider);
-    add(
-      "Auth",
-      `Using ${source.label} for ${provider}. Run /login ${provider} to save credentials.`,
-    );
+    add("Auth", `Using ${source.label} for ${provider}. Unset it to switch credentials.`);
   }
 
   async function probeCredentialSource(provider: string) {
@@ -636,17 +633,14 @@ export async function runUI(
       provider ??= (await chooseAuthProvider("login")) ?? undefined;
       if (provider === undefined || closing) return;
       try {
-        const source = await runtime.credentialSource(provider);
-        if (source.kind === "environment")
-          add(
-            "Auth",
-            `Current credentials come from ${source.label}. Signing in saves a new credential.`,
-          );
-      } catch {
-        // The source hint is best-effort; signing in must still proceed.
-      }
-      try {
-        await runtime.authenticate(options.signal, { provider, onAuth: callbacks.onAuth });
+        const notice = await runtime.authenticate(options.signal, {
+          provider,
+          onAuth: callbacks.onAuth,
+        });
+        if (notice !== undefined) {
+          add("Login", notice);
+          return;
+        }
       } catch (error) {
         if (closing) return;
         if (error instanceof AuthorizationDeclinedError) {
@@ -678,6 +672,10 @@ export async function runUI(
       if (provider === undefined || closing) return;
       const remaining = await runtime.logout(provider);
       if (closing) return;
+      if (remaining === undefined) {
+        add("Logout", `Not logged in to ${provider}.`);
+        return;
+      }
       announcedAuth.delete(provider);
       add("Logged out", provider);
       if (remaining.length)

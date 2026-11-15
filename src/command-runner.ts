@@ -13,17 +13,31 @@ export type CommandOptions = {
 export async function runCommand(runtime: Runtime, config: CommandOptions, signal: AbortSignal) {
   if (config.command === "login") {
     const { terminalAuth } = await import("./terminal-login.ts");
-    const provider = await terminalAuth(runtime, "login", config.provider, signal);
-    console.log(formatNotification("Logged in", provider, terminalColor(process.stdout)));
+    const result = await terminalAuth(runtime, "login", config.provider, signal);
+    if (result.notice !== undefined) {
+      console.log(formatNotification("Login", result.notice, terminalColor(process.stdout)));
+      return;
+    }
+    console.log(formatNotification("Logged in", result.provider, terminalColor(process.stdout)));
     return;
   }
   if (config.command === "logout") {
     let provider = config.provider;
     if (provider === undefined) {
       const { terminalAuth } = await import("./terminal-login.ts");
-      provider = await terminalAuth(runtime, "logout", undefined, signal);
+      provider = (await terminalAuth(runtime, "logout", undefined, signal)).provider;
     }
     const remaining = await runtime.logout(provider);
+    if (remaining === undefined) {
+      console.log(
+        formatNotification(
+          "Logout",
+          `Not logged in to ${provider}.`,
+          terminalColor(process.stdout),
+        ),
+      );
+      return;
+    }
     console.log(formatNotification("Logged out", provider, terminalColor(process.stdout)));
     if (remaining.length)
       console.error(

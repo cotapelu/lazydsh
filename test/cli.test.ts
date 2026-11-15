@@ -186,7 +186,7 @@ test("ask, stdin, authentication and logout", async () => {
       },
     );
     assert.equal(logout.code, 0, logout.stderr);
-    assert.match(logout.stdout, /logged out: opencode-go/);
+    assert.match(logout.stdout, /not logged in to opencode-go/i);
     const alias = await cli(
       executable,
       ["logout", "codex", "--home", join(directory, "home")],
@@ -196,7 +196,18 @@ test("ask, stdin, authentication and logout", async () => {
       },
     );
     assert.equal(alias.code, 0, alias.stderr);
-    assert.match(alias.stdout, /logged out: openai-codex/);
+    assert.match(alias.stdout, /not logged in to openai-codex/i);
+    const envLogout = await cli(
+      executable,
+      ["logout", "opencode-go", "--home", join(directory, "home")],
+      "",
+      {
+        HOME: directory,
+        OPENCODE_API_KEY: "test-only",
+      },
+    );
+    assert.equal(envLogout.code, 0, envLogout.stderr);
+    assert.match(envLogout.stdout, /logged out: opencode-go/);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
