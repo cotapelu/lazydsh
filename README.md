@@ -80,6 +80,8 @@ Flags:
 | `/cd`         | —                  | Choose the working directory for the session                           |
 | `/permission` | `[preset]`         | View and select dsh permission presets                                 |
 | `/model`      | —                  | Select provider and model                                              |
+| `/login`      | `[provider]`       | Sign in to a provider with OAuth or an API key                         |
+| `/logout`     | `[provider]`       | Remove saved provider credentials                                      |
 | `/file`       | `<path>            | clear`                                                                 | Attach a file/image to the next message or clear attachments |
 | `/dsh`        | `<command> [args]` | Run native dsh commands (even if they conflict with TUI command names) |
 | `/effort`     | `[level            | default]`                                                              | Select the reasoning effort for the current model            |

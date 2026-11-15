@@ -72,9 +72,9 @@ export async function terminalAuth(
           tui.setFocus(picker);
           tui.requestRender();
         });
-      if (command === "logout") return provider;
+      if (command === "logout") return { provider };
       try {
-        await runtime.authenticate(signal, {
+        const notice = await runtime.authenticate(signal, {
           provider,
           onAuth: async (method, params, promptSignal) => {
             if (signal.aborted || promptSignal?.aborted) return null;
@@ -145,7 +145,7 @@ export async function terminalAuth(
             });
           },
         });
-        return provider;
+        return notice === undefined ? { provider } : { provider, notice };
       } catch (error) {
         if (!chooseProvider || signal.aborted || !(error instanceof AuthorizationDeclinedError))
           throw error;

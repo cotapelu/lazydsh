@@ -371,6 +371,60 @@ test("sessions, jobs and file references", async () => {
   );
 });
 
+test("sending without credentials asks for /login", async () => {
+  await nativeTest(
+    executable,
+    `
+    const route = {provider:"opencode-go",model:models("opencode-go")[0].id};
+    assert.equal(await runtime.hasCredentials("opencode-go"), false);
+    assert.equal((await runtime.credentialSource("opencode-go")).kind, "none");
+    assert.equal(await runtime.hasCredentials("deepseek-official"), false);
+    assert.equal(await runtime.hasCredentials("openai-codex"), false);
+    // A route this build does not know must not be blocked by the preflight.
+    assert.equal(await runtime.hasCredentials("custom-route"), true);
+    assert.equal((await runtime.credentialSource("custom-route")).kind, "unknown");
+    assert.equal(await runtime.logout("opencode-go"), undefined);
+    await runtime.open(route);
+    await assert.rejects(runtime.run("hello"), /Not logged in to opencode-go.*\\/login opencode-go/);
+    await assert.rejects(
+      runtime.run("hello", undefined, [], {authenticate:false}),
+      /lazydsh login opencode-go/,
+    );
+    assert.equal((await runtime.history()).filter(event => event.type === "user/message").length, 0);
+    await runtime.authenticate(undefined, {provider:"opencode-go",onAuth:async(_method,params)=>
+      params.kind === "select" ? "api-key" : "test-only"
+    });
+    assert.equal(await runtime.hasCredentials("opencode-go"), true);
+    assert.equal((await runtime.credentialSource("opencode-go")).kind, "store");
+    assert.equal(
+      await runtime.authenticate(undefined, {provider:"opencode-go",onAuth:async()=>"replacement"}),
+      "Already logged in to opencode-go.",
+    );
+    await runtime.close();
+  `,
+  );
+});
+
+test("reports credentials read from the environment", async () => {
+  await nativeTest(
+    executable,
+    `
+    const source = await runtime.credentialSource("openrouter");
+    assert.equal(source.kind, "environment");
+    assert.equal(source.ref, "OPENROUTER_API_KEY");
+    assert.equal(source.label, "OPENROUTER_API_KEY (environment)");
+    assert.equal(await runtime.hasCredentials("openrouter"), true);
+    assert.equal(
+      await runtime.authenticate(undefined, {provider:"openrouter",onAuth:async()=>"replacement"}),
+      "Already logged in to openrouter.",
+    );
+    assert.deepEqual(await runtime.logout("openrouter"), ["OPENROUTER_API_KEY"]);
+  `,
+    [],
+    `process.env.OPENROUTER_API_KEY="test-only"; globalThis.fetch=async()=>{throw new Error("Network disabled in test")};`,
+  );
+});
+
 test("login and logout", async () => {
   await nativeTest(
     executable,
@@ -389,8 +443,14 @@ test("login and logout", async () => {
     assert.ok(prompts.includes("secret"));
     assert.equal(ctx.agents.list().length,before);
     assert.equal((await ctx.credentials.readRecord("llm-pi-ai/openrouter")).key,"test-only-api-key");
+    assert.equal(
+      await runtime.authenticate(undefined, {provider:"openrouter",onAuth:async()=>"replacement"}),
+      "Already logged in to openrouter.",
+    );
+    assert.equal((await ctx.credentials.readRecord("llm-pi-ai/openrouter")).key,"test-only-api-key");
     await runtime.logout("openrouter");
     assert.equal(await ctx.credentials.readRecord("llm-pi-ai/openrouter"),undefined);
+    assert.equal(await runtime.logout("openrouter"), undefined);
     const backPrompts=[];
     let secrets=0;
     await runtime.authenticate(undefined,{provider:"openrouter",onAuth:async(_method,params)=>{
@@ -410,8 +470,13 @@ test("login and logout", async () => {
     assert.equal(await ctx.credentials.readRecord("llm-pi-ai/openrouter"),undefined);
     await runtime.authenticate(undefined,{provider:"deepseek-official",onAuth:async()=>"deepseek-test-only"});
     assert.equal((await ctx.credentials.resolve("DEEPSEEK_API_KEY")).value,"deepseek-test-only");
+    assert.equal(
+      await runtime.authenticate(undefined,{provider:"deepseek-official",onAuth:async()=>"replacement"}),
+      "Already logged in to deepseek-official.",
+    );
     await runtime.logout("deepseek-official");
     assert.equal(await ctx.credentials.resolve("DEEPSEEK_API_KEY"),undefined);
+    assert.equal(await runtime.logout("deepseek-official"), undefined);
     assert.equal(ctx.agents.list().length,before);
     await assert.rejects(runtime.logout("missing-provider"),/Unknown provider/);
     let codexPrompt;

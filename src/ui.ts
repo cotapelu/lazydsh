@@ -5,6 +5,7 @@ import { openAuthUrl } from "./open-url.ts";
 import { homedir } from "node:os";
 import { sep } from "node:path";
 import { preferencesPath, saveModel } from "./preferences.ts";
+import { normalizeProvider } from "./provider.ts";
 import { SearchPicker, selectionTheme } from "./picker.ts";
 import { highlightCode } from "./highlight.ts";
 import type { SessionStats } from "./stats.ts";
@@ -25,13 +26,16 @@ import {
   type Component,
 } from "@earendil-works/pi-tui";
 import { eventText, isAuthFailure } from "./runtime-events.ts";
-import type { Runtime, Route, Callbacks } from "./runtime.ts";
+import { AuthorizationDeclinedError } from "@deepseek-ai/dsh-authorization";
+import type { Runtime, Route, Callbacks, CredentialSource } from "./runtime.ts";
 import {
   resumeDirectoryOptions,
   resumeDirectoryTarget,
   sameDirectory,
 } from "./resume-directory.ts";
 import { StreamingMarkdown } from "./streaming.ts";
+import { captureConsole } from "./tui-console.ts";
+import { dshCachePath } from "@deepseek-ai/dsh-home-paths";
 
 import {
   StartupBanner,
@@ -125,6 +129,9 @@ export async function runUI(
   let busy = false;
   let starting = false;
   let startupFailed = false;
+  let checkingAuth = false;
+  let blockedPrompt: string | undefined;
+  const announcedAuth = new Set<string>();
   let running = false;
   let closing = false;
   // Set while Esc cancels the active turn so queued prompts wait for the
@@ -470,6 +477,7 @@ export async function runUI(
       resume = undefined;
       if (sessionId) add("Resumed", id);
       if (requestedDirectory !== undefined) add("Directory", requestedDirectory);
+      void probeCredentialSource(nextRoute.provider);
     } catch (error) {
       decision?.(null);
       await runtime.close();
@@ -478,7 +486,11 @@ export async function runUI(
       else if (!closing)
         add(
           "Connection error",
-          `${error instanceof Error ? error.message : String(error)}\nUse /model to retry authentication.`,
+          `${error instanceof Error ? error.message : String(error)}\n${
+            isAuthFailure(error)
+              ? `Run /login ${nextRoute.provider} to sign in, then resend.`
+              : "Use /model to retry authentication."
+          }`,
         );
     } finally {
       busy = false;
@@ -580,6 +592,100 @@ export async function runUI(
     };
   }
 
+  function chooseAuthProvider(command: "login" | "logout") {
+    return new Promise<string | null>((resolve) => {
+      const picker = select(
+        runtime.authProviders(),
+        command === "login"
+          ? "Choose a provider to sign in to"
+          : "Choose a provider to sign out of",
+        (value) => resolve(value),
+        undefined,
+        true,
+      );
+      picker.onCancel = () => {
+        dismissPanel();
+        resolve(null);
+      };
+    });
+  }
+
+  function announceCredentialSource(provider: string, source: CredentialSource) {
+    if (source.kind !== "environment") {
+      announcedAuth.delete(provider);
+      return;
+    }
+    if (announcedAuth.has(provider)) return;
+    announcedAuth.add(provider);
+    add("Auth", `Using ${source.label} for ${provider}. Unset it to switch credentials.`);
+  }
+
+  async function probeCredentialSource(provider: string) {
+    try {
+      announceCredentialSource(provider, await runtime.credentialSource(provider));
+    } catch {
+      // An auth-source probe must never interrupt the UI.
+    }
+  }
+
+  async function signIn(provider?: string) {
+    await runBusy(async () => {
+      provider ??= (await chooseAuthProvider("login")) ?? undefined;
+      if (provider === undefined || closing) return;
+      try {
+        const notice = await runtime.authenticate(options.signal, {
+          provider,
+          onAuth: callbacks.onAuth,
+        });
+        if (notice !== undefined) {
+          add("Login", notice);
+          return;
+        }
+      } catch (error) {
+        if (closing) return;
+        if (error instanceof AuthorizationDeclinedError) {
+          add("Login", "Sign-in cancelled.");
+          return;
+        }
+        throw error;
+      }
+      if (closing) return;
+      // A startup connection that failed before sign-in can now be retried.
+      const pending = pendingStartupConnection;
+      if (pending && !runtime.session) {
+        pendingStartupConnection = undefined;
+        await connect(pending.route, pending.sessionId);
+      }
+      announcedAuth.delete(provider);
+      add("Logged in", provider);
+      if (blockedPrompt !== undefined) {
+        if (editor.getText().length === 0) editor.setText(blockedPrompt);
+        blockedPrompt = undefined;
+        update();
+      }
+    }, "Login error");
+  }
+
+  async function signOut(provider?: string) {
+    await runBusy(async () => {
+      provider ??= (await chooseAuthProvider("logout")) ?? undefined;
+      if (provider === undefined || closing) return;
+      const remaining = await runtime.logout(provider);
+      if (closing) return;
+      if (remaining === undefined) {
+        add("Logout", `Not logged in to ${provider}.`);
+        return;
+      }
+      announcedAuth.delete(provider);
+      add("Logged out", provider);
+      if (remaining.length)
+        add(
+          "Credentials",
+          `Still available from ${remaining.join(", ")}. Unset them to disconnect completely.`,
+        );
+    }, "Logout error");
+  }
+
   async function stop() {
     if (closing) return;
     closing = true;
@@ -596,13 +702,14 @@ export async function runUI(
     }
   }
 
-  editor.onSubmit = (text: string) => {
+  editor.onSubmit = async (text: string) => {
+    const fromQueue = submittingQueued;
     if (closing) return;
     if (decision) {
       decision(text);
       return;
     }
-    if (!submittingQueued && (busy || starting || startupFailed || !text.trim())) return;
+    if (!fromQueue && (busy || starting || startupFailed || !text.trim())) return;
     if (running && !canRunDuringTurn(text)) {
       if (shouldQueueDuringTurn(text)) {
         enqueue(text);
@@ -625,9 +732,39 @@ export async function runUI(
       });
       return;
     }
-    if (!submittingQueued) {
+    const draft = fromQueue ? undefined : editor.getText();
+    if (!/^\s*\//.test(text) && runtime.session) {
+      if (checkingAuth) return;
+      const provider = runtime.selection()?.provider ?? route.provider;
+      checkingAuth = true;
+      let source: CredentialSource = {
+        kind: "unknown",
+        label: "Provider-managed credentials",
+      };
+      try {
+        source = await runtime.credentialSource(provider);
+      } catch (error) {
+        if (!closing) add("Auth error", error instanceof Error ? error.message : String(error));
+      } finally {
+        checkingAuth = false;
+      }
+      if (closing) return;
+      if (source.kind === "none") {
+        if (!fromQueue && editor.getText() === draft) {
+          editor.addToHistory(text);
+          editor.setText("");
+          blockedPrompt = text;
+        } else if (!fromQueue) blockedPrompt = undefined;
+        add("Error", `Not logged in to ${provider}. Run /login ${provider} to sign in.`);
+        update();
+        return;
+      }
+      announceCredentialSource(provider, source);
+      blockedPrompt = undefined;
+    }
+    if (!fromQueue) {
       editor.addToHistory(text);
-      editor.setText("");
+      if (editor.getText() === draft) editor.setText("");
     }
     add("You", text);
     if (text === "/clear") {
@@ -649,6 +786,29 @@ export async function runUI(
     if (text === "/new") {
       if (route.model) void connect({ provider: route.provider, model: route.model });
       else void pickModel();
+      return;
+    }
+    const authCommand = /^\/(login|logout)(?:\s+(.*))?$/.exec(text);
+    if (authCommand) {
+      const action = authCommand[1] as "login" | "logout";
+      const argument = authCommand[2]?.trim();
+      if (argument && /\s/.test(argument)) {
+        add("Error", `Usage: /${action} [provider]`);
+        return;
+      }
+      const provider = argument ? normalizeProvider(argument) : undefined;
+      if (provider !== undefined) {
+        const available = runtime.authProviders();
+        if (!available.some((item) => item.value === provider)) {
+          add(
+            "Error",
+            `Unknown provider: ${provider}. Available: ${available.map((item) => item.value).join(", ")}`,
+          );
+          return;
+        }
+      }
+      if (action === "login") void signIn(provider);
+      else void signOut(provider);
       return;
     }
     if (!runtime.session) {
@@ -834,7 +994,7 @@ export async function runUI(
       return;
     }
     if (runtime.authFailed && text.startsWith("/") && text !== "/status") {
-      add("Error", "Model authentication failed. Check credentials and retry a message.");
+      add("Error", "Model authentication failed. Run /login to sign in again.");
       return;
     }
     if (text === "/session") {
@@ -1083,7 +1243,14 @@ export async function runUI(
   options.signal?.addEventListener("abort", signalHandler, { once: true });
   process.on("SIGINT", signalHandler);
   process.on("SIGTERM", signalHandler);
+  let restoreConsole: (() => void) | undefined;
   try {
+    // DSH provider plugins write diagnostics with console.warn/error. The TUI
+    // owns the terminal, so capture those lines in a log instead of letting
+    // them corrupt the chat area.
+    restoreConsole = captureConsole(
+      dshCachePath({ dshHome: options.dshHome }, "lazydsh", "tui.log"),
+    );
     tui.start();
     update();
     if (hooks.afterFirstPaint) {
@@ -1119,7 +1286,11 @@ export async function runUI(
     decision?.(null);
     thinking?.finish();
     tui.stop({ preserveScreen: true });
-    await runtime.close();
+    try {
+      await runtime.close();
+    } finally {
+      restoreConsole?.();
+    }
     if (continuationId) console.log(continuationCommand(continuationId, initial.resumeArgs));
   }
 }

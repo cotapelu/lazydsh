@@ -11,4 +11,9 @@ test("plugin descriptions survive and TUI command collisions have one accurate d
   assert.ok(commands.every((command) => command.description?.trim()));
   assert.equal(commands.filter((command) => command.name === "model").length, 1);
   assert.notEqual(commands.find((command) => command.name === "model")?.description, "Shadowed");
+  for (const name of ["login", "logout"]) {
+    const command = commands.find((item) => item.name === name);
+    assert.ok(command);
+    assert.equal(command.argumentHint, "[provider]");
+  }
 });

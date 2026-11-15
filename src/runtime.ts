@@ -10,7 +10,7 @@ import {
 } from "@deepseek-ai/dsh-session";
 import { createUserMessage } from "@deepseek-ai/dsh-llm/message";
 import type { ReasoningEffortId, TokenUsage } from "@deepseek-ai/dsh-llm";
-import { credentialRef, credentialKey } from "@deepseek-ai/dsh-credentials";
+import { credentialRef, credentialKey, type CredentialInfo } from "@deepseek-ai/dsh-credentials";
 import { AuthorizationDeclinedError } from "@deepseek-ai/dsh-authorization";
 import { UserQuestionError } from "@deepseek-ai/dsh-user-questions";
 import type {
@@ -28,8 +28,9 @@ import type {} from "@deepseek-ai/dsh-token-meter/client";
 import type { CommandDescriptor, CommandSubmitAttachment } from "@deepseek-ai/dsh-commands/types";
 import { resolveCommand } from "@deepseek-ai/dsh-commands/builtin";
 import { randomUUID } from "node:crypto";
-import { readFile, stat, readdir } from "node:fs/promises";
-import { basename, resolve } from "node:path";
+import { access, readFile, stat, readdir } from "node:fs/promises";
+import { homedir } from "node:os";
+import { basename, join, resolve } from "node:path";
 import { latestRequestStats, type SessionStats } from "./stats.ts";
 import { readLimits, type AccountLimits } from "./limits.ts";
 import type {} from "@deepseek-ai/dsh-session-title";
@@ -38,6 +39,7 @@ import type {} from "@deepseek-ai/dsh-file-reference";
 import type {} from "@deepseek-ai/dsh-skill";
 import { JobId } from "@deepseek-ai/dsh-jobs";
 import { formatFileMention } from "@deepseek-ai/dsh-file-reference/grammar";
+import { builtinProviders } from "@earendil-works/pi-ai/providers/all";
 import type { AutocompleteItem } from "@earendil-works/pi-tui";
 import { registerCommands } from "./native-commands.ts";
 import { contentText, isAuthFailure, type RuntimeEvent } from "./runtime-events.ts";
@@ -47,6 +49,14 @@ export type { RuntimeEvent } from "./runtime-events.ts";
 
 export type Route = { provider: string; model: string };
 export type QuestionResult = AskUserQuestionAnswer | { cancelled: true };
+/** Where the credential for a route currently comes from. */
+export type CredentialSource = {
+  kind: "environment" | "store" | "oauth" | "ambient" | "keyless" | "none" | "unknown";
+  /** Human-readable description for notices. */
+  label: string;
+  /** Environment-variable name when `kind` is `environment`. */
+  ref?: string;
+};
 export type RuntimeOptions = {
   cwd?: string;
   dshHome?: string;
@@ -81,6 +91,21 @@ export type RunResult = {
   finishReason: "completed" | "error" | "aborted";
   events: SessionEvent[];
 };
+
+function describeCredentialRef(ref: string, info: CredentialInfo): CredentialSource {
+  switch (info.source) {
+    case "env":
+      return { kind: "environment", ref, label: `${ref} (environment)` };
+    case "project-env":
+      return { kind: "environment", ref, label: `${ref} (.env)` };
+    case "user-env":
+      return { kind: "environment", ref, label: `${ref} (DSH .env)` };
+    case "file":
+      return { kind: "store", label: `${ref} (saved)` };
+    default:
+      return { kind: "ambient", label: info.source ? `${ref} (${info.source})` : ref };
+  }
+}
 
 export class Runtime {
   readonly ctx: Context;
@@ -495,12 +520,108 @@ export class Runtime {
         })),
     ];
   }
+  /**
+   * Describe where a route's credentials come from.
+   *
+   * A stored sign-in, a provider environment variable, and an ambient provider
+   * source (AWS profiles, ADC files) are distinguished so the TUI can show
+   * which one is active. Routes this build does not know — a provider added
+   * through --patch — answer `unknown` rather than pretending to be signed out.
+   */
+  async credentialSource(provider?: string, signal?: AbortSignal): Promise<CredentialSource> {
+    const route = provider ?? this.handle?.agent.model.current()?.provider;
+    if (route === undefined) return { kind: "none", label: "No route selected" };
+    if (route === "deepseek-official") {
+      const ref = "DEEPSEEK_API_KEY";
+      const info = await this.ctx.credentials.describe(credentialRef(ref));
+      return info.configured
+        ? describeCredentialRef(ref, info)
+        : { kind: "none", label: "Not signed in" };
+    }
+    const record = await this.ctx.credentials.describeRecord(credentialKey("llm-pi-ai", route));
+    if (record.configured)
+      return record.kind === "grant"
+        ? { kind: "oauth", label: "OAuth sign-in (saved)" }
+        : { kind: "store", label: "Saved credential" };
+    // Prefer the route's declared ambient sources: this is a cheap answer and
+    // avoids provider-specific credential resolution on every send.
+    const native = this.ctx.llm
+      .listConfigurableProviders()
+      .find((item) => item.provider === route)?.nativeAuth;
+    if (native) {
+      for (const ref of native.env) {
+        const info = await this.ctx.credentials.describe(credentialRef(ref));
+        if (info.configured) return describeCredentialRef(ref, info);
+      }
+      // No ambient env source is declared at all: an OAuth-only route has no
+      // stored sign-in here, while a keyless route needs no credential.
+      if (native.env.length === 0)
+        return native.oauth
+          ? { kind: "none", label: "Not signed in" }
+          : { kind: "keyless", label: "No credentials required" };
+    }
+    const installed = builtinProviders().find((item) => item.id === route);
+    if (!installed) return { kind: "unknown", label: "Provider-managed credentials" };
+    const apiKey = installed.auth.apiKey;
+    if (!apiKey)
+      return installed.auth.oauth === undefined
+        ? { kind: "keyless", label: "No credentials required" }
+        : { kind: "none", label: "Not signed in" };
+    const input = {
+      ctx: {
+        env: async (name: string) =>
+          (await this.ctx.credentials.resolve(credentialRef(name)))?.value,
+        fileExists: async (path: string) => {
+          try {
+            await access(path.startsWith("~/") ? join(homedir(), path.slice(2)) : path);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+      },
+      signal: signal ?? this.options.signal ?? new AbortController().signal,
+    };
+    try {
+      const result = await (apiKey.check ? apiKey.check(input) : apiKey.resolve(input));
+      if (!result) return { kind: "none", label: "Not signed in" };
+      const source = typeof result.source === "string" && result.source ? result.source : undefined;
+      if (source) {
+        const ref = native?.env.find((name) => source === name || source.includes(name));
+        if (ref) return { kind: "environment", ref, label: `${ref} (environment)` };
+        return { kind: "ambient", label: source };
+      }
+      return { kind: "ambient", label: "Provider credentials" };
+    } catch {
+      // Detection failure alone must not claim the route is signed out.
+      return { kind: "unknown", label: "Provider-managed credentials" };
+    }
+  }
+  async hasCredentials(provider?: string, signal?: AbortSignal) {
+    return (await this.credentialSource(provider, signal)).kind !== "none";
+  }
+  /**
+   * Sign in to a provider.
+   *
+   * Explicit requests (`/login` and `lazydsh login`) refuse to replace a
+   * working sign-in. Automatic recovery from an expired token passes
+   * `reauthenticate: true` so it is never blocked.
+   *
+   * Returns a short notice when sign-in was skipped because it is unnecessary
+   * or already active; `undefined` means the flow completed.
+   */
   async authenticate(
     signal?: AbortSignal,
-    options?: { provider: string; onAuth: Callbacks["onAuth"] },
-  ) {
+    options?: { provider?: string; onAuth?: Callbacks["onAuth"]; reauthenticate?: boolean },
+  ): Promise<string | undefined> {
     const ctx = this.ctx;
     const provider = options?.provider ?? this.agent.model.current()!.provider;
+    if (!options?.reauthenticate) {
+      const source = await this.credentialSource(provider, signal);
+      if (source.kind === "keyless") return `${provider} does not require credentials.`;
+      if (source.kind !== "none" && source.kind !== "unknown")
+        return `Already logged in to ${provider}.`;
+    }
     const onAuth = options?.onAuth ?? this.callbacks.onAuth;
     const selections: string[] = [];
     let cursor = 0;
@@ -610,8 +731,17 @@ export class Runtime {
       }
     }
     this.authFailed = false;
+    return undefined;
   }
-  async logout(provider: string) {
+  /**
+   * Remove saved credentials.
+   *
+   * Returns the credential refs that remain configured, or `undefined` when
+   * there was nothing to sign out of.
+   */
+  async logout(provider: string): Promise<string[] | undefined> {
+    const source = await this.credentialSource(provider);
+    if (source.kind === "none" || source.kind === "keyless") return undefined;
     if (provider === "deepseek-official")
       await this.ctx.credentials.unset(credentialRef("DEEPSEEK_API_KEY"));
     else {
@@ -668,7 +798,10 @@ export class Runtime {
           if (isAuthFailure(failure)) {
             this.authFailed = true;
             if (attempt === 0) {
-              await this.authenticate(signal);
+              await this.authenticate(signal, {
+                provider: current.provider,
+                reauthenticate: true,
+              });
               continue;
             }
           }
@@ -845,7 +978,10 @@ export class Runtime {
                 `Authentication is required. Run lazydsh login ${agent.model.current()!.provider} in a terminal first.`,
               );
             retriedAuth = true;
-            await this.authenticate(request.signal);
+            await this.authenticate(request.signal, {
+              provider: agent.model.current()!.provider,
+              reauthenticate: true,
+            });
             return { kind: "retry" };
           }),
         ];
@@ -886,6 +1022,13 @@ export class Runtime {
         commandText = execution.result.text;
         commandError = execution.result.kind === "error";
       } else {
+        const provider = agent.model.current()?.provider;
+        if (provider !== undefined && !(await this.hasCredentials(provider, signal)))
+          throw new Error(
+            options.authenticate === false
+              ? `Authentication is required. Run lazydsh login ${provider} in a terminal first.`
+              : `Not logged in to ${provider}. Run /login ${provider} to sign in.`,
+          );
         agent.followup(
           createUserMessage({
             content: [{ type: "text", text }, ...attachments],
