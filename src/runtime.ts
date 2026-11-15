@@ -218,6 +218,17 @@ export class Runtime {
       options: info.reasoning?.efforts ?? [],
     };
   }
+  /** The current route and effort, suitable for persisting as a preference. */
+  selection() {
+    const current = this.agent.model.current();
+    return current
+      ? {
+          provider: current.provider,
+          model: current.model,
+          ...(current.reasoningEffort ? { effort: current.reasoningEffort } : {}),
+        }
+      : undefined;
+  }
   async history(): Promise<SessionEvent[]> {
     return [...this.agent.session.snapshotEvents()];
   }

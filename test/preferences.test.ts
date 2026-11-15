@@ -10,10 +10,12 @@ test("model preference survives reload and ignores malformed preferences", async
   const path = join(directory, "nested", "model.json");
   try {
     assert.equal(await loadModel(path), undefined);
-    const route = { provider: "openai-codex", model: "gpt-5.4" };
+    const route = { provider: "openai-codex", model: "gpt-5.4", effort: "low" };
     await saveModel(path, route);
     assert.deepEqual(await loadModel(path), route);
     assert.deepEqual(JSON.parse(await readFile(path, "utf8")), route);
+    await saveModel(path, { provider: "openai-codex", model: "gpt-5.4" });
+    assert.deepEqual(await loadModel(path), { provider: "openai-codex", model: "gpt-5.4" });
     await writeFile(path, "null");
     assert.equal(await loadModel(path), undefined);
     await writeFile(path, "broken");

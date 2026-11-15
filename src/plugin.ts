@@ -54,6 +54,7 @@ export function apply(ctx: Context, config: PluginOptions = {}) {
         ? undefined
         : await loadModel(preferencesPath(config.home));
     const provider = config.provider ?? saved?.provider ?? "deepseek-official";
+    const effort = config.effort ?? (config.provider && config.model ? undefined : saved?.effort);
     const model =
       config.model ??
       (config.provider === undefined || config.provider === saved?.provider
@@ -64,7 +65,7 @@ export function apply(ctx: Context, config: PluginOptions = {}) {
       cwd: resolve(config.cwd ?? "."),
       dshHome: config.home,
       signal: lifetime.signal,
-      reasoningEffort: config.effort === undefined ? undefined : ReasoningEffortId(config.effort),
+      reasoningEffort: effort === undefined ? undefined : ReasoningEffortId(effort),
     };
     const runtime = new Runtime(ctx, options);
     if (config.command) {

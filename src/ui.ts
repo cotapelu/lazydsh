@@ -343,6 +343,11 @@ export async function runUI(
     },
   };
 
+  async function persistSelection() {
+    const selection = runtime.selection();
+    if (selection) await saveModel(preferencesPath(options.dshHome), selection);
+  }
+
   async function connect(
     nextRoute: Route,
     sessionId?: string,
@@ -355,7 +360,7 @@ export async function runUI(
     try {
       const id = await runtime.open(nextRoute, { ...callbacks, resume: sessionId });
       if (closing) return;
-      await saveModel(preferencesPath(options.dshHome), nextRoute);
+      await persistSelection();
       commands = commandMenu(await runtime.commands());
       options.cwd = await runtime.cd();
       setAutocomplete();
@@ -901,7 +906,10 @@ export async function runUI(
           },
           pendingFiles,
         );
-        if (result.finishReason === "completed") pendingFiles = [];
+        if (result.finishReason === "completed") {
+          pendingFiles = [];
+          if (/^\/effort\s+\S/.test(text.trim())) await persistSelection();
+        }
         if (result.finalResponse && result.finalResponse !== lastAssistant)
           add(result.finishReason === "error" ? "Error" : "dsh", result.finalResponse, true);
         else if (result.finishReason === "error")

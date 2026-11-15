@@ -201,6 +201,9 @@ async function main() {
     values.model ??
     (!requestedProvider || requestedProvider === saved?.provider ? saved?.model : undefined) ??
     (provider === "deepseek-official" ? "deepseek-flash" : undefined);
+  const savedEffort =
+    saved && provider === saved.provider && model === saved.model ? saved.effort : undefined;
+  const effort = values.effort ?? savedEffort;
   if (command !== "login" && command !== "logout" && provider && model)
     validateRoute(provider, model, values.patch);
   if (command === "ask" && !model) throw new Error("Choose a model with --model before using ask.");
@@ -227,7 +230,7 @@ async function main() {
           model,
           resume: command === "resume" ? (args[0] ?? values.resume) : values.resume,
           pickSession: command === "resume" && !args.length && values.resume === undefined,
-          effort: values.effort,
+          effort,
           command:
             command === "ask" || command === "login" || command === "logout" ? command : undefined,
           prompt,
