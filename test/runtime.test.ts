@@ -314,6 +314,8 @@ test("sessions, jobs and file references", async () => {
     const route = {provider:"deepseek-official",model:models("deepseek-official")[0].id};
     assert.deepEqual((await runtime.choices("sessions")).options, []);
     const first = await runtime.open(route);
+    // A pre-title checkpoint has a null title row; listing must still read the log.
+    await ctx.get("sessionProjectionCache").write(runtime.session);
     assert.equal(await runtime.renameSession(first,"First session"),"First session");
     await ctx.sessionPersistence.flush();
     assert.ok((await runtime.sessions()).some(item => item.id === first && item.title === "First session"));
