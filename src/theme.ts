@@ -1,6 +1,7 @@
 import { stripVTControlCharacters } from "node:util";
 
 export const accent = (text: string) => `\x1b[38;2;77;107;254m${text}\x1b[0m`;
+export const gray = (text: string) => `\x1b[38;2;160;166;172m${text}\x1b[0m`;
 export const dim = (text: string) => `\x1b[2m${text}\x1b[0m`;
 
 export function safeText(value: unknown) {

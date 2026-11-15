@@ -8,6 +8,8 @@ import {
   StatusPanel,
   PromptEditor,
   SentMessage,
+  QueuedMessage,
+  QueueView,
   Notification,
   SecretInput,
   Transcript,
@@ -109,6 +111,35 @@ test("submitted commands use the accent color without a prompt rail", () => {
     assert.ok(lines.every((line) => visibleWidth(line) <= width));
     assert.doesNotMatch(lines.join("\n"), /┃/);
   }
+});
+
+test("queued messages use a gray prompt rail and gray text", () => {
+  const message = new QueuedMessage("follow up on @src/main.ts");
+  for (const width of [1, 6, 20, 80])
+    assert.ok(message.render(width).every((line) => visibleWidth(line) <= width));
+  const output = message.render(80).join("\n");
+  assert.ok(output.includes("\x1b[38;2;160;166;172m┃"));
+  assert.ok(output.includes("\x1b[38;2;160;166;172mfollow up on @src/main.ts"));
+  assert.ok(!output.includes("\x1b[38;2;77;107;254m"));
+  const lines = message
+    .render(80)
+    .map(stripVTControlCharacters)
+    .filter((line) => line.trim());
+  assert.equal(lines[0].trimEnd(), "  ┃ follow up on @src/main.ts");
+});
+
+test("queued prompts stack below the transcript with one blank row between", () => {
+  const queue = new QueueView();
+  assert.deepEqual(queue.render(80), []);
+  queue.addChild(new QueuedMessage("first"));
+  queue.addChild(new QueuedMessage("second"));
+  const lines = queue.render(80).map((line) => stripVTControlCharacters(line).trimEnd());
+  assert.deepEqual(lines, ["  ┃ first", "", "  ┃ second", ""]);
+  queue.removeChild(queue.children[0]!);
+  assert.deepEqual(
+    queue.render(80).map((line) => stripVTControlCharacters(line).trimEnd()),
+    ["  ┃ second", ""],
+  );
 });
 
 test("Thinking shows elapsed time and usage, then only frozen metrics", () => {
