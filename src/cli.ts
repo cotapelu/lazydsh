@@ -4,12 +4,39 @@ import { loadModel, preferencesPath } from "./preferences.ts";
 import type {} from "./plugin.ts";
 import { parseArgs } from "node:util";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { enableCompileCache } from "node:module";
+import { mkdirSync } from "node:fs";
 
-enableCompileCache();
+// Keep V8's compile cache out of the OS temp directory so a reboot does not
+// make the next launch recompile every plugin module.
+function compileCacheDirectory(): string | undefined {
+  if (process.env.NODE_COMPILE_CACHE) return undefined;
+  const root =
+    process.env.XDG_CACHE_HOME ??
+    (process.platform === "darwin"
+      ? join(homedir(), "Library", "Caches")
+      : process.platform === "win32"
+        ? (process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local"))
+        : join(homedir(), ".cache"));
+  return join(root, "lazydsh", "node-compile-cache");
+}
+
+try {
+  const directory = compileCacheDirectory();
+  if (directory === undefined) enableCompileCache();
+  else {
+    mkdirSync(directory, { recursive: true, mode: 0o700 });
+    enableCompileCache(directory);
+  }
+} catch {
+  // A read-only home must not stop the CLI; fall back to the default cache.
+  try {
+    enableCompileCache();
+  } catch {}
+}
 
 const color = terminalColor(process.stdout);
 const heading = (text: string) => (color ? `\x1b[1;38;2;77;107;254m${text}\x1b[0m` : text);

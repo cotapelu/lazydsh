@@ -2,6 +2,7 @@ import type { Context } from "@deepseek-ai/cordis";
 import type {} from "@deepseek-ai/dsh-cmdline";
 import { ReasoningEffortId } from "@deepseek-ai/dsh-llm";
 import { Runtime } from "./runtime.ts";
+import { activateDeferredPlugins, type DeferredPlugin } from "./deferred.ts";
 import { loadModel, preferencesPath } from "./preferences.ts";
 import { resolve } from "node:path";
 
@@ -37,6 +38,8 @@ export interface PluginOptions {
   command?: "ask" | "login" | "logout";
   prompt?: string;
   permission?: string;
+  /** Plugin rows to apply once the TUI has painted its first frame. */
+  deferred?: DeferredPlugin[];
 }
 declare module "@deepseek-ai/cordis" {
   interface Context {
@@ -108,6 +111,12 @@ export function apply(ctx: Context, config: PluginOptions = {}) {
         resumeArgs: config.resumeArgs ?? (config.home ? ["--home", resolve(config.home)] : []),
       },
       runtime,
+      {
+        afterFirstPaint:
+          config.deferred === undefined
+            ? undefined
+            : () => activateDeferredPlugins(ctx, config.deferred ?? []),
+      },
     );
   };
   const removeReady = ctx.appReady!.onReady(() => {

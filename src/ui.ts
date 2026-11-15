@@ -89,6 +89,7 @@ export async function runUI(
     resumeArgs?: string[];
   },
   runtime: Runtime,
+  hooks: { afterFirstPaint?: () => Promise<void> } = {},
 ) {
   const tui = new TuiAltScreen(new ProcessTerminal(), false, undefined, {
     mouse: true,
@@ -115,6 +116,7 @@ export async function runUI(
   let pendingFiles: AdmittedPromptContentPart[] = [];
   let thinking: ThinkingView | undefined;
   let busy = false;
+  let starting = false;
   let running = false;
   let closing = false;
   let submittingQueued = false;
@@ -176,7 +178,7 @@ export async function runUI(
         `${safeText(route.provider)} · ${safeText(route.model ?? "choose model")} · ${safeText(displayDirectory)}${queued}`,
       ),
     );
-    editor.disableSubmit = busy && !decision;
+    editor.disableSubmit = (busy || starting) && !decision;
     tui.requestRender();
   }
 
@@ -1072,6 +1074,20 @@ export async function runUI(
   try {
     tui.start();
     update();
+    if (hooks.afterFirstPaint) {
+      // Paint the startup screen before optional plugins are imported, then
+      // keep submit disabled until their tools are registered.
+      starting = true;
+      update();
+      tui.renderNow();
+      try {
+        await hooks.afterFirstPaint();
+      } catch (error) {
+        add("Startup", error instanceof Error ? error.message : String(error));
+      } finally {
+        starting = false;
+      }
+    }
     if (route.model)
       await connect({ provider: route.provider, model: route.model }, resume, false, true);
     else if (providers.includes(route.provider)) pickProviderModel(route.provider, resume);

@@ -6,6 +6,7 @@ import type { Context } from "@deepseek-ai/cordis";
 import {
   PluginPackages,
   boot,
+  composeEntries,
   createRuntimeResolution,
   initProfile,
   installFailLoud,
@@ -23,6 +24,8 @@ import {
   type LaunchEnvironmentSnapshot,
 } from "@deepseek-ai/dsh-launch-environment";
 import { provideCmdline } from "@deepseek-ai/dsh-cmdline";
+import { withTelemetryExporterDisabled } from "./telemetry-patch.ts";
+import { selectDeferredPlugins } from "./deferred.ts";
 
 const NAME = "lazydsh";
 const PROCESS_SHUTDOWN_TIMEOUT_MS = 5_000;
@@ -170,22 +173,28 @@ export async function runProfile(options: RunProfileOptions) {
       overlays: composed.overlays,
       telemetryDisabledEnv: process.env.DSH_TELEMETRY_DISABLED,
     };
-    const ctx = await boot(
-      NAME,
-      rootConfig,
+    const patches = withTelemetryExporterDisabled(
       readProfilePatches(NAME, profileContext, composed.profile),
-      async (hostCtx) => {
-        app = hostCtx;
-        hostCtx.provide("profileContext", profileContext);
-        hostCtx.provide(DSH_LAUNCH_ENVIRONMENT_KEY, options.environment);
-        await hostCtx.plugin(PluginPackages, { resolution: composed.resolution });
-        provideCmdline(hostCtx, {
-          args: options.args,
-          exit: (code) => void shutdown.shutdown(code),
-          ready: appReady.service,
-        });
-      },
+      process.env.DSH_TELEMETRY_DISABLED,
     );
+    const entries = composeEntries([patches]);
+    const appEntry = entries.find((entry) => entry.id === "lazydsh");
+    const deferred = appEntry?.config?.command === undefined ? selectDeferredPlugins(entries) : [];
+    if (appEntry !== undefined && deferred.length > 0) {
+      patches.push({ id: "lazydsh", config: { ...appEntry.config, deferred } });
+      patches.push(...deferred.map((plugin) => ({ id: plugin.id, disabled: true })));
+    }
+    const ctx = await boot(NAME, rootConfig, patches, async (hostCtx) => {
+      app = hostCtx;
+      hostCtx.provide("profileContext", profileContext);
+      hostCtx.provide(DSH_LAUNCH_ENVIRONMENT_KEY, options.environment);
+      await hostCtx.plugin(PluginPackages, { resolution: composed.resolution });
+      provideCmdline(hostCtx, {
+        args: options.args,
+        exit: (code) => void shutdown.shutdown(code),
+        ready: appReady.service,
+      });
+    });
     app = ctx;
     if (!interrupted && ctx.fiber.state === 2 && ctx.get("loader") !== undefined) appReady.commit();
     return { ctx, shutdown };
