@@ -371,6 +371,32 @@ test("sessions, jobs and file references", async () => {
   );
 });
 
+test("sending without credentials asks for /login", async () => {
+  await nativeTest(
+    executable,
+    `
+    const route = {provider:"opencode-go",model:models("opencode-go")[0].id};
+    assert.equal(await runtime.hasCredentials("opencode-go"), false);
+    assert.equal(await runtime.hasCredentials("deepseek-official"), false);
+    assert.equal(await runtime.hasCredentials("openai-codex"), false);
+    // A route this build does not know must not be blocked by the preflight.
+    assert.equal(await runtime.hasCredentials("custom-route"), true);
+    await runtime.open(route);
+    await assert.rejects(runtime.run("hello"), /Not logged in to opencode-go.*\\/login opencode-go/);
+    await assert.rejects(
+      runtime.run("hello", undefined, [], {authenticate:false}),
+      /lazydsh login opencode-go/,
+    );
+    assert.equal((await runtime.history()).filter(event => event.type === "user/message").length, 0);
+    await runtime.authenticate(undefined, {provider:"opencode-go",onAuth:async(_method,params)=>
+      params.kind === "select" ? "api-key" : "test-only"
+    });
+    assert.equal(await runtime.hasCredentials("opencode-go"), true);
+    await runtime.close();
+  `,
+  );
+});
+
 test("login and logout", async () => {
   await nativeTest(
     executable,

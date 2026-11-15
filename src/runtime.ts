@@ -28,8 +28,9 @@ import type {} from "@deepseek-ai/dsh-token-meter/client";
 import type { CommandDescriptor, CommandSubmitAttachment } from "@deepseek-ai/dsh-commands/types";
 import { resolveCommand } from "@deepseek-ai/dsh-commands/builtin";
 import { randomUUID } from "node:crypto";
-import { readFile, stat, readdir } from "node:fs/promises";
-import { basename, resolve } from "node:path";
+import { access, readFile, stat, readdir } from "node:fs/promises";
+import { homedir } from "node:os";
+import { basename, join, resolve } from "node:path";
 import { latestRequestStats, type SessionStats } from "./stats.ts";
 import { readLimits, type AccountLimits } from "./limits.ts";
 import type {} from "@deepseek-ai/dsh-session-title";
@@ -38,6 +39,7 @@ import type {} from "@deepseek-ai/dsh-file-reference";
 import type {} from "@deepseek-ai/dsh-skill";
 import { JobId } from "@deepseek-ai/dsh-jobs";
 import { formatFileMention } from "@deepseek-ai/dsh-file-reference/grammar";
+import { builtinProviders } from "@earendil-works/pi-ai/providers/all";
 import type { AutocompleteItem } from "@earendil-works/pi-tui";
 import { registerCommands } from "./native-commands.ts";
 import { contentText, isAuthFailure, type RuntimeEvent } from "./runtime-events.ts";
@@ -495,6 +497,59 @@ export class Runtime {
         })),
     ];
   }
+  /**
+   * Whether a route already has usable credentials.
+   *
+   * A stored sign-in, a provider environment variable, and an ambient provider
+   * source (AWS profiles, ADC files) all count. Routes this build does not
+   * know — a provider added through --patch — answer true, because a preflight
+   * check must not block a route that may still be able to serve requests.
+   */
+  async hasCredentials(provider?: string, signal?: AbortSignal) {
+    const route = provider ?? this.handle?.agent.model.current()?.provider;
+    if (route === undefined) return false;
+    if (route === "deepseek-official")
+      return (await this.ctx.credentials.describe(credentialRef("DEEPSEEK_API_KEY"))).configured;
+    if ((await this.ctx.credentials.describeRecord(credentialKey("llm-pi-ai", route))).configured)
+      return true;
+    // Prefer the route's declared ambient sources: this is a cheap answer and
+    // avoids provider-specific credential resolution on every send.
+    const native = this.ctx.llm
+      .listConfigurableProviders()
+      .find((item) => item.provider === route)?.nativeAuth;
+    if (native) {
+      for (const ref of native.env)
+        if ((await this.ctx.credentials.describe(credentialRef(ref))).configured) return true;
+      // No ambient env source is declared at all: an OAuth-only route has no
+      // stored sign-in here, while a keyless route needs no credential.
+      if (native.env.length === 0) return !native.oauth;
+    }
+    const installed = builtinProviders().find((item) => item.id === route);
+    if (!installed) return true;
+    const apiKey = installed.auth.apiKey;
+    if (!apiKey) return installed.auth.oauth === undefined;
+    const input = {
+      ctx: {
+        env: async (name: string) =>
+          (await this.ctx.credentials.resolve(credentialRef(name)))?.value,
+        fileExists: async (path: string) => {
+          try {
+            await access(path.startsWith("~/") ? join(homedir(), path.slice(2)) : path);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+      },
+      signal: signal ?? this.options.signal ?? new AbortController().signal,
+    };
+    try {
+      return (await (apiKey.check ? apiKey.check(input) : apiKey.resolve(input))) !== undefined;
+    } catch {
+      // Detection failure alone must not stop a request the provider may still serve.
+      return true;
+    }
+  }
   async authenticate(
     signal?: AbortSignal,
     options?: { provider: string; onAuth: Callbacks["onAuth"] },
@@ -886,6 +941,13 @@ export class Runtime {
         commandText = execution.result.text;
         commandError = execution.result.kind === "error";
       } else {
+        const provider = agent.model.current()?.provider;
+        if (provider !== undefined && !(await this.hasCredentials(provider, signal)))
+          throw new Error(
+            options.authenticate === false
+              ? `Authentication is required. Run lazydsh login ${provider} in a terminal first.`
+              : `Not logged in to ${provider}. Run /login ${provider} to sign in.`,
+          );
         agent.followup(
           createUserMessage({
             content: [{ type: "text", text }, ...attachments],

@@ -80,6 +80,8 @@ Flags:
 | `/cd`         | —                  | 为会话选择工作目录                                     |
 | `/permission` | `[preset]`         | 查看并选择 dsh 的权限预设                              |
 | `/model`      | —                  | 选择供应商和模型                                       |
+| `/login`      | `[provider]`       | 使用 OAuth 或 API 密钥登录供应商                       |
+| `/logout`     | `[provider]`       | 删除已保存的供应商凭据                                 |
 | `/file`       | `<path>            | clear`                                                 | 向下一条消息附加文件/图片，或取消附加 |
 | `/dsh`        | `<command> [args]` | 运行原生的 dsh 命令（即使与 TUI 命令名称冲突时也可以） |
 | `/effort`     | `[level            | default]`                                              | 选择当前模型的推理 effort (思考强度)  |

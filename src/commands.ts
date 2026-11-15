@@ -8,6 +8,16 @@ const localCommands: SlashCommand[] = [
   { name: "permission", description: "Choose a dsh permission preset" },
   { name: "model", description: "Choose a provider and model while keeping conversation history" },
   {
+    name: "login",
+    argumentHint: "[provider]",
+    description: "Sign in to a provider with OAuth or an API key",
+  },
+  {
+    name: "logout",
+    argumentHint: "[provider]",
+    description: "Remove saved provider credentials",
+  },
+  {
     name: "file",
     argumentHint: "<path> | clear",
     description: "Attach a file or image to the next message, or clear attachments",

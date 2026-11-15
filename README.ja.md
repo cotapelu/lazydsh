@@ -79,6 +79,8 @@ Flags:
 | `/cd`         | —                                                           | セッションの作業ディレクトリを選択                                 |
 | `/permission` | `[preset]`                                                  | dsh の権限プリセットを表示・選択                                   |
 | `/model`      | —                                                           | プロバイダとモデルを選択                                           |
+| `/login`      | `[provider]`                                                | OAuth または API キーでプロバイダにログイン                        |
+| `/logout`     | `[provider]`                                                | 保存済みのプロバイダ認証情報を削除                                 |
 | `/file`       | `<path> \| clear`                                           | 次のメッセージにファイルや画像を添付、または添付を解除             |
 | `/dsh`        | `<command> [args]`                                          | TUI コマンド名と重複する場合も含め、dsh のネイティブコマンドを実行 |
 | `/effort`     | `[level \| default]`                                        | 現在のモデルの推論 effort を選択                                   |
