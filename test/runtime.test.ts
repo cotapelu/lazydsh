@@ -377,10 +377,12 @@ test("sending without credentials asks for /login", async () => {
     `
     const route = {provider:"opencode-go",model:models("opencode-go")[0].id};
     assert.equal(await runtime.hasCredentials("opencode-go"), false);
+    assert.equal((await runtime.credentialSource("opencode-go")).kind, "none");
     assert.equal(await runtime.hasCredentials("deepseek-official"), false);
     assert.equal(await runtime.hasCredentials("openai-codex"), false);
     // A route this build does not know must not be blocked by the preflight.
     assert.equal(await runtime.hasCredentials("custom-route"), true);
+    assert.equal((await runtime.credentialSource("custom-route")).kind, "unknown");
     await runtime.open(route);
     await assert.rejects(runtime.run("hello"), /Not logged in to opencode-go.*\\/login opencode-go/);
     await assert.rejects(
@@ -392,8 +394,24 @@ test("sending without credentials asks for /login", async () => {
       params.kind === "select" ? "api-key" : "test-only"
     });
     assert.equal(await runtime.hasCredentials("opencode-go"), true);
+    assert.equal((await runtime.credentialSource("opencode-go")).kind, "store");
     await runtime.close();
   `,
+  );
+});
+
+test("reports credentials read from the environment", async () => {
+  await nativeTest(
+    executable,
+    `
+    const source = await runtime.credentialSource("openrouter");
+    assert.equal(source.kind, "environment");
+    assert.equal(source.ref, "OPENROUTER_API_KEY");
+    assert.equal(source.label, "OPENROUTER_API_KEY (environment)");
+    assert.equal(await runtime.hasCredentials("openrouter"), true);
+  `,
+    [],
+    `process.env.OPENROUTER_API_KEY="test-only"; globalThis.fetch=async()=>{throw new Error("Network disabled in test")};`,
   );
 });
 

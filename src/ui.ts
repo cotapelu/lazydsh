@@ -27,13 +27,15 @@ import {
 } from "@earendil-works/pi-tui";
 import { eventText, isAuthFailure } from "./runtime-events.ts";
 import { AuthorizationDeclinedError } from "@deepseek-ai/dsh-authorization";
-import type { Runtime, Route, Callbacks } from "./runtime.ts";
+import type { Runtime, Route, Callbacks, CredentialSource } from "./runtime.ts";
 import {
   resumeDirectoryOptions,
   resumeDirectoryTarget,
   sameDirectory,
 } from "./resume-directory.ts";
 import { StreamingMarkdown } from "./streaming.ts";
+import { captureConsole } from "./tui-console.ts";
+import { dshCachePath } from "@deepseek-ai/dsh-home-paths";
 
 import {
   StartupBanner,
@@ -129,6 +131,7 @@ export async function runUI(
   let startupFailed = false;
   let checkingAuth = false;
   let blockedPrompt: string | undefined;
+  const announcedAuth = new Set<string>();
   let running = false;
   let closing = false;
   // Set while Esc cancels the active turn so queued prompts wait for the
@@ -474,6 +477,7 @@ export async function runUI(
       resume = undefined;
       if (sessionId) add("Resumed", id);
       if (requestedDirectory !== undefined) add("Directory", requestedDirectory);
+      void probeCredentialSource(nextRoute.provider);
     } catch (error) {
       decision?.(null);
       await runtime.close();
@@ -606,10 +610,41 @@ export async function runUI(
     });
   }
 
+  function announceCredentialSource(provider: string, source: CredentialSource) {
+    if (source.kind !== "environment") {
+      announcedAuth.delete(provider);
+      return;
+    }
+    if (announcedAuth.has(provider)) return;
+    announcedAuth.add(provider);
+    add(
+      "Auth",
+      `Using ${source.label} for ${provider}. Run /login ${provider} to save credentials.`,
+    );
+  }
+
+  async function probeCredentialSource(provider: string) {
+    try {
+      announceCredentialSource(provider, await runtime.credentialSource(provider));
+    } catch {
+      // An auth-source probe must never interrupt the UI.
+    }
+  }
+
   async function signIn(provider?: string) {
     await runBusy(async () => {
       provider ??= (await chooseAuthProvider("login")) ?? undefined;
       if (provider === undefined || closing) return;
+      try {
+        const source = await runtime.credentialSource(provider);
+        if (source.kind === "environment")
+          add(
+            "Auth",
+            `Current credentials come from ${source.label}. Signing in saves a new credential.`,
+          );
+      } catch {
+        // The source hint is best-effort; signing in must still proceed.
+      }
       try {
         await runtime.authenticate(options.signal, { provider, onAuth: callbacks.onAuth });
       } catch (error) {
@@ -627,6 +662,7 @@ export async function runUI(
         pendingStartupConnection = undefined;
         await connect(pending.route, pending.sessionId);
       }
+      announcedAuth.delete(provider);
       add("Logged in", provider);
       if (blockedPrompt !== undefined) {
         if (editor.getText().length === 0) editor.setText(blockedPrompt);
@@ -642,6 +678,7 @@ export async function runUI(
       if (provider === undefined || closing) return;
       const remaining = await runtime.logout(provider);
       if (closing) return;
+      announcedAuth.delete(provider);
       add("Logged out", provider);
       if (remaining.length)
         add(
@@ -702,14 +739,19 @@ export async function runUI(
       if (checkingAuth) return;
       const provider = runtime.selection()?.provider ?? route.provider;
       checkingAuth = true;
-      let available = true;
+      let source: CredentialSource = {
+        kind: "unknown",
+        label: "Provider-managed credentials",
+      };
       try {
-        available = await runtime.hasCredentials(provider);
+        source = await runtime.credentialSource(provider);
+      } catch (error) {
+        if (!closing) add("Auth error", error instanceof Error ? error.message : String(error));
       } finally {
         checkingAuth = false;
       }
       if (closing) return;
-      if (!available) {
+      if (source.kind === "none") {
         if (!fromQueue && editor.getText() === draft) {
           editor.addToHistory(text);
           editor.setText("");
@@ -719,6 +761,7 @@ export async function runUI(
         update();
         return;
       }
+      announceCredentialSource(provider, source);
       blockedPrompt = undefined;
     }
     if (!fromQueue) {
@@ -1202,7 +1245,14 @@ export async function runUI(
   options.signal?.addEventListener("abort", signalHandler, { once: true });
   process.on("SIGINT", signalHandler);
   process.on("SIGTERM", signalHandler);
+  let restoreConsole: (() => void) | undefined;
   try {
+    // DSH provider plugins write diagnostics with console.warn/error. The TUI
+    // owns the terminal, so capture those lines in a log instead of letting
+    // them corrupt the chat area.
+    restoreConsole = captureConsole(
+      dshCachePath({ dshHome: options.dshHome }, "lazydsh", "tui.log"),
+    );
     tui.start();
     update();
     if (hooks.afterFirstPaint) {
@@ -1238,7 +1288,11 @@ export async function runUI(
     decision?.(null);
     thinking?.finish();
     tui.stop({ preserveScreen: true });
-    await runtime.close();
+    try {
+      await runtime.close();
+    } finally {
+      restoreConsole?.();
+    }
     if (continuationId) console.log(continuationCommand(continuationId, initial.resumeArgs));
   }
 }

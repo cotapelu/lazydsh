@@ -10,7 +10,7 @@ import {
 } from "@deepseek-ai/dsh-session";
 import { createUserMessage } from "@deepseek-ai/dsh-llm/message";
 import type { ReasoningEffortId, TokenUsage } from "@deepseek-ai/dsh-llm";
-import { credentialRef, credentialKey } from "@deepseek-ai/dsh-credentials";
+import { credentialRef, credentialKey, type CredentialInfo } from "@deepseek-ai/dsh-credentials";
 import { AuthorizationDeclinedError } from "@deepseek-ai/dsh-authorization";
 import { UserQuestionError } from "@deepseek-ai/dsh-user-questions";
 import type {
@@ -49,6 +49,14 @@ export type { RuntimeEvent } from "./runtime-events.ts";
 
 export type Route = { provider: string; model: string };
 export type QuestionResult = AskUserQuestionAnswer | { cancelled: true };
+/** Where the credential for a route currently comes from. */
+export type CredentialSource = {
+  kind: "environment" | "store" | "oauth" | "ambient" | "keyless" | "none" | "unknown";
+  /** Human-readable description for notices. */
+  label: string;
+  /** Environment-variable name when `kind` is `environment`. */
+  ref?: string;
+};
 export type RuntimeOptions = {
   cwd?: string;
   dshHome?: string;
@@ -83,6 +91,21 @@ export type RunResult = {
   finishReason: "completed" | "error" | "aborted";
   events: SessionEvent[];
 };
+
+function describeCredentialRef(ref: string, info: CredentialInfo): CredentialSource {
+  switch (info.source) {
+    case "env":
+      return { kind: "environment", ref, label: `${ref} (environment)` };
+    case "project-env":
+      return { kind: "environment", ref, label: `${ref} (.env)` };
+    case "user-env":
+      return { kind: "environment", ref, label: `${ref} (DSH .env)` };
+    case "file":
+      return { kind: "store", label: `${ref} (saved)` };
+    default:
+      return { kind: "ambient", label: info.source ? `${ref} (${info.source})` : ref };
+  }
+}
 
 export class Runtime {
   readonly ctx: Context;
@@ -498,36 +521,52 @@ export class Runtime {
     ];
   }
   /**
-   * Whether a route already has usable credentials.
+   * Describe where a route's credentials come from.
    *
    * A stored sign-in, a provider environment variable, and an ambient provider
-   * source (AWS profiles, ADC files) all count. Routes this build does not
-   * know — a provider added through --patch — answer true, because a preflight
-   * check must not block a route that may still be able to serve requests.
+   * source (AWS profiles, ADC files) are distinguished so the TUI can show
+   * which one is active. Routes this build does not know — a provider added
+   * through --patch — answer `unknown` rather than pretending to be signed out.
    */
-  async hasCredentials(provider?: string, signal?: AbortSignal) {
+  async credentialSource(provider?: string, signal?: AbortSignal): Promise<CredentialSource> {
     const route = provider ?? this.handle?.agent.model.current()?.provider;
-    if (route === undefined) return false;
-    if (route === "deepseek-official")
-      return (await this.ctx.credentials.describe(credentialRef("DEEPSEEK_API_KEY"))).configured;
-    if ((await this.ctx.credentials.describeRecord(credentialKey("llm-pi-ai", route))).configured)
-      return true;
+    if (route === undefined) return { kind: "none", label: "No route selected" };
+    if (route === "deepseek-official") {
+      const ref = "DEEPSEEK_API_KEY";
+      const info = await this.ctx.credentials.describe(credentialRef(ref));
+      return info.configured
+        ? describeCredentialRef(ref, info)
+        : { kind: "none", label: "Not signed in" };
+    }
+    const record = await this.ctx.credentials.describeRecord(credentialKey("llm-pi-ai", route));
+    if (record.configured)
+      return record.kind === "grant"
+        ? { kind: "oauth", label: "OAuth sign-in (saved)" }
+        : { kind: "store", label: "Saved credential" };
     // Prefer the route's declared ambient sources: this is a cheap answer and
     // avoids provider-specific credential resolution on every send.
     const native = this.ctx.llm
       .listConfigurableProviders()
       .find((item) => item.provider === route)?.nativeAuth;
     if (native) {
-      for (const ref of native.env)
-        if ((await this.ctx.credentials.describe(credentialRef(ref))).configured) return true;
+      for (const ref of native.env) {
+        const info = await this.ctx.credentials.describe(credentialRef(ref));
+        if (info.configured) return describeCredentialRef(ref, info);
+      }
       // No ambient env source is declared at all: an OAuth-only route has no
       // stored sign-in here, while a keyless route needs no credential.
-      if (native.env.length === 0) return !native.oauth;
+      if (native.env.length === 0)
+        return native.oauth
+          ? { kind: "none", label: "Not signed in" }
+          : { kind: "keyless", label: "No credentials required" };
     }
     const installed = builtinProviders().find((item) => item.id === route);
-    if (!installed) return true;
+    if (!installed) return { kind: "unknown", label: "Provider-managed credentials" };
     const apiKey = installed.auth.apiKey;
-    if (!apiKey) return installed.auth.oauth === undefined;
+    if (!apiKey)
+      return installed.auth.oauth === undefined
+        ? { kind: "keyless", label: "No credentials required" }
+        : { kind: "none", label: "Not signed in" };
     const input = {
       ctx: {
         env: async (name: string) =>
@@ -544,11 +583,22 @@ export class Runtime {
       signal: signal ?? this.options.signal ?? new AbortController().signal,
     };
     try {
-      return (await (apiKey.check ? apiKey.check(input) : apiKey.resolve(input))) !== undefined;
+      const result = await (apiKey.check ? apiKey.check(input) : apiKey.resolve(input));
+      if (!result) return { kind: "none", label: "Not signed in" };
+      const source = typeof result.source === "string" && result.source ? result.source : undefined;
+      if (source) {
+        const ref = native?.env.find((name) => source === name || source.includes(name));
+        if (ref) return { kind: "environment", ref, label: `${ref} (environment)` };
+        return { kind: "ambient", label: source };
+      }
+      return { kind: "ambient", label: "Provider credentials" };
     } catch {
-      // Detection failure alone must not stop a request the provider may still serve.
-      return true;
+      // Detection failure alone must not claim the route is signed out.
+      return { kind: "unknown", label: "Provider-managed credentials" };
     }
+  }
+  async hasCredentials(provider?: string, signal?: AbortSignal) {
+    return (await this.credentialSource(provider, signal)).kind !== "none";
   }
   async authenticate(
     signal?: AbortSignal,
