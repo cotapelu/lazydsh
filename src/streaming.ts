@@ -1,6 +1,7 @@
 import { Markdown, type Component, type MarkdownTheme } from "@earendil-works/pi-tui";
 import { stripVTControlCharacters } from "node:util";
 import { safeText } from "./theme.ts";
+import { IncrementalHighlighter } from "./stream-highlight.ts";
 
 type Fence = { char: "`" | "~"; length: number };
 
@@ -81,13 +82,15 @@ export class StreamScanner {
  * Markdown view for an assistant answer that is still streaming in.
  *
  * The answer is split into completed blocks (parsed once and cached) and a
- * small live tail. The tail may be an unclosed code fence, so highlighting is
- * deferred until the block completes; re-highlighting a growing code block on
- * every frame is the single most expensive part of streaming a long answer.
+ * small live tail. A code fence that is still open lives in that tail, so its
+ * highlighting is incremental: `IncrementalHighlighter` carries the lexer state
+ * across lines and only re-tokenizes the unstable part, instead of re-running
+ * the whole snippet on every frame.
  */
 export class StreamingMarkdown implements Component {
   private readonly theme: MarkdownTheme;
   private readonly tailTheme: MarkdownTheme;
+  private readonly highlighter?: IncrementalHighlighter;
   private readonly scanner = new StreamScanner();
   private readonly parts = new Map<number, string>();
   private blocks: Markdown[] = [];
@@ -107,9 +110,16 @@ export class StreamingMarkdown implements Component {
 
   constructor(theme: MarkdownTheme) {
     this.theme = theme;
-    this.tailTheme = theme.highlightCode
-      ? { ...theme, highlightCode: (code) => code.split("\n") }
-      : theme;
+    if (theme.highlightCode) {
+      const highlighter = new IncrementalHighlighter(theme.highlightCode);
+      this.highlighter = highlighter;
+      this.tailTheme = {
+        ...theme,
+        highlightCode: (code, language) => highlighter.highlight(code, language),
+      };
+    } else {
+      this.tailTheme = theme;
+    }
     this.tail = new Markdown("", 2, 0, this.tailTheme);
   }
 
@@ -219,6 +229,7 @@ export class StreamingMarkdown implements Component {
     this.stableBoundary = 0;
     this.tailText = "";
     this.tail = new Markdown("", 2, 0, this.tailTheme);
+    this.highlighter?.reset();
     this.scanner.reset();
     this.stableLines = undefined;
     this.final = false;

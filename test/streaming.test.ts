@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { Markdown, type MarkdownTheme } from "@earendil-works/pi-tui";
 import { stripVTControlCharacters } from "node:util";
 import { StreamScanner, StreamingMarkdown } from "../src/streaming.ts";
+import { highlightCode } from "../src/highlight.ts";
 
 const identity = (text: string) => text;
 const theme: MarkdownTheme = {
@@ -71,7 +72,18 @@ test("streamed markdown matches a full render once the answer completes", () => 
   );
 });
 
-test("streaming defers highlighting until a code block completes", () => {
+test("streaming highlights a code fence before it closes", () => {
+  const colored: MarkdownTheme = { ...theme, highlightCode };
+  const live = new StreamingMarkdown(colored);
+  live.append(0, "```ts\nconst a = 1;\n");
+  const lines = live.render(80);
+  assert.ok(
+    lines.some((line) => line.includes("\x1b[")),
+    "the open fence should already be highlighted",
+  );
+});
+
+test("streaming calls the highlighter while the fence is still open", () => {
   let highlighted = 0;
   const counting: MarkdownTheme = {
     ...theme,
@@ -83,14 +95,10 @@ test("streaming defers highlighting until a code block completes", () => {
   const live = new StreamingMarkdown(counting);
   live.append(0, "```ts\nconst a = 1;\n");
   live.render(80);
-  assert.equal(highlighted, 0);
-
-  live.append(0, "const b = 2;\n```\n\n");
-  live.render(80);
   assert.ok(highlighted > 0);
 });
 
-test("finishing restores highlighting for a code block at the end", () => {
+test("finishing keeps highlighting for a code block at the end", () => {
   let highlighted = 0;
   const counting: MarkdownTheme = {
     ...theme,
@@ -100,13 +108,14 @@ test("finishing restores highlighting for a code block at the end", () => {
     },
   };
   const live = new StreamingMarkdown(counting);
-  live.append(0, "```ts\nconst a = 1;\n```\n");
+  const text = "```ts\nconst a = 1;\n```\n";
+  live.append(0, text);
   live.render(80);
-  assert.equal(highlighted, 0);
+  const streamed = highlighted;
 
-  live.setFinal("```ts\nconst a = 1;\n```\n");
+  live.setFinal(text);
   live.render(80);
-  assert.ok(highlighted > 0);
+  assert.ok(highlighted > streamed);
 });
 
 test("content blocks stay in index order and repeated renders are cached", () => {
