@@ -26,6 +26,7 @@ import {
 } from "@earendil-works/pi-tui";
 import { models, providers } from "./catalog.ts";
 import { Runtime, eventText, isAuthFailure, type Route, type Callbacks } from "./runtime.ts";
+import { StreamingMarkdown } from "./streaming.ts";
 
 import {
   StartupBanner,
@@ -822,8 +823,7 @@ export async function runUI(
     update();
     void (async () => {
       let lastAssistant: string | undefined;
-      let liveAnswer: Markdown | undefined;
-      const liveBlocks = new Map<number, string>();
+      let liveAnswer: StreamingMarkdown | undefined;
       const usage = new Map<string, { input: number; output: number }>();
       try {
         const result = await runtime.run(
@@ -865,20 +865,10 @@ export async function runUI(
               notification.params.sessionId === runtime.session?.id
             ) {
               if (!liveAnswer || !transcript.children.includes(liveAnswer)) {
-                liveAnswer = new Markdown("", 2, 1, markdownTheme);
-                liveBlocks.clear();
+                liveAnswer = new StreamingMarkdown(markdownTheme);
                 transcript.addChild(liveAnswer);
               }
-              const index = notification.params.index;
-              liveBlocks.set(index, (liveBlocks.get(index) ?? "") + notification.params.text);
-              liveAnswer.setText(
-                safeText(
-                  [...liveBlocks.entries()]
-                    .sort((a, b) => a[0] - b[0])
-                    .map(([, value]) => value)
-                    .join("\n"),
-                ),
-              );
+              liveAnswer.append(notification.params.index, notification.params.text);
               tui.requestRender();
               return;
             }
@@ -903,10 +893,9 @@ export async function runUI(
             if (!output.text) return;
             lastAssistant = output.text;
             if (liveAnswer && notification.params.sessionId === runtime.session?.id) {
-              liveAnswer.setText(safeText(output.text));
+              liveAnswer.setFinal(output.text);
               if (!transcript.children.includes(liveAnswer)) transcript.addChild(liveAnswer);
               liveAnswer = undefined;
-              liveBlocks.clear();
               tui.requestRender();
             } else add("assistant", output.text, true);
           },
