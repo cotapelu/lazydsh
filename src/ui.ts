@@ -26,6 +26,11 @@ import {
 } from "@earendil-works/pi-tui";
 import { models, providers } from "./catalog.ts";
 import { Runtime, eventText, isAuthFailure, type Route, type Callbacks } from "./runtime.ts";
+import {
+  resumeDirectoryOptions,
+  resumeDirectoryTarget,
+  sameDirectory,
+} from "./resume-directory.ts";
 import { StreamingMarkdown } from "./streaming.ts";
 
 import {
@@ -70,7 +75,13 @@ export function canRunDuringTurn(text: string) {
 
 export async function runUI(
   options: RuntimeOptions & { cwd: string },
-  initial: { provider: string; model?: string; resume?: string; resumeArgs?: string[] },
+  initial: {
+    provider: string;
+    model?: string;
+    resume?: string;
+    resumeDirectory?: string;
+    resumeArgs?: string[];
+  },
   runtime: Runtime,
 ) {
   const tui = new TuiAltScreen(new ProcessTerminal(), false, undefined, {
@@ -88,6 +99,7 @@ export async function runUI(
   const toolLog = new ToolLog();
   let route = initial;
   let resume = initial.resume;
+  let resumeDirectory = initial.resumeDirectory;
   let commands = commandMenu();
   let stats: SessionStats | undefined;
   let pendingFiles: AdmittedPromptContentPart[] = [];
@@ -353,6 +365,7 @@ export async function runUI(
     sessionId?: string,
     notifyModel = false,
     startup = false,
+    directory?: string,
   ) {
     pendingStartupConnection = undefined;
     busy = true;
@@ -360,6 +373,13 @@ export async function runUI(
     try {
       const id = await runtime.open(nextRoute, { ...callbacks, resume: sessionId });
       if (closing) return;
+      const requestedDirectory =
+        directory ??
+        (sessionId !== undefined && sessionId === initial.resume ? resumeDirectory : undefined);
+      if (sessionId !== undefined && requestedDirectory !== undefined) {
+        await runtime.cd(requestedDirectory);
+        if (resumeDirectory === requestedDirectory) resumeDirectory = undefined;
+      }
       await persistSelection();
       commands = commandMenu(await runtime.commands());
       options.cwd = await runtime.cd();
@@ -391,6 +411,7 @@ export async function runUI(
       await refreshStats();
       resume = undefined;
       if (sessionId) add("Resumed", id);
+      if (requestedDirectory !== undefined) add("Directory", requestedDirectory);
     } catch (error) {
       decision?.(null);
       await runtime.close();
@@ -446,6 +467,25 @@ export async function runUI(
     };
     showPanel(picker);
     return picker;
+  }
+
+  async function chooseResumeDirectory(sessionId: string) {
+    const sessionDirectory = await runtime.sessionDirectory(sessionId);
+    if (!sessionDirectory || (await sameDirectory(sessionDirectory, options.cwd))) return undefined;
+    const choice = await new Promise<string | null>((resolve) => {
+      const picker = select(
+        resumeDirectoryOptions(sessionDirectory, options.cwd),
+        "Resume in directory",
+        resolve,
+        "session",
+        false,
+      );
+      picker.onCancel = () => {
+        dismissPanel();
+        resolve(null);
+      };
+    });
+    return choice === null ? null : resumeDirectoryTarget(choice, options.cwd);
   }
 
   function pickModel(sessionId = runtime.session?.id ?? resume) {
@@ -684,7 +724,15 @@ export async function runUI(
       const apply = async (value: string) => {
         if (name === "resume") {
           if (!route.model) throw new Error("Select a model first with /model.");
-          await connect({ provider: route.provider, model: route.model }, value);
+          const directory = await chooseResumeDirectory(value);
+          if (directory === null) return;
+          await connect(
+            { provider: route.provider, model: route.model },
+            value,
+            false,
+            false,
+            directory,
+          );
         } else if (name === "cd") {
           options.cwd = await runtime.cd(value);
           setAutocomplete();

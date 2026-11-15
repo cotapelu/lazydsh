@@ -272,6 +272,16 @@ export class Runtime {
       pinned: workspace?.pinnedSessionIds.includes(record.header.id) ?? false,
     }));
   }
+  /** The effective directory recorded by a saved session, including later `/cd` changes. */
+  async sessionDirectory(id: string) {
+    const query = this.ctx.get("sessionQuery");
+    if (!query) return undefined;
+    const snapshot = await query.readSession(SessionId(id));
+    let directory = snapshot.session.cwd;
+    for (const event of snapshot.events)
+      if (event.type === "working-directory/change") directory = event.data.cwd;
+    return directory;
+  }
   async renameSession(id: string, title: string) {
     const titles = this.ctx.get("sessionTitle");
     if (!titles) throw new Error("Session titles unavailable");
