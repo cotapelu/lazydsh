@@ -2,7 +2,7 @@ import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 import { validateRoute } from "../src/catalog.ts";
 import { isAuthFailure } from "../src/runtime.ts";
-import { canRunDuringTurn } from "../src/ui.ts";
+import { canRunDuringTurn, shouldQueueDuringTurn } from "../src/ui.ts";
 import { safeText } from "../src/theme.ts";
 
 test("route validation allows configured providers and rejects missing models", () => {
@@ -74,4 +74,11 @@ test("running turns allow inspection and settings while rejecting concurrent mes
     "/plan write a plan",
   ])
     assert.equal(canRunDuringTurn(input), false, input);
+});
+
+test("plain prompts typed during a running turn are queued while commands stay immediate", () => {
+  for (const input of ["hello", "  keep going", "review @src/main.ts", "続けて"])
+    assert.equal(shouldQueueDuringTurn(input), true, input);
+  for (const input of ["/status", "/model", "  /dsh status", "", "   "])
+    assert.equal(shouldQueueDuringTurn(input), false, input);
 });

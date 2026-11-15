@@ -38,6 +38,8 @@ import {
   StatusPanel,
   PromptEditor,
   SentMessage,
+  QueuedMessage,
+  QueueView,
   Notification,
   SecretInput,
   Transcript,
@@ -73,6 +75,10 @@ export function canRunDuringTurn(text: string) {
   );
 }
 
+export function shouldQueueDuringTurn(text: string) {
+  return Boolean(text.trim()) && !/^\s*\//.test(text) && !canRunDuringTurn(text);
+}
+
 export async function runUI(
   options: RuntimeOptions & { cwd: string },
   initial: {
@@ -90,6 +96,10 @@ export async function runUI(
   });
   const header = new StartupBanner();
   const transcript = new Transcript();
+  // Prompts typed during a running turn wait below the transcript; drainQueue sends
+  // them one at a time as each turn finishes.
+  const queueView = new QueueView();
+  const queue: { text: string; view: QueuedMessage }[] = [];
   const composer = new Container();
   const status = new Text("", 2, 1);
   const editor = new PromptEditor(tui, {
@@ -107,6 +117,7 @@ export async function runUI(
   let busy = false;
   let running = false;
   let closing = false;
+  let submittingQueued = false;
   let continuationId: string | undefined;
   let pendingStartupConnection: { route: Route; sessionId?: string } | undefined;
   let decision: ((value: string | null) => void) | undefined;
@@ -116,6 +127,7 @@ export async function runUI(
   const history = new Container();
   history.addChild(header);
   history.addChild(transcript);
+  history.addChild(queueView);
   const scroll = new ScrollView(history, { primary: true, follow: "end", scrollbar: "auto" });
   composer.addChild(editor);
   composer.addChild(status);
@@ -158,9 +170,10 @@ export async function runUI(
         : directory.startsWith(home + sep)
           ? "~" + directory.slice(home.length)
           : directory;
+    const queued = queue.length ? ` · ${queue.length} queued` : "";
     status.setText(
       dim(
-        `${safeText(route.provider)} · ${safeText(route.model ?? "choose model")} · ${safeText(displayDirectory)}`,
+        `${safeText(route.provider)} · ${safeText(route.model ?? "choose model")} · ${safeText(displayDirectory)}${queued}`,
       ),
     );
     editor.disableSubmit = busy && !decision;
@@ -199,6 +212,37 @@ export async function runUI(
       transcript.addChild(new Notification(label, text));
     }
     tui.requestRender();
+  }
+
+  function clearQueue() {
+    const count = queue.length;
+    for (const item of queue) queueView.removeChild(item.view);
+    queue.length = 0;
+    if (count && !closing) update();
+    return count;
+  }
+
+  function enqueue(text: string) {
+    editor.addToHistory(text);
+    editor.setText("");
+    const view = new QueuedMessage(text);
+    queue.push({ text, view });
+    queueView.addChild(view);
+    scroll.scrollToEnd();
+    update();
+  }
+
+  function drainQueue() {
+    if (closing || running || decision || !queue.length) return;
+    const next = queue.shift()!;
+    queueView.removeChild(next.view);
+    submittingQueued = true;
+    try {
+      editor.onSubmit?.(next.text);
+    } finally {
+      submittingQueued = false;
+    }
+    update();
   }
 
   function ask(message: string, signal?: AbortSignal) {
@@ -387,6 +431,7 @@ export async function runUI(
       continuationId = id;
       pendingFiles = [];
       toolLog.entries.clear();
+      clearQueue();
       transcript.clear();
       if (sessionId) {
         for (const row of historyRows(await runtime.history(), id)) {
@@ -542,8 +587,12 @@ export async function runUI(
       decision(text);
       return;
     }
-    if (busy || !text.trim()) return;
+    if (!submittingQueued && (busy || !text.trim())) return;
     if (running && !canRunDuringTurn(text)) {
+      if (shouldQueueDuringTurn(text)) {
+        enqueue(text);
+        return;
+      }
       add(
         "Error",
         "A response is running. Use Esc to stop it before sending another message or switching sessions.",
@@ -561,8 +610,10 @@ export async function runUI(
       });
       return;
     }
-    editor.addToHistory(text);
-    editor.setText("");
+    if (!submittingQueued) {
+      editor.addToHistory(text);
+      editor.setText("");
+    }
     add("You", text);
     if (text === "/clear") {
       transcript.clear();
@@ -975,6 +1026,7 @@ export async function runUI(
           running = false;
         } else busy = false;
         tui.requestRender();
+        if (ownsTurn && !closing) drainQueue();
         if (!closing) await refreshStats();
       }
     })();
@@ -992,11 +1044,17 @@ export async function runUI(
     if (matchesKey(data, "escape") && !selecting) {
       if (decision) decision(null);
       else if (busy || running) {
+        const discarded = clearQueue();
         update();
         void runtime
           .cancel()
           .then(() => {
-            add("Stopped", "Execution cancelled. You can continue this conversation.");
+            add(
+              "Stopped",
+              discarded
+                ? `Execution cancelled. ${discarded} queued message${discarded === 1 ? "" : "s"} discarded.`
+                : "Execution cancelled. You can continue this conversation.",
+            );
           })
           .catch((error) =>
             add("Stop error", error instanceof Error ? error.message : String(error)),

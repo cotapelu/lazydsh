@@ -1,7 +1,7 @@
 import { extractAnsiCode } from "@earendil-works/pi-tui/dist/utils.js";
 import { stripVTControlCharacters } from "node:util";
 import { formatDuration, formatTokens } from "./format.ts";
-import { accent, dim, safeText, formatNotification } from "./theme.ts";
+import { accent, dim, gray, safeText, formatNotification } from "./theme.ts";
 import { formatStats, type SessionStats } from "./stats.ts";
 import {
   Editor,
@@ -84,20 +84,37 @@ export class Transcript extends Container {
   }
 
   override render(width: number): string[] {
-    const lines: string[] = [];
+    const lines = renderStack(this.children, width);
     const blank = (line: string) => !stripVTControlCharacters(line).trim();
-    for (const child of this.children) {
-      const next = child.render(width);
-      if (!next.length) continue;
-      if (child instanceof ThinkingView && lines.length && !blank(lines.at(-1)!)) lines.push("");
-      // Drop only this child's leading blank rows when the previous child already
-      // ended with one. Never mutate `next`: cached components reuse that array.
-      let start = 0;
-      if (lines.length && blank(lines.at(-1)!)) {
-        while (start < next.length && blank(next[start])) start++;
-      }
-      for (let index = start; index < next.length; index++) lines.push(next[index]);
+    while (lines.length && blank(lines.at(-1)!)) lines.pop();
+    return lines.length ? [...lines, ""] : [];
+  }
+}
+
+function renderStack(children: readonly Component[], width: number): string[] {
+  const lines: string[] = [];
+  const blank = (line: string) => !stripVTControlCharacters(line).trim();
+  for (const child of children) {
+    const next = child.render(width);
+    if (!next.length) continue;
+    if (child instanceof ThinkingView && lines.length && !blank(lines.at(-1)!)) lines.push("");
+    // Drop only this child's leading blank rows when the previous child already
+    // ended with one. Never mutate `next`: cached components reuse that array.
+    let start = 0;
+    if (lines.length && blank(lines.at(-1)!)) {
+      while (start < next.length && blank(next[start])) start++;
     }
+    for (let index = start; index < next.length; index++) lines.push(next[index]);
+  }
+  return lines;
+}
+
+// Pending prompts wait below the transcript until the running turn finishes.
+export class QueueView extends Container {
+  override render(width: number): string[] {
+    const lines = renderStack(this.children, width);
+    const blank = (line: string) => !stripVTControlCharacters(line).trim();
+    while (lines.length && blank(lines[0])) lines.shift();
     while (lines.length && blank(lines.at(-1)!)) lines.pop();
     return lines.length ? [...lines, ""] : [];
   }
@@ -150,12 +167,15 @@ function highlightReferences(text: string) {
 export class SentMessage implements Component {
   private readonly content: Text;
   private readonly command: boolean;
+  private readonly queued: boolean;
   private cachedWidth = -1;
   private cachedLines?: string[];
-  constructor(text: string) {
+  constructor(text: string, options: { queued?: boolean } = {}) {
     this.command = /^\/\S/.test(text.trimStart());
+    this.queued = options.queued === true;
+    const value = safeText(text);
     this.content = new Text(
-      this.command ? accent(safeText(text)) : highlightReferences(safeText(text)),
+      this.queued ? gray(value) : this.command ? accent(value) : highlightReferences(value),
       0,
       0,
     );
@@ -167,14 +187,15 @@ export class SentMessage implements Component {
   }
   render(width: number): string[] {
     if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
+    const rail = this.queued ? gray : accent;
     const prefix = this.command
       ? width >= 3
         ? "  "
         : ""
       : width >= 4
-        ? `  ${accent("┃")} `
+        ? `  ${rail("┃")} `
         : width >= 2
-          ? accent("┃")
+          ? rail("┃")
           : "";
     const lines = [
       "",
@@ -186,6 +207,12 @@ export class SentMessage implements Component {
     this.cachedWidth = width;
     this.cachedLines = lines;
     return lines;
+  }
+}
+
+export class QueuedMessage extends SentMessage {
+  constructor(text: string) {
+    super(text, { queued: true });
   }
 }
 
