@@ -9,7 +9,7 @@ import {
   type Session,
 } from "@deepseek-ai/dsh-session";
 import { createUserMessage } from "@deepseek-ai/dsh-llm/message";
-import type { ContentBlock, ReasoningEffortId, TokenUsage } from "@deepseek-ai/dsh-llm";
+import type { ReasoningEffortId, TokenUsage } from "@deepseek-ai/dsh-llm";
 import { credentialRef, credentialKey } from "@deepseek-ai/dsh-credentials";
 import { AuthorizationDeclinedError } from "@deepseek-ai/dsh-authorization";
 import { UserQuestionError } from "@deepseek-ai/dsh-user-questions";
@@ -40,21 +40,12 @@ import { JobId } from "@deepseek-ai/dsh-jobs";
 import { formatFileMention } from "@deepseek-ai/dsh-file-reference/grammar";
 import type { AutocompleteItem } from "@earendil-works/pi-tui";
 import { registerCommands } from "./native-commands.ts";
+import { contentText, isAuthFailure, type RuntimeEvent } from "./runtime-events.ts";
+
+export { eventText, isAuthFailure } from "./runtime-events.ts";
+export type { RuntimeEvent } from "./runtime-events.ts";
 
 export type Route = { provider: string; model: string };
-export type RuntimeEvent =
-  | { method: "session.event"; params: { sessionId: string; event: SessionEvent } }
-  | {
-      method: "assistant.delta";
-      params: { sessionId: string; attemptId: string; text: string; index: number };
-    }
-  | {
-      method: "lazydsh.thinking";
-      params: { sessionId: string; attemptId: string } & (
-        | { type: "start" | "end" }
-        | { type: "usage"; usage: TokenUsage }
-      );
-    };
 export type QuestionResult = AskUserQuestionAnswer | { cancelled: true };
 export type RuntimeOptions = {
   cwd?: string;
@@ -968,55 +959,4 @@ function latestFailure(event: SessionEvent) {
     finish.chunk.reason.kind === "error"
   )
     return finish.chunk.reason.failure;
-}
-export function isAuthFailure(failure: unknown) {
-  if (typeof failure !== "object" || failure === null) return false;
-  const { code, status, message } = failure as {
-    code?: unknown;
-    status?: unknown;
-    message?: unknown;
-  };
-  return (
-    (typeof code === "string" &&
-      ["AUTH", "MISSING_CREDENTIAL", "INVALID_API_KEY", "UNAUTHORIZED"].includes(
-        code.toUpperCase(),
-      )) ||
-    status === 401 ||
-    status === 403 ||
-    (code === "PI_AI_ERROR" &&
-      typeof message === "string" &&
-      /not configured|not logged in|no api key|no credential|oauth/i.test(message))
-  );
-}
-
-export function eventText(notification: RuntimeEvent) {
-  if (notification.method !== "session.event") return;
-  const { event, sessionId } = notification.params;
-  if (event.type === "assistant/message") {
-    return { kind: "assistant", text: contentText(event.data.message.content) } as const;
-  }
-  if (event.type === "tool/call")
-    return {
-      kind: "tool",
-      sessionId: sessionId,
-      callId: event.data.callId,
-      name: event.data.name,
-      text: event.data.arguments,
-    } as const;
-  if (event.type === "tool/result") {
-    return {
-      kind: event.data.message.isError ? "error" : "result",
-      sessionId: sessionId,
-      callId: event.data.message.toolCallId,
-      text: contentText(event.data.message.content),
-      reason: event.data.error?.reason,
-    } as const;
-  }
-}
-
-function contentText(content: readonly ContentBlock[]) {
-  return content
-    .filter((block) => block.type === "text")
-    .map((block) => block.text)
-    .join("\n");
 }

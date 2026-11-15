@@ -1,7 +1,7 @@
 import { formatDuration, formatTokens } from "./format.ts";
 import { accent, dim } from "./theme.ts";
 import type { SessionEvent } from "@deepseek-ai/dsh-session";
-import { eventText } from "./runtime.ts";
+import { eventText } from "./runtime-events.ts";
 import { latestRequestStats } from "./stats.ts";
 import { ToolLog, ToolRow } from "./tools.ts";
 

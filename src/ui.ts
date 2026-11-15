@@ -1,7 +1,7 @@
 import { QuestionPanel } from "./question.ts";
 import { ApprovalPanel } from "./approval.ts";
 import { historyRows, continuationCommand } from "./history.ts";
-import { openAuthUrl } from "./terminal-login.ts";
+import { openAuthUrl } from "./open-url.ts";
 import { homedir } from "node:os";
 import { sep } from "node:path";
 import { preferencesPath, saveModel } from "./preferences.ts";
@@ -24,8 +24,8 @@ import {
   matchesKey,
   type Component,
 } from "@earendil-works/pi-tui";
-import { models, providers } from "./catalog.ts";
-import { Runtime, eventText, isAuthFailure, type Route, type Callbacks } from "./runtime.ts";
+import { eventText, isAuthFailure } from "./runtime-events.ts";
+import type { Runtime, Route, Callbacks } from "./runtime.ts";
 import {
   resumeDirectoryOptions,
   resumeDirectoryTarget,
@@ -117,6 +117,7 @@ export async function runUI(
   let thinking: ThinkingView | undefined;
   let busy = false;
   let starting = false;
+  let startupFailed = false;
   let running = false;
   let closing = false;
   let submittingQueued = false;
@@ -178,7 +179,7 @@ export async function runUI(
         `${safeText(route.provider)} · ${safeText(route.model ?? "choose model")} · ${safeText(displayDirectory)}${queued}`,
       ),
     );
-    editor.disableSubmit = (busy || starting) && !decision;
+    editor.disableSubmit = (busy || starting || startupFailed) && !decision;
     tui.requestRender();
   }
 
@@ -535,19 +536,21 @@ export async function runUI(
     return choice === null ? null : resumeDirectoryTarget(choice, options.cwd);
   }
 
-  function pickModel(sessionId = runtime.session?.id ?? resume) {
-    const picker = select(
+  async function pickModel(sessionId = runtime.session?.id ?? resume) {
+    const { providers } = await import("./catalog.ts");
+    const providerPicker = select(
       providers.map((id) => ({ value: id, label: id })),
       "Providers",
       (provider) => {
-        pickProviderModel(provider, sessionId, picker);
+        void pickProviderModel(provider, sessionId, providerPicker);
       },
       undefined,
       true,
     );
   }
 
-  function pickProviderModel(provider: string, sessionId?: string, parent?: SearchPicker) {
+  async function pickProviderModel(provider: string, sessionId?: string, parent?: SearchPicker) {
+    const { models } = await import("./catalog.ts");
     const picker = select(
       models(provider).map((model) => ({
         value: model.id,
@@ -563,7 +566,7 @@ export async function runUI(
     );
     picker.onCancel = () => {
       if (parent) showPanel(parent);
-      else pickModel(sessionId);
+      else void pickModel(sessionId);
     };
   }
 
@@ -589,7 +592,7 @@ export async function runUI(
       decision(text);
       return;
     }
-    if (!submittingQueued && (busy || !text.trim())) return;
+    if (!submittingQueued && (busy || starting || startupFailed || !text.trim())) return;
     if (running && !canRunDuringTurn(text)) {
       if (shouldQueueDuringTurn(text)) {
         enqueue(text);
@@ -630,12 +633,12 @@ export async function runUI(
       return;
     }
     if (text === "/model") {
-      pickModel();
+      void pickModel();
       return;
     }
     if (text === "/new") {
       if (route.model) void connect({ provider: route.provider, model: route.model });
-      else pickModel();
+      else void pickModel();
       return;
     }
     if (!runtime.session) {
@@ -1083,15 +1086,22 @@ export async function runUI(
       try {
         await hooks.afterFirstPaint();
       } catch (error) {
+        startupFailed = true;
         add("Startup", error instanceof Error ? error.message : String(error));
       } finally {
         starting = false;
+        update();
       }
     }
-    if (route.model)
-      await connect({ provider: route.provider, model: route.model }, resume, false, true);
-    else if (providers.includes(route.provider)) pickProviderModel(route.provider, resume);
-    else pickModel();
+    if (!startupFailed) {
+      if (route.model)
+        await connect({ provider: route.provider, model: route.model }, resume, false, true);
+      else {
+        const { providers } = await import("./catalog.ts");
+        if (providers.includes(route.provider)) await pickProviderModel(route.provider, resume);
+        else await pickModel();
+      }
+    }
     await done;
   } finally {
     options.signal?.removeEventListener("abort", signalHandler);

@@ -1,7 +1,7 @@
 import { truncateToWidth, type Component } from "@earendil-works/pi-tui";
 import { activityLine } from "./presentation.ts";
 import { safeText } from "./theme.ts";
-import type { eventText } from "./runtime.ts";
+import type { eventText } from "./runtime-events.ts";
 
 type ToolOutput = Exclude<NonNullable<ReturnType<typeof eventText>>, { kind: "assistant" }>;
 interface ToolEntry {

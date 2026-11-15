@@ -1,4 +1,7 @@
 import { getBuiltinModels, getBuiltinProviders } from "@earendil-works/pi-ai/providers/all";
+import { normalizeProvider } from "./provider.ts";
+
+export { normalizeProvider } from "./provider.ts";
 
 const preferred = ["deepseek-official", "opencode-go", "opencode", "openai-codex"];
 export const providers = [
@@ -8,10 +11,6 @@ export const providers = [
   const rank = (id: string) => (preferred.includes(id) ? preferred.indexOf(id) : preferred.length);
   return rank(a) - rank(b) || a.localeCompare(b);
 });
-
-export function normalizeProvider(provider: string) {
-  return provider === "codex" ? "openai-codex" : provider;
-}
 
 export function models(provider: string) {
   return getBuiltinModels(

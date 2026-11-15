@@ -4,7 +4,9 @@ import { fileURLToPath } from "node:url";
 import { join, resolve } from "node:path";
 import type { Context } from "@deepseek-ai/cordis";
 import {
+  PROFILES_DIR,
   PluginPackages,
+  ProfileRuntimeResolution,
   boot,
   composeEntries,
   createRuntimeResolution,
@@ -24,8 +26,14 @@ import {
   type LaunchEnvironmentSnapshot,
 } from "@deepseek-ai/dsh-launch-environment";
 import { provideCmdline } from "@deepseek-ai/dsh-cmdline";
+import type { PatchOptions } from "@deepseek-ai/cordis-plugin-include";
 import { withTelemetryExporterDisabled } from "./telemetry-patch.ts";
-import { selectDeferredPlugins } from "./deferred.ts";
+import {
+  canDeferEveryRow,
+  selectAllDeferredPlugins,
+  selectDeferredPlugins,
+  type DeferredPlan,
+} from "./deferred.ts";
 
 const NAME = "lazydsh";
 const PROCESS_SHUTDOWN_TIMEOUT_MS = 5_000;
@@ -110,7 +118,6 @@ async function composeProfile(name: string, patchFiles: readonly string[]) {
   writeFileSync(join(profile.dir, PROFILE_ROOT_FILENAME), "[]\n");
   return {
     profile,
-    resolution: await createRuntimeResolution({ installAnchor: INSTALL_ANCHOR, profile }),
     overlays: patchFiles.flatMap((file) => loadOverlayPatches(NAME, resolve(file))),
   };
 }
@@ -179,16 +186,57 @@ export async function runProfile(options: RunProfileOptions) {
     );
     const entries = composeEntries([patches]);
     const appEntry = entries.find((entry) => entry.id === "lazydsh");
-    const deferred = appEntry?.config?.command === undefined ? selectDeferredPlugins(entries) : [];
-    if (appEntry !== undefined && deferred.length > 0) {
-      patches.push({ id: "lazydsh", config: { ...appEntry.config, deferred } });
-      patches.push(...deferred.map((plugin) => ({ id: plugin.id, disabled: true })));
+    const appConfig = appEntry?.config ?? {};
+    const interactive = appEntry !== undefined && appConfig.command === undefined;
+    // The resume picker needs the Runtime before the TUI exists, so that path
+    // keeps the selective list and boots the core services eagerly.
+    const fullDefer =
+      interactive &&
+      appConfig.pickSession !== true &&
+      appConfig.resume === undefined &&
+      canDeferEveryRow(entries);
+    const deferred = interactive
+      ? fullDefer
+        ? selectAllDeferredPlugins(entries, composed.profile.dir)
+        : selectDeferredPlugins(entries)
+      : [];
+    const plan: DeferredPlan = { rows: deferred, full: fullDefer };
+    const home = resolveDshHome();
+    let resolution: ProfileRuntimeResolution;
+    let bootPatches: PatchOptions[];
+    if (fullDefer && appEntry !== undefined) {
+      // Mount only the launcher plugin. Everything else is applied directly
+      // after the first frame, so the Loader never imports or validates the
+      // other 100-odd rows during boot. The package table is refreshed from
+      // the real profile once the shell is visible.
+      resolution = new ProfileRuntimeResolution(
+        { installAnchor: INSTALL_ANCHOR, home, profileDir: composed.profile.dir },
+        {
+          profilesDir: join(home, PROFILES_DIR),
+          profileDir: composed.profile.dir,
+          localPackageNames: [],
+          entries: [],
+          linkedRoots: [],
+        },
+      );
+      bootPatches = [
+        { insert: [{ id: appEntry.id, name: appEntry.name, config: appEntry.config }] },
+      ];
+    } else {
+      resolution = await createRuntimeResolution({
+        installAnchor: INSTALL_ANCHOR,
+        profile: composed.profile,
+      });
+      if (interactive)
+        patches.push(...deferred.map((plugin) => ({ id: plugin.id, disabled: true })));
+      bootPatches = patches;
     }
-    const ctx = await boot(NAME, rootConfig, patches, async (hostCtx) => {
+    const ctx = await boot(NAME, rootConfig, bootPatches, async (hostCtx) => {
       app = hostCtx;
       hostCtx.provide("profileContext", profileContext);
       hostCtx.provide(DSH_LAUNCH_ENVIRONMENT_KEY, options.environment);
-      await hostCtx.plugin(PluginPackages, { resolution: composed.resolution });
+      hostCtx.provide("lazydshDeferred", plan);
+      await hostCtx.plugin(PluginPackages, { resolution });
       provideCmdline(hostCtx, {
         args: options.args,
         exit: (code) => void shutdown.shutdown(code),
