@@ -21,7 +21,7 @@ jobs:
           package-manager: |
             bun: false
           run-install: false
-          cache: true
+          cache: false
       - run: bun install --frozen-lockfile
       - run: vp check
       - run: vp test run
