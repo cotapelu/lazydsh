@@ -3,7 +3,22 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile, rm, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { upgradePlan } from "../src/upgrade.ts";
+import { upgradeCommand, upgradePlan } from "../src/upgrade.ts";
+
+test("upgrade prints the exact command it executes", () => {
+  assert.equal(
+    upgradeCommand({ manager: "npm", args: ["install", "--global", "lazydsh@latest"], cwd: "/" }),
+    "npm install --global lazydsh@latest",
+  );
+  assert.equal(
+    upgradeCommand({
+      manager: "pnpm",
+      args: ["add", "--save-dev", "./my package"],
+      cwd: "/",
+    }),
+    "pnpm add --save-dev './my package'",
+  );
+});
 
 test("Vite+ global upgrades target the registered installation", async () => {
   const directory = await mkdtemp(join(tmpdir(), "lazydsh-vp-upgrade-"));
