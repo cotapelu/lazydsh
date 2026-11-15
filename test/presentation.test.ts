@@ -278,3 +278,32 @@ test("mentions and pasted paths are highlighted without changing text or cursor 
   assert.deepEqual(editor.getCursor(), cursor);
   assert.ok(editor.render(30).every((line) => visibleWidth(line) <= 30));
 });
+
+test("finished rows reuse their rendered lines instead of re-truncating every frame", () => {
+  const message = new SentMessage("hello @src/main.ts");
+  assert.equal(message.render(80), message.render(80));
+  assert.notEqual(message.render(79), message.render(80));
+  message.invalidate();
+  assert.equal(message.render(80), message.render(80));
+
+  const row = new ToolRow("✓ read src/main.ts");
+  assert.equal(row.render(80), row.render(80));
+  row.setSummary("✗ read src/main.ts — denied");
+  assert.match(row.render(80).join(""), /denied/);
+});
+
+test("the transcript never mutates a child's cached line array", () => {
+  const cached = ["", "hello ", ""];
+  const child = {
+    invalidate() {},
+    render: () => cached,
+  };
+  const transcript = new Transcript();
+  transcript.addChild(new SentMessage("first"));
+  transcript.addChild(child);
+  const first = transcript.render(80);
+  const second = transcript.render(80);
+  assert.deepEqual(cached, ["", "hello ", ""]);
+  assert.deepEqual(first, second);
+  assert.equal(first.filter((line) => line.includes("hello")).length, 1);
+});

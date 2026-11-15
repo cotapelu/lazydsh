@@ -25,13 +25,30 @@ function target(argumentsText: string): string {
 }
 
 export class ToolRow implements Component {
-  summary: string;
+  private value: string;
+  private cachedWidth = -1;
+  private cachedLines?: string[];
   constructor(summary: string) {
-    this.summary = summary;
+    this.value = summary;
   }
-  invalidate() {}
+  get summary() {
+    return this.value;
+  }
+  setSummary(summary: string) {
+    if (summary === this.value) return;
+    this.value = summary;
+    this.invalidate();
+  }
+  invalidate() {
+    this.cachedWidth = -1;
+    this.cachedLines = undefined;
+  }
   render(width: number): string[] {
-    return [truncateToWidth(`  ${activityLine(this.summary)}`, width)];
+    if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
+    const lines = [truncateToWidth(`  ${activityLine(this.value)}`, width)];
+    this.cachedWidth = width;
+    this.cachedLines = lines;
+    return lines;
   }
 }
 
@@ -53,7 +70,7 @@ export class ToolLog {
         output.kind === "error"
           ? ` — ${safeText(output.reason || output.text || "Tool failed").split("\n")[0]}`
           : "";
-      entry.row.summary = `${output.kind === "error" ? "✗" : "✓"} ${entry.label}${suffix}`;
+      entry.row.setSummary(`${output.kind === "error" ? "✗" : "✓"} ${entry.label}${suffix}`);
       this.entries.delete(key);
     }
     return created ? entry.row : undefined;

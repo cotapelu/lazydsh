@@ -90,10 +90,13 @@ export class Transcript extends Container {
       const next = child.render(width);
       if (!next.length) continue;
       if (child instanceof ThinkingView && lines.length && !blank(lines.at(-1)!)) lines.push("");
+      // Drop only this child's leading blank rows when the previous child already
+      // ended with one. Never mutate `next`: cached components reuse that array.
+      let start = 0;
       if (lines.length && blank(lines.at(-1)!)) {
-        while (next.length && blank(next[0])) next.shift();
+        while (start < next.length && blank(next[start])) start++;
       }
-      lines.push(...next);
+      for (let index = start; index < next.length; index++) lines.push(next[index]);
     }
     while (lines.length && blank(lines.at(-1)!)) lines.pop();
     return lines.length ? [...lines, ""] : [];
@@ -147,6 +150,8 @@ function highlightReferences(text: string) {
 export class SentMessage implements Component {
   private readonly content: Text;
   private readonly command: boolean;
+  private cachedWidth = -1;
+  private cachedLines?: string[];
   constructor(text: string) {
     this.command = /^\/\S/.test(text.trimStart());
     this.content = new Text(
@@ -157,8 +162,11 @@ export class SentMessage implements Component {
   }
   invalidate() {
     this.content.invalidate();
+    this.cachedWidth = -1;
+    this.cachedLines = undefined;
   }
   render(width: number): string[] {
+    if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
     const prefix = this.command
       ? width >= 3
         ? "  "
@@ -168,13 +176,16 @@ export class SentMessage implements Component {
         : width >= 2
           ? accent("┃")
           : "";
-    return [
+    const lines = [
       "",
       ...this.content
         .render(Math.max(1, width - visibleWidth(prefix)))
         .map((line) => truncateToWidth(prefix + line, width)),
       "",
     ];
+    this.cachedWidth = width;
+    this.cachedLines = lines;
+    return lines;
   }
 }
 
