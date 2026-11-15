@@ -1,15 +1,43 @@
 #!/usr/bin/env node
 import { formatNotification, terminalColor } from "./theme.ts";
 import { loadModel, preferencesPath } from "./preferences.ts";
+import { normalizeProvider } from "./provider.ts";
 import type {} from "./plugin.ts";
 import { parseArgs } from "node:util";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { enableCompileCache } from "node:module";
+import { mkdirSync } from "node:fs";
 
-enableCompileCache();
+// Keep V8's compile cache out of the OS temp directory so a reboot does not
+// make the next launch recompile every plugin module.
+function compileCacheDirectory(): string | undefined {
+  if (process.env.NODE_COMPILE_CACHE) return undefined;
+  const root =
+    process.env.XDG_CACHE_HOME ??
+    (process.platform === "darwin"
+      ? join(homedir(), "Library", "Caches")
+      : process.platform === "win32"
+        ? (process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local"))
+        : join(homedir(), ".cache"));
+  return join(root, "lazydsh", "node-compile-cache");
+}
+
+try {
+  const directory = compileCacheDirectory();
+  if (directory === undefined) enableCompileCache();
+  else {
+    mkdirSync(directory, { recursive: true, mode: 0o700 });
+    enableCompileCache(directory);
+  }
+} catch {
+  // A read-only home must not stop the CLI; fall back to the default cache.
+  try {
+    enableCompileCache();
+  } catch {}
+}
 
 const color = terminalColor(process.stdout);
 const heading = (text: string) => (color ? `\x1b[1;38;2;77;107;254m${text}\x1b[0m` : text);
@@ -185,7 +213,11 @@ async function main() {
     prompt = [args.join(" "), Buffer.concat(chunks).toString("utf8")].filter(Boolean).join("\n\n");
     if (!prompt.trim()) throw new Error("Provide a prompt as an argument or through stdin.");
   }
-  const { normalizeProvider, validateRoute, providerPatch } = await import("./catalog.ts");
+  // Normal startup paints before the provider catalog (and the pi-ai model
+  // tables it imports) is needed; the app applies the provider patch after
+  // the first frame instead.
+  const catalogDeferred = command === undefined && values.resume === undefined;
+  const catalog = catalogDeferred ? undefined : await import("./catalog.ts");
   const saved =
     command === "login" || command === "logout"
       ? undefined
@@ -204,8 +236,8 @@ async function main() {
   const savedEffort =
     saved && provider === saved.provider && model === saved.model ? saved.effort : undefined;
   const effort = values.effort ?? savedEffort;
-  if (command !== "login" && command !== "logout" && provider && model)
-    validateRoute(provider, model, values.patch);
+  if (catalog !== undefined && command !== "login" && command !== "logout" && provider && model)
+    catalog.validateRoute(provider, model, values.patch);
   if (command === "ask" && !model) throw new Error("Choose a model with --model before using ask.");
   const [{ ensureProfile, runProfile }, { loadLayeredEnv }, { pluginPatch }] = await Promise.all([
     import("./dsh-boot.ts"),
@@ -222,7 +254,7 @@ async function main() {
     await writeFile(
       patch,
       JSON.stringify([
-        ...providerPatch(),
+        ...(catalog?.providerPatch() ?? []),
         ...pluginPatch({
           cwd: resolve(values.cwd ?? "."),
           home: values.home && resolve(values.home),
@@ -236,6 +268,8 @@ async function main() {
           prompt,
           permission: values.permission,
           resumeArgs,
+          catalogDeferred,
+          customPatches: values.patch.length > 0,
         }),
       ]),
     );

@@ -9,6 +9,7 @@ import {
 import { AuthorizationDeclinedError } from "@deepseek-ai/dsh-authorization";
 import { SecretInput } from "./presentation.ts";
 import { accent, safeText } from "./theme.ts";
+import { openAuthUrl } from "./open-url.ts";
 import { SearchPicker } from "./picker.ts";
 import type { Runtime } from "./runtime.ts";
 
@@ -158,7 +159,4 @@ export async function terminalAuth(
   }
 }
 
-export async function openAuthUrl(url: unknown) {
-  if (typeof url !== "string" || !/^https?:\/\//.test(url)) return;
-  await import("open").then(({ default: open }) => open(url)).catch(() => {});
-}
+export { openAuthUrl } from "./open-url.ts";
