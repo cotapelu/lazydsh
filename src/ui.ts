@@ -79,6 +79,13 @@ export function shouldQueueDuringTurn(text: string) {
   return Boolean(text.trim()) && !/^\s*\//.test(text) && !canRunDuringTurn(text);
 }
 
+export function cancellationNotice(queued: number) {
+  if (queued <= 0) return "Execution cancelled. You can continue this conversation.";
+  return queued === 1
+    ? "Execution cancelled. Sending the queued message."
+    : `Execution cancelled. Sending the oldest of ${queued} queued messages.`;
+}
+
 export async function runUI(
   options: RuntimeOptions & { cwd: string },
   initial: {
@@ -120,6 +127,9 @@ export async function runUI(
   let startupFailed = false;
   let running = false;
   let closing = false;
+  // Set while Esc cancels the active turn so queued prompts wait for the
+  // runtime to go idle instead of draining into the turn being cancelled.
+  let stopping = false;
   let submittingQueued = false;
   let continuationId: string | undefined;
   let pendingStartupConnection: { route: Route; sessionId?: string } | undefined;
@@ -179,7 +189,7 @@ export async function runUI(
         `${safeText(route.provider)} · ${safeText(route.model ?? "choose model")} · ${safeText(displayDirectory)}${queued}`,
       ),
     );
-    editor.disableSubmit = (busy || starting || startupFailed) && !decision;
+    editor.disableSubmit = (busy || starting || startupFailed || stopping) && !decision;
     tui.requestRender();
   }
 
@@ -236,7 +246,7 @@ export async function runUI(
   }
 
   function drainQueue() {
-    if (closing || running || decision || !queue.length) return;
+    if (closing || running || stopping || decision || !queue.length) return;
     const next = queue.shift()!;
     queueView.removeChild(next.view);
     submittingQueued = true;
@@ -1049,21 +1059,20 @@ export async function runUI(
     if (matchesKey(data, "escape") && !selecting) {
       if (decision) decision(null);
       else if (busy || running) {
-        const discarded = clearQueue();
+        const queued = queue.length;
+        stopping = true;
         update();
         void runtime
           .cancel()
-          .then(() => {
-            add(
-              "Stopped",
-              discarded
-                ? `Execution cancelled. ${discarded} queued message${discarded === 1 ? "" : "s"} discarded.`
-                : "Execution cancelled. You can continue this conversation.",
-            );
-          })
+          .then(() => add("Stopped", cancellationNotice(queued)))
           .catch((error) =>
             add("Stop error", error instanceof Error ? error.message : String(error)),
-          );
+          )
+          .finally(() => {
+            stopping = false;
+            drainQueue();
+            update();
+          });
       }
       return { consume: true };
     }

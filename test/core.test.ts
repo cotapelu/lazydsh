@@ -2,7 +2,7 @@ import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 import { validateRoute } from "../src/catalog.ts";
 import { isAuthFailure } from "../src/runtime.ts";
-import { canRunDuringTurn, shouldQueueDuringTurn } from "../src/ui.ts";
+import { canRunDuringTurn, cancellationNotice, shouldQueueDuringTurn } from "../src/ui.ts";
 import { safeText } from "../src/theme.ts";
 
 test("route validation allows configured providers and rejects missing models", () => {
@@ -81,4 +81,13 @@ test("plain prompts typed during a running turn are queued while commands stay i
     assert.equal(shouldQueueDuringTurn(input), true, input);
   for (const input of ["/status", "/model", "  /dsh status", "", "   "])
     assert.equal(shouldQueueDuringTurn(input), false, input);
+});
+
+test("cancelling a turn reports that the oldest queued message is sent next", () => {
+  assert.equal(cancellationNotice(0), "Execution cancelled. You can continue this conversation.");
+  assert.equal(cancellationNotice(1), "Execution cancelled. Sending the queued message.");
+  assert.equal(
+    cancellationNotice(3),
+    "Execution cancelled. Sending the oldest of 3 queued messages.",
+  );
 });
