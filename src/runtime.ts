@@ -218,6 +218,17 @@ export class Runtime {
       options: info.reasoning?.efforts ?? [],
     };
   }
+  /** The current route and effort, suitable for persisting as a preference. */
+  selection() {
+    const current = this.agent.model.current();
+    return current
+      ? {
+          provider: current.provider,
+          model: current.model,
+          ...(current.reasoningEffort ? { effort: current.reasoningEffort } : {}),
+        }
+      : undefined;
+  }
   async history(): Promise<SessionEvent[]> {
     return [...this.agent.session.snapshotEvents()];
   }
@@ -235,12 +246,12 @@ export class Runtime {
       const cached =
         cache?.cachedSnapshot(record.header, ["title"]) ??
         cache?.cachedPredecessorTitle(record.header);
-      if (!cached) {
-        missing.push(record.header.id);
-        continue;
-      }
-      const title = cached.values.title;
+      const title = cached?.values.title;
+      // The projection's init state is `null`: a checkpoint written before the
+      // first `session/title` event has a usable row but no title to show, so
+      // fall through to the authoritative log instead of hiding the title.
       if (typeof title === "string" && title) titles.set(record.header.id, title);
+      else missing.push(record.header.id);
     }
     if (missing.length) {
       const snapshots = await query.readTitleSnapshots(missing);
@@ -248,6 +259,11 @@ export class Runtime {
         if (snapshot.status === "fulfilled" && snapshot.value.title)
           titles.set(snapshot.sessionId, snapshot.value.title.title);
     }
+    // A checkpoint can lag the live log (e.g. right after a rename); the
+    // connected Session's projection supersedes the cached value.
+    const current = this.session;
+    const liveTitle = current ? this.ctx.get("sessionTitle")?.get(current)?.title : undefined;
+    if (current && liveTitle) titles.set(current.id, liveTitle);
     return records.map((record) => ({
       id: record.header.id,
       title: titles.get(record.header.id) ?? record.header.id,
