@@ -1,4 +1,3 @@
-import { formatNotification, terminalColor } from "./theme.ts";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile, realpath, access } from "node:fs/promises";
@@ -169,9 +168,15 @@ export async function upgradePlan(packageRoot: string, query = output): Promise<
   return { manager, args, cwd: resolve(project) };
 }
 
+export function upgradeCommand(plan: UpgradePlan) {
+  const quote = (value: string) =>
+    /^[a-zA-Z0-9_./:=+@-]+$/.test(value) ? value : "'" + value.replaceAll("'", "'\\''") + "'";
+  return [plan.manager, ...plan.args].map(quote).join(" ");
+}
+
 export async function upgrade(packageRoot: string) {
   const plan = await upgradePlan(packageRoot);
-  console.log(`Updating with ${plan.manager}…`);
+  console.log(upgradeCommand(plan));
   await new Promise<void>((resolve, reject) => {
     const child = spawn(plan.manager, plan.args, {
       cwd: plan.cwd,
@@ -183,5 +188,4 @@ export async function upgrade(packageRoot: string) {
       code === 0 ? resolve() : reject(new Error(`Upgrade failed (${signal ?? `exit ${code}`}).`)),
     );
   });
-  console.log(formatNotification("Upgraded", "lazydsh", terminalColor(process.stdout)));
 }
