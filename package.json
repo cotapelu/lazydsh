@@ -1,6 +1,6 @@
 {
   "name": "lazydsh",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A lazier terminal UI for DeepSeek Harness.",
   "keywords": [
     "agent",
