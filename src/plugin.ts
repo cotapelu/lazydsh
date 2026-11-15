@@ -84,10 +84,18 @@ export function apply(ctx: Context, config: PluginOptions = {}) {
       return;
     }
     let resume = config.resume;
+    let resumeDirectory: string | undefined;
     if (config.pickSession) {
       const { selectSession } = await import("./session-select.ts");
-      resume = (await selectSession(runtime, lifetime.signal)) ?? undefined;
+      const selection = await selectSession(runtime, lifetime.signal, options.cwd);
+      resume = selection?.id;
+      resumeDirectory = selection?.directory;
       if (!resume) return;
+    } else if (resume) {
+      const { selectResumeDirectory } = await import("./session-select.ts");
+      const selection = await selectResumeDirectory(runtime, resume, options.cwd, lifetime.signal);
+      if (!selection) return;
+      resumeDirectory = selection.directory;
     }
     const { runUI } = await import("./ui.ts");
     await runUI(
@@ -96,6 +104,7 @@ export function apply(ctx: Context, config: PluginOptions = {}) {
         provider,
         model,
         resume,
+        resumeDirectory,
         resumeArgs: config.resumeArgs ?? (config.home ? ["--home", resolve(config.home)] : []),
       },
       runtime,

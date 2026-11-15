@@ -314,6 +314,11 @@ test("sessions, jobs and file references", async () => {
     const route = {provider:"deepseek-official",model:models("deepseek-official")[0].id};
     assert.deepEqual((await runtime.choices("sessions")).options, []);
     const first = await runtime.open(route);
+    assert.equal(await runtime.sessionDirectory(first), directory);
+    await mkdir(join(directory,"changed"),{recursive:true});
+    const changed = await runtime.cd(join(directory,"changed"));
+    assert.equal(await runtime.sessionDirectory(first), changed);
+    await runtime.cd(directory);
     // A pre-title checkpoint has a null title row; listing must still read the log.
     await ctx.get("sessionProjectionCache").write(runtime.session);
     assert.equal(await runtime.renameSession(first,"First session"),"First session");
