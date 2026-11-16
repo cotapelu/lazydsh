@@ -8,12 +8,12 @@
         {
           "id": "task-1",
           "content": "Create status-indicator.ts (Working/Retry/Compaction/Idle)",
-          "status": "in_progress"
+          "status": "completed"
         },
         {
           "id": "task-2",
           "content": "Wire status indicators into ui.ts",
-          "status": "pending"
+          "status": "in_progress"
         },
         {
           "id": "task-3",
@@ -105,5 +105,5 @@
   ],
   "nextTaskId": 20,
   "nextPhaseId": 2,
-  "updatedAt": "2026-11-16T09:45:44.564Z"
+  "updatedAt": "2026-11-16T10:12:50.942Z"
 }
