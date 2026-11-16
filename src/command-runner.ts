@@ -41,7 +41,7 @@ export async function runCommand(runtime: Runtime, config: CommandOptions, signa
     console.log(formatNotification("Logged out", provider, terminalColor(process.stdout)));
     if (remaining.length)
       console.error(
-        `Credentials are still available from ${remaining.join(", ")}. Unset them to disconnect completely.`,
+        `Credentials are still available from ${remaining.join(", ")}. Unset them to disconnect.`,
       );
     return;
   }
@@ -60,7 +60,7 @@ export async function runCommand(runtime: Runtime, config: CommandOptions, signa
         resume: config.resume,
         onAuth: async () => {
           throw new Error(
-            `Authentication is required. Run lazydsh login ${config.provider} in a terminal first.`,
+            `Login required. Run lazydsh login ${config.provider} in a terminal first.`,
           );
         },
         onApproval: async () => {

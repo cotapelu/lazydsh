@@ -83,13 +83,6 @@ export function shouldQueueDuringTurn(text: string) {
   return Boolean(text.trim()) && !/^\s*\//.test(text) && !canRunDuringTurn(text);
 }
 
-export function cancellationNotice(queued: number) {
-  if (queued <= 0) return "Execution cancelled. You can continue this conversation.";
-  return queued === 1
-    ? "Execution cancelled. Sending the queued message."
-    : `Execution cancelled. Sending the oldest of ${queued} queued messages.`;
-}
-
 export async function runUI(
   options: RuntimeOptions & { cwd: string },
   initial: {
@@ -193,7 +186,7 @@ export async function runUI(
     const queued = queue.length ? ` · ${queue.length} queued` : "";
     status.setText(
       dim(
-        `${safeText(route.provider)} · ${safeText(route.model ?? "choose model")} · ${safeText(displayDirectory)}${queued}`,
+        `${safeText(route.provider)} · ${safeText(route.model ?? "no model")} · ${safeText(displayDirectory)}${queued}`,
       ),
     );
     editor.disableSubmit = (busy || starting || startupFailed || stopping) && !decision;
@@ -216,7 +209,7 @@ export async function runUI(
     }
   }
 
-  function add(label: string, text: unknown, markdown = false) {
+  function add(label: string, text: unknown = "", markdown = false) {
     if (label === "You") {
       transcript.addChild(new SentMessage(String(text)));
       tui.requestRender();
@@ -267,9 +260,8 @@ export async function runUI(
 
   function ask(message: string, signal?: AbortSignal) {
     if (closing || signal?.aborted) return Promise.resolve(null);
-    if (decision)
-      return Promise.reject(new Error("Another question is already awaiting an answer."));
-    add("Input required", message);
+    if (decision) return Promise.reject(new Error("Another question is already open."));
+    add("Input", message);
     editor.setText("");
     return new Promise<string | null>((resolve) => {
       const settle = (value: string | null) => {
@@ -290,13 +282,13 @@ export async function runUI(
     onAuth: async (method, params, signal) => {
       if (signal?.aborted) return null;
       if (method === "lazydsh/auth-notice") {
-        add("Authentication", [params.message, params.url, params.code].filter(Boolean).join("\n"));
+        add("Login", [params.message, params.url, params.code].filter(Boolean).join("\n"));
         void openAuthUrl(params.url);
         return null;
       }
-      const message = typeof params.message === "string" ? params.message : "Authentication";
+      const message = typeof params.message === "string" ? params.message : "Login";
       if (params.kind === "secret") {
-        add("Authentication", message);
+        add("Login", message);
         return new Promise<string | null>((resolve) => {
           const input = new SecretInput({ prompt: accent("┃ ") });
           let settled = false;
@@ -485,11 +477,11 @@ export async function runUI(
         pendingStartupConnection = { route: nextRoute, sessionId };
       else if (!closing)
         add(
-          "Connection error",
+          "Error",
           `${error instanceof Error ? error.message : String(error)}\n${
             isAuthFailure(error)
-              ? `Run /login ${nextRoute.provider} to sign in, then resend.`
-              : "Use /model to retry authentication."
+              ? `Run /login ${nextRoute.provider}, then resend.`
+              : "Run /model to choose another model."
           }`,
         );
     } finally {
@@ -596,9 +588,7 @@ export async function runUI(
     return new Promise<string | null>((resolve) => {
       const picker = select(
         runtime.authProviders(),
-        command === "login"
-          ? "Choose a provider to sign in to"
-          : "Choose a provider to sign out of",
+        command === "login" ? "Choose a provider to log in to" : "Choose a provider to log out of",
         (value) => resolve(value),
         undefined,
         true,
@@ -617,7 +607,7 @@ export async function runUI(
     }
     if (announcedAuth.has(provider)) return;
     announcedAuth.add(provider);
-    add("Auth", `Using ${source.label} for ${provider}. Unset it to switch credentials.`);
+    add("Credentials", `Using ${source.label} for ${provider}. Unset it to switch.`);
   }
 
   async function probeCredentialSource(provider: string) {
@@ -644,13 +634,13 @@ export async function runUI(
       } catch (error) {
         if (closing) return;
         if (error instanceof AuthorizationDeclinedError) {
-          add("Login", "Sign-in cancelled.");
+          add("Login", "Cancelled.");
           return;
         }
         throw error;
       }
       if (closing) return;
-      // A startup connection that failed before sign-in can now be retried.
+      // A startup connection that failed before login can now be retried.
       const pending = pendingStartupConnection;
       if (pending && !runtime.session) {
         pendingStartupConnection = undefined;
@@ -663,7 +653,7 @@ export async function runUI(
         blockedPrompt = undefined;
         update();
       }
-    }, "Login error");
+    }, "Error");
   }
 
   async function signOut(provider?: string) {
@@ -679,11 +669,8 @@ export async function runUI(
       announcedAuth.delete(provider);
       add("Logged out", provider);
       if (remaining.length)
-        add(
-          "Credentials",
-          `Still available from ${remaining.join(", ")}. Unset them to disconnect completely.`,
-        );
-    }, "Logout error");
+        add("Credentials", `Still available from ${remaining.join(", ")}. Unset to disconnect.`);
+    }, "Error");
   }
 
   async function stop() {
@@ -695,7 +682,7 @@ export async function runUI(
     try {
       await runtime.close();
     } catch (error) {
-      add("Shutdown error", error instanceof Error ? error.message : String(error));
+      add("Error", error instanceof Error ? error.message : String(error));
       process.exitCode = 1;
     } finally {
       finish();
@@ -715,10 +702,7 @@ export async function runUI(
         enqueue(text);
         return;
       }
-      add(
-        "Error",
-        "A response is running. Use Esc to stop it before sending another message or switching sessions.",
-      );
+      add("Error", "A response is running. Press Esc to stop it.");
       return;
     }
     if (
@@ -744,7 +728,7 @@ export async function runUI(
       try {
         source = await runtime.credentialSource(provider);
       } catch (error) {
-        if (!closing) add("Auth error", error instanceof Error ? error.message : String(error));
+        if (!closing) add("Error", error instanceof Error ? error.message : String(error));
       } finally {
         checkingAuth = false;
       }
@@ -755,7 +739,7 @@ export async function runUI(
           editor.setText("");
           blockedPrompt = text;
         } else if (!fromQueue) blockedPrompt = undefined;
-        add("Error", `Not logged in to ${provider}. Run /login ${provider} to sign in.`);
+        add("Error", `Not logged in to ${provider}. Run /login ${provider}.`);
         update();
         return;
       }
@@ -802,7 +786,7 @@ export async function runUI(
         if (!available.some((item) => item.value === provider)) {
           add(
             "Error",
-            `Unknown provider: ${provider}. Available: ${available.map((item) => item.value).join(", ")}`,
+            `Unknown provider: ${provider}. Choose from: ${available.map((item) => item.value).join(", ")}.`,
           );
           return;
         }
@@ -812,7 +796,7 @@ export async function runUI(
       return;
     }
     if (!runtime.session) {
-      add("Error", "No model connected. Select a model with /model.");
+      add("Error", "No model selected. Run /model.");
       return;
     }
     const renameCommand = /^\/rename(?:\s+([\s\S]*))?$/.exec(text);
@@ -827,7 +811,7 @@ export async function runUI(
     if (text === "/fork") {
       const points = runtime.forkPoints().reverse();
       if (!points.length) {
-        add("Error", "No completed turns to fork from");
+        add("Error", "No completed turns to fork from.");
         return;
       }
       select(points, "Fork at turn", (boundary) => {
@@ -904,7 +888,7 @@ export async function runUI(
       const stopping = jobCommand[1] === "stop";
       const perform = async (id: string) => {
         const result = await runtime.job(id, stopping);
-        if (stopping) add("Job", `${id}: ${result}`);
+        if (stopping) add("Job", `${id} · ${result}`);
         else {
           transcript.addChild(new Text(safeText(result), 2, 1));
           tui.requestRender();
@@ -994,7 +978,7 @@ export async function runUI(
       return;
     }
     if (runtime.authFailed && text.startsWith("/") && text !== "/status") {
-      add("Error", "Model authentication failed. Run /login to sign in again.");
+      add("Error", "Login failed. Run /login.");
       return;
     }
     if (text === "/session") {
@@ -1038,7 +1022,7 @@ export async function runUI(
         })
         .catch((error) => {
           if (composer.children.includes(picker)) dismissPanel();
-          add("Effort error", error instanceof Error ? error.message : String(error));
+          add("Error", error instanceof Error ? error.message : String(error));
         })
         .finally(() => {
           busy = false;
@@ -1066,7 +1050,7 @@ export async function runUI(
         .catch((error) => {
           if (panel) transcript.removeChild(panel);
           stats = undefined;
-          add("Status error", error instanceof Error ? error.message : String(error));
+          add("Error", error instanceof Error ? error.message : String(error));
         })
         .finally(() => {
           busy = false;
@@ -1077,22 +1061,22 @@ export async function runUI(
     if (/^\/file(?:\s|$)/.test(text)) {
       const path = text.slice(5).trim();
       if (!path) {
-        add("File", "Usage: /file <path> · /file clear to discard pending attachments");
+        add("File", "Usage: /file <path> · /file clear");
         return;
       }
       if (path === "clear") {
         pendingFiles = [];
-        add("File", "Pending attachments cleared.");
+        add("File", "Attachments cleared.");
         return;
       }
       void runBusy(async () => {
         pendingFiles.push(await runtime.attach(path));
-        add("Attached", `${path} · included with your next message`);
-      }, "Attachment error");
+        add("Attached", path);
+      }, "Error");
       return;
     }
     if (text === "/dsh") {
-      add("dsh", "Usage: /dsh <command> [arguments] · bypass TUI command names");
+      add("dsh", "Usage: /dsh <command> [arguments]");
       return;
     }
     if (text.startsWith("/dsh ")) text = "/" + text.slice(5).trimStart().replace(/^\//, "");
@@ -1186,8 +1170,7 @@ export async function runUI(
         }
         if (result.finalResponse && result.finalResponse !== lastAssistant)
           add(result.finishReason === "error" ? "Error" : "dsh", result.finalResponse, true);
-        else if (result.finishReason === "error")
-          add("Error", "dsh reported an error. Review the output above.");
+        else if (result.finishReason === "error") add("Error", "dsh reported an error.");
       } catch (error) {
         if (!closing) add("Error", error instanceof Error ? error.message : String(error));
       } finally {
@@ -1224,10 +1207,12 @@ export async function runUI(
         update();
         void runtime
           .cancel()
-          .then(() => add("Stopped", cancellationNotice(queued)))
-          .catch((error) =>
-            add("Stop error", error instanceof Error ? error.message : String(error)),
-          )
+          .then(() => {
+            // A queued prompt starts as soon as the turn stops, so a notice
+            // saying the turn was cancelled would only be noise there.
+            if (queued === 0) add("Interrupted");
+          })
+          .catch((error) => add("Error", error instanceof Error ? error.message : String(error)))
           .finally(() => {
             stopping = false;
             drainQueue();
@@ -1263,7 +1248,7 @@ export async function runUI(
         await hooks.afterFirstPaint();
       } catch (error) {
         startupFailed = true;
-        add("Startup", error instanceof Error ? error.message : String(error));
+        add("Error", error instanceof Error ? error.message : String(error));
       } finally {
         starting = false;
         update();

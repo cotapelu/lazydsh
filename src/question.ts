@@ -175,7 +175,10 @@ export class QuestionPanel implements Component {
       : this.question.multiSelect
         ? "Space toggle"
         : `1–${Math.min(9, labels.length)} choose now`;
-    lines.push(...text(dim(`${help} · ↑↓ move · Tab questions · Enter select · Esc back`)));
+    const keys = this.editing
+      ? `${help} · Enter confirm · Esc back`
+      : `↑↓ move · ${help} · Tab questions · Enter select · Esc back`;
+    lines.push(...text(dim(keys)));
     return lines;
   }
 }

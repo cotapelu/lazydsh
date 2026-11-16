@@ -60,8 +60,8 @@ export async function terminalAuth(
           const picker = (providerPicker ??= new SearchPicker(
             runtime.authProviders(),
             command === "login"
-              ? "Choose a provider to sign in to"
-              : "Choose a provider to sign out of",
+              ? "Choose a provider to log in to"
+              : "Choose a provider to log out of",
             6,
             undefined,
             true,
@@ -90,11 +90,9 @@ export async function terminalAuth(
               void openAuthUrl(params.url);
               return null;
             }
-            if (pending)
-              throw new Error("Another authentication question is already awaiting an answer.");
+            if (pending) throw new Error("Another login prompt is already open.");
             return new Promise<string | null>((resolve) => {
-              const message =
-                typeof params.message === "string" ? params.message : "Authentication";
+              const message = typeof params.message === "string" ? params.message : "Login";
               const input =
                 params.kind === "secret"
                   ? new SecretInput({ prompt: accent("┃ ") })

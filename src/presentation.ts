@@ -121,7 +121,7 @@ export class QueueView extends Container {
 }
 
 export class Notification extends Text {
-  constructor(label: string, text: unknown) {
+  constructor(label: string, text: unknown = "") {
     super(formatNotification(label, text), 2, 1);
   }
 }

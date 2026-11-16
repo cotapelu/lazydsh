@@ -65,7 +65,7 @@ ${heading("Usage:")}
 ${heading("Commands:")}
 ${row("ask [prompt]", "Run one noninteractive request")}
 ${row("resume [session-id]", "Continue a saved conversation")}
-${row("login [provider]", "Sign in with OAuth or an API key")}
+${row("login [provider]", "Log in with OAuth or an API key")}
 ${row("logout [provider]", "Remove saved provider credentials")}
 ${row("upgrade", "Update lazydsh to the latest version")}
 
@@ -98,7 +98,7 @@ function commandHelp(command: string): string {
       flags: connectionFlags,
     },
     login: {
-      description: "Sign in to a provider without creating a conversation.",
+      description: "Log in to a provider without creating a conversation.",
       usage: "login [provider] [flags]",
       argument: ["[provider]", "Provider ID (optional; codex = openai-codex)"],
       flags: authFlags,
@@ -284,7 +284,7 @@ async function main() {
     });
     try {
       const app = ctx.get("lazydshApp");
-      if (!app) throw new Error("lazydsh plugin did not start");
+      if (!app) throw new Error("lazydsh plugin did not start.");
       await app.done;
     } finally {
       await shutdown.shutdown(process.exitCode ? Number(process.exitCode) : 0);

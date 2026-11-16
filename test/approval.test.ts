@@ -10,7 +10,7 @@ const plain = (panel: ApprovalPanel, width = 80) =>
 test("approval renders the tool, reason, and selectable choices", () => {
   const panel = new ApprovalPanel({ toolName: "bash", reason: "Needs network access" });
   const text = plain(panel);
-  assert.match(text, /Permission required/);
+  assert.match(text, /Approval required/);
   assert.match(text, /Allow bash to run\?/);
   assert.match(text, /Needs network access/);
   assert.match(text, /› 1\) Allow once/);

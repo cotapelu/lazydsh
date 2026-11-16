@@ -77,7 +77,7 @@ export class ApprovalPanel implements Component {
     );
     list.setSelectedIndex(this.index);
     const lines = [
-      ...text(dim("Permission required")),
+      ...text(dim("Approval required")),
       "",
       ...text(`Allow ${accent(this.toolName)} to run?`),
     ];
@@ -86,7 +86,7 @@ export class ApprovalPanel implements Component {
       "",
       ...list.render(Math.max(1, width - 4)).map((line) => truncateToWidth("  " + line, width)),
       "",
-      ...text(dim("↑↓ move · Enter select · 1–2 choose · Esc cancel")),
+      ...text(dim("↑↓ move · 1–2 choose · Enter select · Esc cancel")),
     );
     return lines;
   }

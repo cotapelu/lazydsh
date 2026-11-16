@@ -53,7 +53,7 @@ Usage:
 Commands:
   ask [prompt]            Run one noninteractive request
   resume [session-id]     Continue a saved conversation
-  login [provider]        Sign in with OAuth or an API key
+  login [provider]        Log in with OAuth or an API key
   logout [provider]       Remove saved provider credentials
   upgrade                 Update lazydsh to the latest version
 

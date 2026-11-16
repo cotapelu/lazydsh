@@ -126,7 +126,7 @@ test("providers, commands and lifecycle", async () => {
       await assert.rejects(runtime.run("/unknown"),/Unknown dsh command/);
       await runtime.close();
     }
-    await assert.rejects(runtime.run("hello"),/Select a model/);
+    await assert.rejects(runtime.run("hello"),/No model selected/);
   `,
   );
 });
@@ -481,7 +481,7 @@ test("login and logout", async () => {
     await assert.rejects(runtime.logout("missing-provider"),/Unknown provider/);
     let codexPrompt;
     await assert.rejects(runtime.authenticate(undefined,{provider:"openai-codex",onAuth:async(_method,params)=>{codexPrompt=params;return null;}}),/cancelled/);
-    assert.equal(codexPrompt.message,"How would you like to sign in to Codex?");
+    assert.equal(codexPrompt.message,"How would you like to log in to Codex?");
     assert.deepEqual(codexPrompt.options.map(item=>item.label),["Open a browser","Use a device code"]);
     assert.equal(ctx.agents.list().length,before);
   `,
