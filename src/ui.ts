@@ -15,6 +15,7 @@ import type { RuntimeOptions, QuestionResult } from "./runtime.ts";
 import type { AdmittedPromptContentPart } from "@deepseek-ai/dsh-attachment";
 import { ToolLog, ToolRow } from "./tools.ts";
 import { SessionSelector } from "./session-selector.js";
+import { LoginDialog } from "./components/login-dialog.js";
 import type { SessionRecord } from "./session-selector.js";
 import {
   TuiAltScreen,
@@ -46,7 +47,6 @@ import {
   QueuedMessage,
   QueueView,
   Notification,
-  SecretInput,
   Transcript,
   ThinkingView,
   editorBorder,
@@ -299,66 +299,42 @@ export async function runUI(
   const callbacks: Callbacks = {
     onAuth: async (method, params, signal) => {
       if (signal?.aborted) return null;
-      if (method === "lazydsh/auth-notice") {
-        add("Login", [params.message, params.url, params.code].filter(Boolean).join("\n"));
-        void openAuthUrl(params.url);
-        return null;
-      }
+      if (decision) throw new Error("Another question is already awaiting an answer.");
       const message = typeof params.message === "string" ? params.message : "Login";
-      if (params.kind === "secret") {
-        add("Login", message);
-        return new Promise<string | null>((resolve) => {
-          const input = new SecretInput({ prompt: accent("┃ ") });
-          let settled = false;
-          const settle = (value: string | null) => {
-            if (settled) return;
-            settled = true;
-            signal?.removeEventListener("abort", abort);
-            input.setValue("");
-            decision = undefined;
-            dismissPanel();
-            resolve(value);
-          };
-          const abort = () => settle(null);
-          signal?.addEventListener("abort", abort, { once: true });
-          input.onSubmit = settle;
-          input.onEscape = () => settle(null);
-          decision = settle;
-          showPanel(input);
-        });
-      }
-      if (params.kind === "select" && Array.isArray(params.options)) {
-        if (decision) throw new Error("Another question is already awaiting an answer.");
-        const items = params.options as { id: string; label: string; description?: string }[];
-        if (!items.length) return null;
-        return new Promise<string | null>((resolve) => {
-          let settled = false;
-          const settle = (value: string | null) => {
-            if (settled) return;
-            settled = true;
-            signal?.removeEventListener("abort", abort);
-            decision = undefined;
-            dismissPanel();
-            update();
-            resolve(value);
-          };
-          const abort = () => settle(null);
-          const picker: SearchPicker = select(
-            items.map((item) => ({
-              value: item.id,
-              label: item.label,
-              description: item.description,
-            })),
+      // OAuth notices carry a URL and an optional device code; the dialog shows
+      // both and opens the browser.
+      if (method === "lazydsh/auth-notice") {
+        void openAuthUrl(params.url);
+        const dialog = new LoginDialog(
+          {
+            kind: "notice",
             message,
-            settle,
-            undefined,
-            false,
-          );
-          picker.onCancel = abort;
-          decision = abort;
-          signal?.addEventListener("abort", abort, { once: true });
-          update();
-        });
+            ...(typeof params.url === "string" ? { url: params.url } : {}),
+            ...(typeof params.code === "string" ? { code: params.code } : {}),
+          },
+          tui,
+        );
+        signal?.addEventListener("abort", () => dialog.cancel(), { once: true });
+        showPanel(dialog);
+        return await dialog.whenDone();
+      }
+      if (params.kind === "secret" || params.kind === "select") {
+        const options =
+          params.kind === "select" && Array.isArray(params.options)
+            ? (params.options as { id: string; label: string; description?: string }[])
+            : undefined;
+        if (params.kind === "select" && (options?.length ?? 0) === 0) return null;
+        const dialog: LoginDialog = new LoginDialog(
+          {
+            kind: params.kind,
+            message,
+            ...(options === undefined ? {} : { options }),
+          },
+          tui,
+        );
+        signal?.addEventListener("abort", () => dialog.cancel(), { once: true });
+        showPanel(dialog);
+        return await dialog.whenDone();
       }
       return ask(message, signal);
     },

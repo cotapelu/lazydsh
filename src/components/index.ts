@@ -52,6 +52,7 @@ export {
 } from "./status-indicator.js";
 export { StatusIndicatorContainer } from "./status-container.js";
 export { HeaderComponent, type HeaderOptions } from "./header.js";
+export { LoginDialog, type LoginPrompt, type LoginPromptKind } from "./login-dialog.js";
 export { KeybindingsManager, APP_KEYBINDINGS, KEYBINDINGS } from "../keybindings.js";
 export { ThemeController } from "../theme/theme-controller.js";
 export { getMarkdownTheme, getSelectListTheme, getEditorTheme } from "../theme/theme.js";

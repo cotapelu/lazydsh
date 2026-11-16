@@ -348,12 +348,13 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
 - [x] **Wired into /resume** in ui.ts with toSessionRecords adapter
 - [x] Runtime.sessions() now returns modified + messageCount
 
-### 6.5 Login Dialog (MEDIUM) - 6h
+### 6.5 Login Dialog (MEDIUM) - 6h ✅ COMPLETE
 
-- [ ] **Create `src/components/login-dialog.ts`** (4h)
-  - [ ] OAuth flow UI with spinner
-  - [ ] API key input with mask
-  - [ ] Device code flow support
+- [x] **Create `src/components/login-dialog.ts`** (4h)
+  - [x] OAuth notice with spinner + device code
+  - [x] Secret input (API key) with placeholder
+  - [x] Select list for login-method choice
+  - [x] Wired into Runtime.onAuth in ui.ts
 
 ### 6.6 External Editor Integration (MEDIUM) - 4h
 
