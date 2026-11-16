@@ -16,6 +16,8 @@ import type { AdmittedPromptContentPart } from "@deepseek-ai/dsh-attachment";
 import { ToolLog, ToolRow } from "./tools.ts";
 import { SessionSelector } from "./session-selector.js";
 import { LoginDialog } from "./components/login-dialog.js";
+import { AssistantMessageComponent } from "./components/assistant-message.js";
+import { UserMessageComponent } from "./components/user-message.js";
 import { editInExternalEditor, editorCommand } from "./external-editor.ts";
 import { copyToClipboard } from "./clipboard.ts";
 import { getKeybindings } from "@earendil-works/pi-tui";
@@ -26,7 +28,6 @@ import {
   VStack,
   ProcessTerminal,
   Text,
-  Markdown,
   Container,
   type Component,
 } from "@earendil-works/pi-tui";
@@ -45,7 +46,6 @@ import { dshCachePath } from "@deepseek-ai/dsh-home-paths";
 import {
   StatusPanel,
   PromptEditor,
-  SentMessage,
   QueuedMessage,
   QueueView,
   Notification,
@@ -229,21 +229,25 @@ export async function runUI(
     }
   }
 
-  function add(label: string, text: unknown = "", markdown = false) {
+  function add(label: string, text: unknown = "", stop?: "aborted" | "length" | "error") {
     if (label === "You") {
-      transcript.addChild(new SentMessage(String(text)));
+      transcript.addChild(new UserMessageComponent(String(text)));
       tui.requestRender();
       return;
     }
     if (label === "assistant") {
+      // Final answers render as one assistant message: markdown text, OSC133
+      // zone markers, and the stop reason (length/aborted/error).
       transcript.addChild(
-        markdown
-          ? new Markdown(safeText(text), 2, 1, markdownTheme)
-          : new Text(safeText(text), 2, 1),
+        new AssistantMessageComponent({
+          content: [{ type: "text", text: safeText(text) }],
+          ...(stop === undefined ? {} : { stopReason: stop }),
+        }),
       );
-    } else {
-      transcript.addChild(new Notification(label, text));
+      tui.requestRender();
+      return;
     }
+    transcript.addChild(new Notification(label, text));
     tui.requestRender();
   }
 
@@ -453,7 +457,6 @@ export async function runUI(
                   ? "assistant"
                   : (row.label ?? "dsh"),
               row.text,
-              row.kind === "assistant",
             );
         }
         scroll.scrollToEnd();
@@ -1188,7 +1191,7 @@ export async function runUI(
               if (!transcript.children.includes(liveAnswer)) transcript.addChild(liveAnswer);
               liveAnswer = undefined;
               tui.requestRender();
-            } else add("assistant", output.text, true);
+            } else add("assistant", output.text);
           },
           pendingFiles,
         );
@@ -1197,7 +1200,7 @@ export async function runUI(
           if (/^\/effort\s+\S/.test(text.trim())) await persistSelection();
         }
         if (result.finalResponse && result.finalResponse !== lastAssistant)
-          add(result.finishReason === "error" ? "Error" : "dsh", result.finalResponse, true);
+          add(result.finishReason === "error" ? "Error" : "dsh", result.finalResponse);
         else if (result.finishReason === "error") add("Error", "dsh reported an error.");
       } catch (error) {
         if (!closing) add("Error", error instanceof Error ? error.message : String(error));

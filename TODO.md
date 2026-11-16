@@ -372,10 +372,12 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
 - [ ] **Ctrl+T** → cycle thinking level
 - [ ] Inline selector in footer/header
 
-### 6.9 Message Components Polish (MEDIUM) - 6h
+### 6.9 Message Components Polish (MEDIUM) - 6h ✅ COMPLETE
 
-- [ ] **Assistant Message**: OSC133 zones, stop reasons (error/aborted/length)
-- [ ] **User Message**: OSC133 zones, command highlighting
+- [x] **Assistant Message**: OSC133 zones + stop reasons (error/aborted/length)
+- [x] **User Message**: OSC133 zones + markdown + userMessage tokens
+- [x] add() in ui.ts now renders final answers via AssistantMessageComponent
+- [x] add() sends user messages via UserMessageComponent
 
 ### 6.9 Bug Report (LOW) - 4h
 
