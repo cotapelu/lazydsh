@@ -22,6 +22,8 @@ import { editInExternalEditor, editorCommand } from "./external-editor.ts";
 import { copyToClipboard } from "./clipboard.ts";
 import { ProgramStatusReporter } from "./program-status.ts";
 import { StatusIndicatorContainer } from "./components/status-container.js";
+import { FooterComponent } from "./footer.js";
+import { createFooterDataProvider } from "./footer-data-provider.js";
 import { getKeybindings } from "@earendil-works/pi-tui";
 import type { SessionRecord } from "./session-selector.js";
 import {
@@ -129,6 +131,49 @@ export async function runUI(
   const queue: { text: string; view: QueuedMessage }[] = [];
   const statusContainer = new StatusIndicatorContainer(tui);
   const programStatus = new ProgramStatusReporter(tui);
+
+  // Context footer: pwd/git branch • session name, then tokens, cache hit
+  // rate, cost, context %, model and thinking level. Data comes from the
+  // provider (git/cwd) and from the session manager + projections.
+  const footerDataProvider = createFooterDataProvider(
+    options.cwd,
+    () => {
+      const name = runtime.sessionManager?.getSessionName?.();
+      return typeof name === "string" ? name : undefined;
+    },
+    () => ({
+      getAvailableSnapshot: () => [],
+      getProviders: () => runtime.authProviders(),
+    }),
+  );
+  footerDataProvider.setAvailableProviderCount(runtime.authProviders().length);
+  const footer = new FooterComponent({
+    session: {
+      sessionManager: {
+        getCwd: () => options.cwd,
+        getSessionId: () => runtime.session?.id ?? "",
+        getLeafId: () => String(runtime.session?.seq ?? 0),
+        getEntryCount: () => 0,
+        getSessionName: () => runtime.sessionManager?.getSessionName?.(),
+        getEntries: () => [],
+      },
+      routedModel: runtime.routedModel,
+      model: runtime.selection()
+        ? {
+            provider: runtime.selection()!.provider,
+            id: runtime.selection()!.model,
+            contextWindow: runtime.contextUsage?.contextWindow,
+          }
+        : undefined,
+      thinkingLevel: runtime.thinkingLevel,
+      autoCompactionEnabled: true,
+      getContextUsage: () => runtime.contextUsage,
+    },
+    footerData: footerDataProvider,
+  });
+  footerDataProvider.onBranchChange(() => tui.requestRender());
+  const footerContainer = new Container();
+  footerContainer.addChild(footer);
   const editor = new PromptEditor(tui, {
     borderColor: editorBorder,
     selectList: { ...selectionTheme, noMatch: dim },
@@ -169,6 +214,7 @@ export async function runUI(
       { component: scroll, basis: 0, grow: 1, minSize: 1 },
       { component: statusContainer, shrink: 0 },
       { component: editor, shrink: 0 },
+      { component: footerContainer, shrink: 0 },
     ]),
   );
   tui.setFocus(editor);
@@ -224,6 +270,8 @@ export async function runUI(
       const next = await runtime.stats();
       if (runtime.session?.id === sessionId && !closing) {
         stats = next;
+        footerDataProvider.setCwd(options.cwd);
+        footer.invalidate();
         update();
       }
     } catch {
