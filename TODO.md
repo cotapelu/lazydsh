@@ -302,18 +302,19 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
   - [x] `StatusIndicatorContainer` manages transitions
   - [x] Layout: scroll → status → editor
 
-### 6.2 Header Component (HIGH) - 8h
+### 6.2 Header Component (HIGH) - 8h ✅ COMPLETE
 
-- [ ] **Create `src/components/header.ts`** (4h)
-  - [ ] Logo (pi logo with click easter egg)
-  - [ ] Version display
-  - [ ] Keybinding hints (dynamic, responsive)
-  - [ ] Changelog display (collapsible)
-  - [ ] Model scope notice
+- [x] **Create `src/components/header.ts`** (4h)
+  - [x] Logo (whale logo, lazydsh branding)
+  - [x] Version display
+  - [x] Keybinding hints (compact + expandable full list)
+  - [x] Click to expand/collapse full hints
+  - [ ] Changelog display (collapsible) — deferred
+  - [ ] Model scope notice — deferred
 
-- [ ] **Wire into `chat-viewport.ts`** (4h)
-  - [ ] Add header container above transcript
-  - [ ] Responsive layout (hide hints on narrow)
+- [x] **Wire into `ui.ts`** (4h)
+  - [x] Replaces StartupBanner
+  - [x] Header sits above transcript in the scroll container
 
 ### 6.3 Keybinding Hints in UI (HIGH) - 6h
 

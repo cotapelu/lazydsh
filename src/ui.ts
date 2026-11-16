@@ -38,7 +38,6 @@ import { captureConsole } from "./tui-console.ts";
 import { dshCachePath } from "@deepseek-ai/dsh-home-paths";
 
 import {
-  StartupBanner,
   StatusPanel,
   PromptEditor,
   SentMessage,
@@ -50,6 +49,7 @@ import {
   ThinkingView,
   editorBorder,
 } from "./presentation.ts";
+import { HeaderComponent } from "./components/header.js";
 import { safeText, accent, dim } from "./theme.ts";
 
 const identity = (text: string) => text;
@@ -99,7 +99,7 @@ export async function runUI(
     mouse: true,
     scrollToEndIndicator: () => dim("↓ latest"),
   });
-  const header = new StartupBanner();
+  const header = new HeaderComponent({ version: "0.2.0" });
   const transcript = new Transcript();
   // Prompts typed during a running turn wait below the transcript; drainQueue sends
   // them one at a time as each turn finishes.
