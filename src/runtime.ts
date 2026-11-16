@@ -158,7 +158,7 @@ export class Runtime {
     return this.handle?.agent.session;
   }
   private get agent(): Agent {
-    if (!this.handle) throw new Error("Select a model first with /model.");
+    if (!this.handle) throw new Error("No model selected. Run /model.");
     return this.handle.agent;
   }
   private owns(agent: Agent) {
@@ -204,7 +204,7 @@ export class Runtime {
     }
     if (callbacks.resume) {
       if (ctx.get("workspaceRegistry")?.archivedSessionIds.includes(SessionId(callbacks.resume)))
-        throw new Error("Session is archived. Restore it with /sessions first.");
+        throw new Error("Session is archived. Run /restore.");
       const record = await ctx.get("sessionPersistence")?.stat(SessionId(callbacks.resume));
       if (record?.header.origin === "subagent")
         throw new Error("Resume the root session instead of a subagent.");
@@ -250,7 +250,7 @@ export class Runtime {
   }
   async sessions() {
     const query = this.ctx.get("sessionQuery");
-    if (!query) throw new Error("Session history unavailable");
+    if (!query) throw new Error("Session history is unavailable.");
     const workspace = this.ctx.get("workspaceRegistry");
     const cache = this.ctx.get("sessionProjectionCache");
     const records = (await query.listSessions()).filter(
@@ -300,11 +300,11 @@ export class Runtime {
   }
   async renameSession(id: string, title: string) {
     const titles = this.ctx.get("sessionTitle");
-    if (!titles) throw new Error("Session titles unavailable");
+    if (!titles) throw new Error("Session titles are unavailable.");
     if (id === this.session?.id) return titles.rename(this.agent.session, title).title;
     const saved = await this.ctx.get("sessionPersistence")?.stat(SessionId(id));
     if (!saved || saved.header.origin === "subagent")
-      throw new Error("Choose a saved root session");
+      throw new Error("Choose a saved root session.");
     const current = this.agent.model.current()!;
     const handle = await this.ctx.agents.resume({
       resumeSessionId: SessionId(id),
@@ -318,7 +318,7 @@ export class Runtime {
   }
   async manageSession(id: string, action: "archive" | "restore" | "pin" | "unpin") {
     const workspace = this.ctx.get("workspaceRegistry");
-    if (!workspace) throw new Error("Session management unavailable");
+    if (!workspace) throw new Error("Session management is unavailable.");
     const sessionId = SessionId(id);
     if (action === "archive") await workspace.archiveSession(sessionId);
     else if (action === "restore") await workspace.unarchiveSession(sessionId);
@@ -347,9 +347,9 @@ export class Runtime {
       });
   }
   async forkSession(boundary: number) {
-    if (this.agent.status === "running") throw new Error("Stop the response before forking");
+    if (this.agent.status === "running") throw new Error("Stop the response before forking.");
     if (!this.forkPoints().some((point) => point.value === String(boundary)))
-      throw new Error("Choose a completed turn");
+      throw new Error("Choose a completed turn.");
     const seed = buildForkSeed(this.agent.session.snapshotEvents(), SessionSeq(boundary));
     const current = this.agent.model.current()!;
     const child = await this.ctx.agents.create({
@@ -370,7 +370,7 @@ export class Runtime {
   }
   async jobs() {
     const registry = this.ctx.get("jobs");
-    if (!registry) throw new Error("Background jobs unavailable");
+    if (!registry) throw new Error("Background jobs are unavailable.");
     const descendants = await this.ctx.get("subagents")?.listDescendants(this.agent.session.id);
     const owners = [
       this.agent.session.id,
@@ -384,7 +384,7 @@ export class Runtime {
   }
   async job(id: string, stop = false) {
     const job = (await this.jobs()).find((job) => job.id === id);
-    if (!job) throw new Error("Job not found in this session");
+    if (!job) throw new Error("Job not found in this session.");
     const registry = this.ctx.get("jobs")!;
     if (stop) return registry.kill(JobId(id), job.owner, "Stopped from lazydsh");
     const output = registry.readAt(JobId(id), 0, job.owner);
@@ -476,9 +476,9 @@ export class Runtime {
     }
     if (kind === "mode") {
       const mode = ctx.get("planMode");
-      if (!mode) throw new Error("Plan mode unavailable");
+      if (!mode) throw new Error("Plan mode is unavailable.");
       if (value !== undefined) {
-        if (value !== "default" && value !== "plan") throw new Error("Unknown mode");
+        if (value !== "default" && value !== "plan") throw new Error(`Unknown mode: ${value}.`);
         mode.set(agent, value === "plan");
       }
       const state = mode.get(agent);
@@ -491,7 +491,7 @@ export class Runtime {
       };
     }
     const presets = ctx.get("permissionPresets");
-    if (!presets) throw new Error("Permission presets unavailable");
+    if (!presets) throw new Error("Permission presets are unavailable.");
     if (value !== undefined) presets.set(agent.session, value);
     return {
       current: presets.current(agent.session),
@@ -523,10 +523,10 @@ export class Runtime {
   /**
    * Describe where a route's credentials come from.
    *
-   * A stored sign-in, a provider environment variable, and an ambient provider
+   * A stored login, a provider environment variable, and an ambient provider
    * source (AWS profiles, ADC files) are distinguished so the TUI can show
    * which one is active. Routes this build does not know — a provider added
-   * through --patch — answer `unknown` rather than pretending to be signed out.
+   * through --patch — answer `unknown` rather than pretending to be logged out.
    */
   async credentialSource(provider?: string, signal?: AbortSignal): Promise<CredentialSource> {
     const route = provider ?? this.handle?.agent.model.current()?.provider;
@@ -536,12 +536,12 @@ export class Runtime {
       const info = await this.ctx.credentials.describe(credentialRef(ref));
       return info.configured
         ? describeCredentialRef(ref, info)
-        : { kind: "none", label: "Not signed in" };
+        : { kind: "none", label: "Not logged in" };
     }
     const record = await this.ctx.credentials.describeRecord(credentialKey("llm-pi-ai", route));
     if (record.configured)
       return record.kind === "grant"
-        ? { kind: "oauth", label: "OAuth sign-in (saved)" }
+        ? { kind: "oauth", label: "OAuth login (saved)" }
         : { kind: "store", label: "Saved credential" };
     // Prefer the route's declared ambient sources: this is a cheap answer and
     // avoids provider-specific credential resolution on every send.
@@ -554,10 +554,10 @@ export class Runtime {
         if (info.configured) return describeCredentialRef(ref, info);
       }
       // No ambient env source is declared at all: an OAuth-only route has no
-      // stored sign-in here, while a keyless route needs no credential.
+      // stored login here, while a keyless route needs no credential.
       if (native.env.length === 0)
         return native.oauth
-          ? { kind: "none", label: "Not signed in" }
+          ? { kind: "none", label: "Not logged in" }
           : { kind: "keyless", label: "No credentials required" };
     }
     const installed = builtinProviders().find((item) => item.id === route);
@@ -566,7 +566,7 @@ export class Runtime {
     if (!apiKey)
       return installed.auth.oauth === undefined
         ? { kind: "keyless", label: "No credentials required" }
-        : { kind: "none", label: "Not signed in" };
+        : { kind: "none", label: "Not logged in" };
     const input = {
       ctx: {
         env: async (name: string) =>
@@ -584,7 +584,7 @@ export class Runtime {
     };
     try {
       const result = await (apiKey.check ? apiKey.check(input) : apiKey.resolve(input));
-      if (!result) return { kind: "none", label: "Not signed in" };
+      if (!result) return { kind: "none", label: "Not logged in" };
       const source = typeof result.source === "string" && result.source ? result.source : undefined;
       if (source) {
         const ref = native?.env.find((name) => source === name || source.includes(name));
@@ -593,7 +593,7 @@ export class Runtime {
       }
       return { kind: "ambient", label: "Provider credentials" };
     } catch {
-      // Detection failure alone must not claim the route is signed out.
+      // Detection failure alone must not claim the route is logged out.
       return { kind: "unknown", label: "Provider-managed credentials" };
     }
   }
@@ -601,13 +601,13 @@ export class Runtime {
     return (await this.credentialSource(provider, signal)).kind !== "none";
   }
   /**
-   * Sign in to a provider.
+   * Log in to a provider.
    *
    * Explicit requests (`/login` and `lazydsh login`) refuse to replace a
-   * working sign-in. Automatic recovery from an expired token passes
+   * working login. Automatic recovery from an expired token passes
    * `reauthenticate: true` so it is never blocked.
    *
-   * Returns a short notice when sign-in was skipped because it is unnecessary
+   * Returns a short notice when login was skipped because it is unnecessary
    * or already active; `undefined` means the flow completed.
    */
   async authenticate(
@@ -628,13 +628,13 @@ export class Runtime {
     let goingBack = false;
     const prompt = async (params: Record<string, unknown>, promptSignal = signal) => {
       const message =
-        typeof params.message === "string" ? params.message.replace(/:\s*$/, "") : "Authentication";
+        typeof params.message === "string" ? params.message.replace(/:\s*$/, "") : "Login";
       const codexMethod =
         params.kind === "select" && message === "Select OpenAI Codex login method";
       const display = codexMethod
         ? {
             ...params,
-            message: "How would you like to sign in to Codex?",
+            message: "How would you like to log in to Codex?",
             options: (params.options as { id: string; label: string }[]).map((item) => ({
               ...item,
               label:
@@ -645,9 +645,9 @@ export class Runtime {
                     : item.label,
               description:
                 item.id === "browser"
-                  ? "Sign in on this computer"
+                  ? "Log in on this computer"
                   : item.id === "device_code"
-                    ? "Sign in from another device"
+                    ? "Log in from another device"
                     : undefined,
             })),
           }
@@ -682,17 +682,17 @@ export class Runtime {
             .list()
             .find((entry) => entry.key === `llm-pi-ai/${provider}`);
           if (!flow)
-            throw new Error(`No login flow for ${provider}. Configure its credentials and retry.`);
+            throw new Error(`No login method for ${provider}. Configure credentials and retry.`);
           const method =
             flow.methods.length > 1
               ? await prompt({
                   kind: "select",
-                  message: `How would you like to sign in to ${flow.label}?`,
+                  message: `How would you like to log in to ${flow.label}?`,
                   options: flow.methods.map((method) => ({
                     ...method,
                     label:
                       method.id === "oauth"
-                        ? "Sign in with your account"
+                        ? "Log in with your account"
                         : method.id === "api-key"
                           ? "Use an API key"
                           : method.label,
@@ -723,7 +723,7 @@ export class Runtime {
           });
           signal?.throwIfAborted();
           if (result.status !== "authorized")
-            throw new AuthorizationDeclinedError("Authentication cancelled");
+            throw new AuthorizationDeclinedError("Login cancelled");
         }
         break;
       } catch (error) {
@@ -737,7 +737,7 @@ export class Runtime {
    * Remove saved credentials.
    *
    * Returns the credential refs that remain configured, or `undefined` when
-   * there was nothing to sign out of.
+   * there was nothing to log out of.
    */
   async logout(provider: string): Promise<string[] | undefined> {
     const source = await this.credentialSource(provider);
@@ -747,7 +747,7 @@ export class Runtime {
     else {
       const key = credentialKey("llm-pi-ai", provider);
       if (!this.ctx.authorization.list().some((flow) => flow.key === key))
-        throw new Error(`Unknown provider: ${provider}`);
+        throw new Error(`Unknown provider: ${provider}.`);
       this.ctx.authorization.cancel(key);
       await this.ctx.credentials.deleteRecord(key);
     }
@@ -832,8 +832,7 @@ export class Runtime {
       if (onSnapshot && !this.authFailed) onSnapshot(await this.stats());
       await this.checkConnection();
     }
-    if (this.authFailed)
-      throw new Error("Model authentication failed. Run /status or retry a message to sign in.");
+    if (this.authFailed) throw new Error("Login failed. Run /login.");
     const current = this.agent.model.current()!;
     const info = await this.ctx.llm.resolveModelInfo(current.provider, current.model);
     if (connect)
@@ -896,7 +895,7 @@ export class Runtime {
     path = resolve(await this.cd(), path);
     const info = await stat(path);
     if (!info.isFile() || info.size > 20 * 1024 * 1024)
-      throw new Error("Choose a regular file up to 20 MiB");
+      throw new Error("Choose a regular file up to 20 MiB.");
     const data = (await readFile(path)).toString("base64");
     const mediaTypes: Record<string, ImageMediaType> = {
       png: "image/png",
@@ -975,7 +974,7 @@ export class Runtime {
             this.authFailed = true;
             if (options.authenticate === false)
               throw new Error(
-                `Authentication is required. Run lazydsh login ${agent.model.current()!.provider} in a terminal first.`,
+                `Login required. Run lazydsh login ${agent.model.current()!.provider} in a terminal first.`,
               );
             retriedAuth = true;
             await this.authenticate(request.signal, {
@@ -999,7 +998,7 @@ export class Runtime {
         const submitted: CommandSubmitAttachment[] = [];
         for (const attachment of attachments) {
           if (attachment.type !== "image")
-            throw new Error("Send file attachments with a message first.");
+            throw new Error("Attachments can only be sent with a message.");
           const image = await ctx.attachments.readImage(attachment.attachment, signal);
           submitted.push({
             type: "image",
@@ -1011,14 +1010,14 @@ export class Runtime {
         const commands = ctx.commands.list(agent);
         const match = /^\s*\/([^\s]+)([\s\S]*)$/.exec(text)!;
         const command = resolveCommand(match[1], commands);
-        if (!command) throw new Error(`Unknown dsh command: /${match[1]}`);
+        if (!command) throw new Error(`Unknown dsh command: /${match[1]}.`);
         const execution = await ctx.commands.execute(
           agent,
           `/${command.name}${match[2]}`,
           submitted,
           signal,
         );
-        if (!execution) throw new Error("Command unavailable");
+        if (!execution) throw new Error("Command unavailable.");
         commandText = execution.result.text;
         commandError = execution.result.kind === "error";
       } else {
@@ -1026,8 +1025,8 @@ export class Runtime {
         if (provider !== undefined && !(await this.hasCredentials(provider, signal)))
           throw new Error(
             options.authenticate === false
-              ? `Authentication is required. Run lazydsh login ${provider} in a terminal first.`
-              : `Not logged in to ${provider}. Run /login ${provider} to sign in.`,
+              ? `Login required. Run lazydsh login ${provider} in a terminal first.`
+              : `Not logged in to ${provider}. Run /login ${provider}.`,
           );
         agent.followup(
           createUserMessage({

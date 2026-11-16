@@ -53,7 +53,7 @@ Usage:
 Commands:
   ask [prompt]            Run one noninteractive request
   resume [session-id]     Continue a saved conversation
-  login [provider]        Sign in with OAuth or an API key
+  login [provider]        Log in with OAuth or an API key
   logout [provider]       Remove saved provider credentials
   upgrade                 Update lazydsh to the latest version
 
@@ -80,7 +80,7 @@ Flags:
 | `/cd`         | —                  | Choose the working directory for the session                           |
 | `/permission` | `[preset]`         | View and select dsh permission presets                                 |
 | `/model`      | —                  | Select provider and model                                              |
-| `/login`      | `[provider]`       | Sign in to a provider with OAuth or an API key                         |
+| `/login`      | `[provider]`       | Log in to a provider with OAuth or an API key                          |
 | `/logout`     | `[provider]`       | Remove saved provider credentials                                      |
 | `/file`       | `<path>            | clear`                                                                 | Attach a file/image to the next message or clear attachments |
 | `/dsh`        | `<command> [args]` | Run native dsh commands (even if they conflict with TUI command names) |

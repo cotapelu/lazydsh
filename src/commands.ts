@@ -2,80 +2,79 @@ import type { SlashCommand } from "@earendil-works/pi-tui";
 import type { CommandDescriptor } from "@deepseek-ai/dsh-commands/types";
 
 const localCommands: SlashCommand[] = [
-  { name: "clear", description: "Clear the visible chat while keeping the current conversation" },
-  { name: "resume", description: "Choose a saved conversation to resume" },
-  { name: "cd", description: "Choose the session working directory" },
-  { name: "permission", description: "Choose a dsh permission preset" },
-  { name: "model", description: "Choose a provider and model while keeping conversation history" },
+  { name: "clear", description: "Clear the chat" },
+  { name: "resume", description: "Resume a saved conversation" },
+  { name: "cd", description: "Change the working directory" },
+  { name: "permission", description: "Show or choose a permission preset" },
+  { name: "model", description: "Switch provider and model" },
   {
     name: "login",
     argumentHint: "[provider]",
-    description: "Sign in to a provider with OAuth or an API key",
+    description: "Log in to a provider",
   },
   {
     name: "logout",
     argumentHint: "[provider]",
-    description: "Remove saved provider credentials",
+    description: "Remove saved credentials",
   },
   {
     name: "file",
     argumentHint: "<path> | clear",
-    description: "Attach a file or image to the next message, or clear attachments",
+    description: "Attach a file, or clear attachments",
   },
   {
     name: "dsh",
     argumentHint: "<command> [args]",
-    description: "Run a native dsh command, bypassing TUI command names",
+    description: "Run a native dsh command",
   },
   {
     name: "effort",
     argumentHint: "[level | default]",
-    description: "Choose reasoning effort from the current model's supported levels",
+    description: "Choose reasoning effort",
   },
-  { name: "new", description: "Start a new conversation with the current model" },
-  { name: "rename", argumentHint: "[title]", description: "Rename the current conversation" },
-  { name: "fork", description: "Fork the current conversation from a completed turn" },
-  { name: "archive", description: "Choose a conversation to archive" },
-  { name: "restore", description: "Choose an archived conversation to restore" },
-  { name: "pin", description: "Choose a conversation to pin" },
-  { name: "unpin", description: "Choose a conversation to unpin" },
-  { name: "ps", description: "List background jobs and inspect their output" },
-  { name: "stop", description: "Choose a background job to stop" },
-  { name: "session", description: "Show the current session ID for resuming later" },
+  { name: "new", description: "Start a new conversation" },
+  { name: "rename", argumentHint: "[title]", description: "Rename this conversation" },
+  { name: "fork", description: "Fork from a completed turn" },
+  { name: "archive", description: "Archive a conversation" },
+  { name: "restore", description: "Restore an archived conversation" },
+  { name: "pin", description: "Pin a conversation" },
+  { name: "unpin", description: "Unpin a conversation" },
+  { name: "ps", description: "List background jobs" },
+  { name: "stop", description: "Stop a background job" },
+  { name: "session", description: "Show the session ID" },
   {
     name: "status",
-    description: "Show model, session, usage, account limits, and dsh settings",
+    description: "Show model, usage, account, and settings",
   },
-  { name: "quit", description: "Shut down dsh and exit the TUI" },
+  { name: "quit", description: "Exit lazydsh" },
 ];
 
 const nativeCommands = [
-  { name: "compact", description: "Summarize conversation history to free context space" },
+  { name: "compact", description: "Summarize history to free context" },
   {
     name: "plan",
     argumentHint: "[off | message]",
-    description: "Enter or leave plan mode, or send planning instructions",
+    description: "Enter or leave plan mode",
   },
   {
     name: "goal",
     argumentHint: "[objective | clear | edit objective | pause | resume]",
-    description: "Create, inspect, edit, pause, resume, or clear a goal",
+    description: "Create, inspect, or update a goal",
   },
   {
     name: "permission",
     argumentHint: "[preset]",
-    description: "Show current permissions and available presets, or select a preset",
+    description: "Show or choose a permission preset",
   },
   {
     name: "feedback",
     argumentHint: "<text>",
-    description: "Record feedback about the current conversation in dsh",
+    description: "Send feedback about this conversation",
   },
   {
     name: "export",
     argumentHint: "[path.zip]",
-    description:
-      "Export the conversation, child sessions, and attachments as ZIP without overwriting",
+    description: "Export this conversation as ZIP",
   },
 ];
 

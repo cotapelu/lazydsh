@@ -13,8 +13,10 @@ export function terminalColor(stream: { isTTY?: boolean }) {
   return Boolean(stream.isTTY && process.env.NO_COLOR === undefined && process.env.TERM !== "dumb");
 }
 
-export function formatNotification(label: string, text: unknown, color = true) {
+export function formatNotification(label: string, text: unknown = "", color = true) {
   const icon = /error/i.test(label) ? "✗" : "✓";
-  const prefix = safeText(label).toLowerCase() + ":";
-  return `${color ? accent(icon) : icon} ${color ? dim(prefix) : prefix} ${safeText(text)}`;
+  const prefix = safeText(label).toLowerCase();
+  const body = safeText(text);
+  const head = body ? prefix + ":" : prefix;
+  return `${color ? accent(icon) : icon} ${color ? dim(head) : head}${body ? " " + body : ""}`;
 }
