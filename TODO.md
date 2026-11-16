@@ -288,18 +288,19 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
 
 ## Phase 6: Missing Polish (Week 6-8 - 40h) 🔴 HIGH PRIORITY
 
-### 6.1 Status Indicators (HIGH) - 8h
+### 6.1 Status Indicators (HIGH) - 8h ✅ COMPLETE
 
-- [ ] **Create `src/components/status-indicator.ts`** (4h)
-  - [ ] `WorkingStatusIndicator` - spinner with message
-  - [ ] `RetryStatusIndicator` - retry count, message
-  - [ ] `CompactionStatusIndicator` - progress bar
-  - [ ] `IdleStatus` - ready state
-  - [ ] Wire into `ui.ts` status container
+- [x] **Create `src/components/status-indicator.ts`** (4h)
+  - [x] `WorkingStatusIndicator` - spinner with message
+  - [x] `RetryStatusIndicator` - retry count, message
+  - [x] `CompactionStatusIndicator` - progress bar
+  - [x] `IdleStatus` - ready state
+  - [x] Wire into `ui.ts` status container
 
-- [ ] **Wire into `ui.ts`** (4h)
-  - [ ] Show/hide based on runtime state
-  - [ ] Smooth transitions between states
+- [x] **Wire into `ui.ts`** (4h)
+  - [x] Show/hide based on runtime state (working → idle → stopping)
+  - [x] `StatusIndicatorContainer` manages transitions
+  - [x] Layout: scroll → status → editor
 
 ### 6.2 Header Component (HIGH) - 8h
 
