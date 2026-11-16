@@ -8,6 +8,7 @@ import {
 } from "@earendil-works/pi-tui";
 import type { AskUserQuestionItem, AskUserQuestionAnswer } from "@deepseek-ai/dsh-user-questions";
 import { selectionTheme } from "./picker.ts";
+import { keyDisplayText, keyHint } from "./keybinding-hints.ts";
 import { accent, dim, safeText } from "./theme.ts";
 
 type Question = AskUserQuestionItem;
@@ -177,7 +178,7 @@ export class QuestionPanel implements Component {
         : `1–${Math.min(9, labels.length)} choose now`;
     const keys = this.editing
       ? `${help} · Enter confirm · Esc back`
-      : `↑↓ move · ${help} · Tab questions · Enter select · Esc back`;
+      : `${keyHint("tui.select.down", "move")} · ${help} · ${keyDisplayText("tui.input.tab")} questions · ${keyHint("tui.select.confirm", "select")} · ${keyHint("tui.select.cancel", "back")}`;
     lines.push(...text(dim(keys)));
     return lines;
   }

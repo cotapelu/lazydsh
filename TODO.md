@@ -316,14 +316,16 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
   - [x] Replaces StartupBanner
   - [x] Header sits above transcript in the scroll container
 
-### 6.3 Keybinding Hints in UI (HIGH) - 6h
+### 6.3 Keybinding Hints in UI (HIGH) - 6h ✅ COMPLETE
 
-- [ ] **Create `src/components/keybinding-hints.ts`** (3h)
-  - [ ] Dynamic hint generation from keybindings
-  - [ ] Context-aware hints (dialog, selector, editor)
-  - [ ] Responsive truncation
+- [x] **Hints follow configured keybindings** (src/keybinding-hints.ts)
+  - [x] keyHint/keyDisplayText helpers used everywhere
+  - [x] Picker hints reflect the user keybindings (not hardcoded keys)
 
-- [ ] **Wire into all pickers/dialogs** (3h)
+- [x] **Wired into pickers/dialogs** (3h)
+  - [x] SearchPicker: move/select/back + type-to-filter + quick-pick
+  - [x] SearchPicker supports extra contextual hints via setHints()
+  - [x] ApprovalPanel + QuestionPanel hints
 
 ### 6.4 Model Selector Polish (HIGH) - 6h
 

@@ -6,6 +6,7 @@ import {
   type Component,
 } from "@earendil-works/pi-tui";
 import { selectionTheme } from "./picker.ts";
+import { keyHint } from "./keybinding-hints.ts";
 import { accent, dim, safeText } from "./theme.ts";
 
 export type ApprovalChoice = "allowed-once" | "rejected";
@@ -86,7 +87,11 @@ export class ApprovalPanel implements Component {
       "",
       ...list.render(Math.max(1, width - 4)).map((line) => truncateToWidth("  " + line, width)),
       "",
-      ...text(dim("↑↓ move · 1–2 choose · Enter select · Esc cancel")),
+      ...text(
+        dim(
+          `${keyHint("tui.select.down", "move")} · 1–2 choose · ${keyHint("tui.select.confirm", "select")} · ${keyHint("tui.select.cancel", "cancel")}`,
+        ),
+      ),
     );
     return lines;
   }
