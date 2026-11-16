@@ -1276,6 +1276,40 @@ export async function runUI(
     );
   }
 
+  /** Ctrl+T: cycle the model's reasoning effort. */
+  async function cycleThinking() {
+    if (!runtime.session) {
+      add("Error", "No model selected. Run /model.");
+      return;
+    }
+    let order: string[] = [];
+    let current = "";
+    try {
+      const info = await runtime.efforts();
+      order = ["default", ...info.options.map((option) => option.id)];
+      current = info.current;
+    } catch (error) {
+      add("Error", error instanceof Error ? error.message : String(error));
+      return;
+    }
+    if (order.length === 0) {
+      add("Thinking", "This model has no reasoning effort levels.");
+      return;
+    }
+    const index = order.indexOf(current);
+    const next = order[(index + 1) % order.length] ?? "default";
+    try {
+      await runtime.run("/effort " + next, undefined, [], { commands: false });
+      add(
+        "Thinking",
+        next === "default" ? "Reasoning effort: provider default" : "Reasoning effort: " + next,
+      );
+      await refreshStats();
+    } catch (error) {
+      add("Error", error instanceof Error ? error.message : String(error));
+    }
+  }
+
   tui.addInputListener((data) => {
     const kb = keybindings;
     if (kb.matches(data, "app.clear")) {
@@ -1314,6 +1348,10 @@ export async function runUI(
     }
     if (kb.matches(data, "app.message.copy")) {
       void copyLastMessage();
+      return { consume: true };
+    }
+    if (kb.matches(data, "app.thinking.toggle")) {
+      void cycleThinking();
       return { consume: true };
     }
     return undefined;

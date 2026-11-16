@@ -367,10 +367,10 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
 - [x] **Ctrl+X** → copy last transcript message to clipboard (src/clipboard.ts)
 - [x] Native clipboard helper with pbcopy/clip/wl-copy/xclip fallback
 
-### 6.8 Thinking Selector (MEDIUM) - 3h
+### 6.8 Thinking Selector (MEDIUM) - 3h ✅ COMPLETE
 
-- [ ] **Ctrl+T** → cycle thinking level
-- [ ] Inline selector in footer/header
+- [x] **Ctrl+T** → cycle thinking level (cycles runtime.efforts() list)
+- [x] Applies /effort and reports the new level in the transcript
 
 ### 6.9 Message Components Polish (MEDIUM) - 6h ✅ COMPLETE
 
