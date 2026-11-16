@@ -279,7 +279,7 @@ function createSystemTheme(mode: ReturnType<typeof getTerminalColorMode>): Theme
 // ── loading ──
 
 function themesDir(): string {
-  return path.join(path.dirname(new URL(import.meta.url).pathname));
+  return path.join(path.dirname(new URL(import.meta.url).pathname), "theme");
 }
 
 /** Where user-authored themes live (`~/.config/lazydsh/themes`). */
