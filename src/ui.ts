@@ -14,6 +14,8 @@ import { commandMenu } from "./commands.ts";
 import type { RuntimeOptions, QuestionResult } from "./runtime.ts";
 import type { AdmittedPromptContentPart } from "@deepseek-ai/dsh-attachment";
 import { ToolLog, ToolRow } from "./tools.ts";
+import { SessionSelector } from "./session-selector.js";
+import type { SessionRecord } from "./session-selector.js";
 import {
   TuiAltScreen,
   ScrollView,
@@ -81,6 +83,22 @@ export function canRunDuringTurn(text: string) {
 
 export function shouldQueueDuringTurn(text: string) {
   return Boolean(text.trim()) && !/^\s*\//.test(text) && !canRunDuringTurn(text);
+}
+
+/** Map DSH session records onto the selector's view model. */
+function toSessionRecords(
+  records: Awaited<ReturnType<Runtime["sessions"]>>,
+  currentDirectory: string,
+): SessionRecord[] {
+  return records.map((record) => ({
+    id: record.id,
+    title: record.title,
+    directory: record.directory ?? currentDirectory,
+    archived: record.archived,
+    pinned: record.pinned,
+    modified: record.modified,
+    messageCount: record.messageCount,
+  }));
 }
 
 export async function runUI(
@@ -954,10 +972,38 @@ export async function runUI(
       };
       void runBusy(async () => {
         if (argument) await apply(argument);
-        else {
+        else if (name === "resume") {
+          const selector = new SessionSelector({
+            currentSessionId: runtime.session?.id,
+            currentDirectory: options.cwd,
+            onSelect: (id) => {
+              dismissPanel();
+              void runBusy(() => apply(id));
+            },
+            onCancel: () => dismissPanel(),
+            requestRender: () => tui.requestRender(),
+          });
+          showPanel(selector as unknown as Component);
+          selector.setLoading();
+          void runtime
+            .sessions()
+            .then((records) => {
+              selector.setSessions(toSessionRecords(records, options.cwd));
+              tui.requestRender();
+            })
+            .catch((error) => {
+              selector.setStatus(
+                {
+                  type: "error",
+                  message: error instanceof Error ? error.message : String(error),
+                },
+                4000,
+              );
+            });
+        } else {
           const picker: SearchPicker = select(
             [],
-            name === "resume" ? "Sessions" : name === "cd" ? "Directories" : "Permissions",
+            name === "cd" ? "Directories" : "Permissions",
             (value) => {
               void runBusy(() => apply(value));
             },
@@ -967,10 +1013,9 @@ export async function runUI(
           picker.setLoading();
           try {
             const choices = await runtime.choices(kind);
-            if (composer.children.includes(picker))
-              picker.setItems(choices.options, choices.current);
+            if (!selecting) picker.setItems(choices.options, choices.current);
           } catch (error) {
-            if (composer.children.includes(picker)) dismissPanel();
+            dismissPanel();
             throw error;
           }
         }

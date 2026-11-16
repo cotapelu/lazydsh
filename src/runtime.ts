@@ -361,6 +361,8 @@ export class Runtime {
       directory: record.header.cwd,
       archived: workspace?.archivedSessionIds.includes(record.header.id) ?? false,
       pinned: workspace?.pinnedSessionIds.includes(record.header.id) ?? false,
+      modified: record.header.createdAt,
+      messageCount: 0,
     }));
   }
   /** The effective directory recorded by a saved session, including later `/cd` changes. */

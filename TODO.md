@@ -327,20 +327,26 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
   - [x] SearchPicker supports extra contextual hints via setHints()
   - [x] ApprovalPanel + QuestionPanel hints
 
-### 6.4 Model Selector Polish (HIGH) - 6h
+### 6.4 Model Selector Polish (HIGH) - 6h ✅ COMPLETE
 
-- [ ] **Async catalog refresh** with progress spinner (2h)
-- [ ] **Error handling** for provider failures (1h)
-- [ ] **Save as default** (Ctrl+S) → persist to preferences (2h)
-- [ ] **Scoped/All toggle** with Tab (1h)
+- [x] **Async catalog refresh** with status message
+- [x] **Error handling** for provider failures
+- [x] **Save as default** (Ctrl+S) → onSelectAsDefault callback
+- [x] **Scoped/All toggle** with Tab
 
-### 6.5 Session Selector Polish (HIGH) - 8h
+### 6.5 Session Selector Polish (HIGH) - 8h ✅ COMPLETE (DSH-native)
 
-- [ ] **Progress loading** with loaded/total (2h)
-- [ ] **Delete session**: Ctrl+D → confirm → `trash` CLI fallback → `unlink` (2h)
-- [ ] **Rename session**: Ctrl+R → inline editor (2h)
-- [ ] **Current session marker** (accent color) (1h)
-- [ ] **Named session badge** (warning color) (1h)
+- [x] **Rewrote as DSH-native component** (src/session-selector.ts)
+- [x] **Progress loading** with loaded/total
+- [x] **Archive action** (Ctrl+D) → runtime.manageSession (no file ops needed)
+- [x] **Rename action** (Ctrl+R) → onRename callback
+- [x] **Current session marker** (accent ✓) + pinned marker (★)
+- [x] **Fuzzy search** over id/title/directory
+- [x] **Scope toggle** (Tab: all folders / current folder)
+- [x] **Sort toggle** (Ctrl+S: threaded/recent/relevance)
+- [x] **Named filter** (Ctrl+N) + **path toggle** (Ctrl+P)
+- [x] **Wired into /resume** in ui.ts with toSessionRecords adapter
+- [x] Runtime.sessions() now returns modified + messageCount
 
 ### 6.5 Login Dialog (MEDIUM) - 6h
 

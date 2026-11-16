@@ -9,9 +9,16 @@ export { DynamicBorder } from "./dynamic-border.js";
 export { truncateToVisualLines, displayWidth, lineCount } from "./visual-truncate.js";
 export { ModelSelectorComponent } from "../model-selector.js";
 export {
-  SessionSelectorComponent,
-  SessionList,
+  SessionSelector,
   SessionSelectorHeader,
+  formatAge,
+  shortenHome,
+} from "../session-selector.js";
+export type {
+  SessionRecord,
+  SessionScope,
+  SessionSortMode,
+  SessionNameFilter,
 } from "../session-selector.js";
 export {
   filterAndSortSessions,
