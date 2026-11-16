@@ -325,7 +325,7 @@ export async function runUI(
             resolve(value);
           };
           const abort = () => settle(null);
-          const picker = select(
+          const picker: SearchPicker = select(
             items.map((item) => ({
               value: item.id,
               label: item.label,
@@ -535,7 +535,7 @@ export async function runUI(
     const sessionDirectory = await runtime.sessionDirectory(sessionId);
     if (!sessionDirectory || (await sameDirectory(sessionDirectory, options.cwd))) return undefined;
     const choice = await new Promise<string | null>((resolve) => {
-      const picker = select(
+      const picker: SearchPicker = select(
         resumeDirectoryOptions(sessionDirectory, options.cwd),
         "Resume in directory",
         resolve,
@@ -565,7 +565,7 @@ export async function runUI(
 
   async function pickProviderModel(provider: string, sessionId?: string, parent?: SearchPicker) {
     const { models } = await import("./catalog.ts");
-    const picker = select(
+    const picker: SearchPicker = select(
       models(provider).map((model) => ({
         value: model.id,
         label: model.id,
@@ -586,7 +586,7 @@ export async function runUI(
 
   function chooseAuthProvider(command: "login" | "logout") {
     return new Promise<string | null>((resolve) => {
-      const picker = select(
+      const picker: SearchPicker = select(
         runtime.authProviders(),
         command === "login" ? "Choose a provider to log in to" : "Choose a provider to log out of",
         (value) => resolve(value),
@@ -836,7 +836,7 @@ export async function runUI(
         pin: "Pin conversation",
         unpin: "Unpin conversation",
       }[sessionAction];
-      const picker = select([], title, (id) => {
+      const picker: SearchPicker = select([], title, (id) => {
         void runBusy(async () => {
           await runtime.manageSession(id, sessionAction);
           if (sessionAction === "archive" && runtime.session?.id === id)
@@ -898,7 +898,7 @@ export async function runUI(
         add("Error", error instanceof Error ? error.message : String(error));
       if (jobCommand[2]) void perform(jobCommand[2]).catch(handleError);
       else {
-        const picker = select([], stopping ? "Stop job" : "Background jobs", (id) => {
+        const picker: SearchPicker = select([], stopping ? "Stop job" : "Background jobs", (id) => {
           void perform(id).catch(handleError);
         });
         picker.setLoading();
@@ -955,7 +955,7 @@ export async function runUI(
       void runBusy(async () => {
         if (argument) await apply(argument);
         else {
-          const picker = select(
+          const picker: SearchPicker = select(
             [],
             name === "resume" ? "Sessions" : name === "cd" ? "Directories" : "Permissions",
             (value) => {
@@ -986,7 +986,7 @@ export async function runUI(
       return;
     }
     if (text === "/effort") {
-      const picker = select(
+      const picker: SearchPicker = select(
         [],
         "Reasoning effort",
         (value) => {
@@ -1136,6 +1136,7 @@ export async function runUI(
               return;
             }
             if (
+              "sessionId" in notification.params &&
               notification.params.sessionId === runtime.session?.id &&
               notification.method === "session.event"
             ) {
@@ -1155,7 +1156,11 @@ export async function runUI(
             }
             if (!output.text) return;
             lastAssistant = output.text;
-            if (liveAnswer && notification.params.sessionId === runtime.session?.id) {
+            if (
+              liveAnswer &&
+              "sessionId" in notification.params &&
+              notification.params.sessionId === runtime.session?.id
+            ) {
               liveAnswer.setFinal(output.text);
               if (!transcript.children.includes(liveAnswer)) transcript.addChild(liveAnswer);
               liveAnswer = undefined;

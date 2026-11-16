@@ -178,6 +178,81 @@ export class Runtime {
       throw error;
     }
   }
+
+  // Event emitter for tool execution events
+  private toolEventListeners = new Map<string, Set<(event: any) => void>>();
+
+  on(
+    event: "tool_execution_start" | "tool_execution_update" | "tool_execution_end",
+    listener: (event: any) => void,
+  ): () => void {
+    if (!this.toolEventListeners.has(event)) {
+      this.toolEventListeners.set(event, new Set());
+    }
+    this.toolEventListeners.get(event)!.add(listener);
+    return () => {
+      this.toolEventListeners.get(event)?.delete(listener);
+    };
+  }
+
+  private emitToolEvent(
+    event: "tool_execution_start" | "tool_execution_update" | "tool_execution_end",
+    data: any,
+  ): void {
+    this.toolEventListeners.get(event)?.forEach((listener) => {
+      try {
+        listener(data);
+      } catch (e) {
+        console.error(`Error in ${event} listener:`, e);
+      }
+    });
+  }
+
+  get sessionManager() {
+    return this.ctx.get("sessionManager") ?? this.ctx.get("sessionPersistence");
+  }
+
+  get modelRuntime() {
+    return this.ctx.llm;
+  }
+
+  get routedModel(): { model: any; thinkingLevel?: string } | undefined {
+    const current = this.agent?.model?.current();
+    if (!current) return undefined;
+    const selection = this.selection();
+    if (
+      !selection ||
+      current.provider !== selection.provider ||
+      current.model !== selection.model
+    ) {
+      return { model: current, thinkingLevel: current.reasoningEffort };
+    }
+    return undefined;
+  }
+
+  get thinkingLevel(): string | undefined {
+    return this.agent?.model?.current()?.reasoningEffort;
+  }
+
+  get contextUsage(): { percent: number | null; contextWindow?: number } | undefined {
+    const session = this.session;
+    if (!session) return undefined;
+    const values = this.ctx.sessionProjections?.snapshot(this.agent.session, [
+      "contextPressure",
+    ]).values;
+    const cp = values?.contextPressure;
+    if (!cp) return undefined;
+    return {
+      percent: (cp as any).percent ?? null,
+      contextWindow: (cp as any).contextWindow,
+    };
+  }
+
+  getToolDefinition(name: string): any {
+    const tools = this.ctx.tools;
+    if (!tools) return undefined;
+    return tools.get(name);
+  }
   private selectModel(agent: Agent, route: Route) {
     const previous = agent.model.current();
     const reasoningEffort =
@@ -937,11 +1012,34 @@ export class Runtime {
     const disposers = concurrent
       ? []
       : [
-          ctx.on("session/event", (session, event) => {
+          ctx.on("session/event", (session, event: any) => {
             const subject = ctx.agents.get(session.id);
             if (session !== agent.session && (!subject || !this.owns(subject))) return;
             if (session === agent.session) events.push(event);
             onEvent?.({ method: "session.event", params: { sessionId: session.id, event } });
+
+            // DSH logs two tool events per call: `tool/call` (the model's raw
+            // arguments string) and `tool/result` (model-facing content, failure
+            // state, and the tool-private `meta` its presenter reads back). The
+            // UI turns them into one card: pending on the call, settled on the
+            // result. A replayed log drives the same handlers.
+            if (event.type === "tool/call") {
+              this.emitToolEvent("tool_execution_start", {
+                toolName: event.data.name,
+                toolCallId: String(event.data.callId),
+                args: parseArguments(event.data.arguments),
+              });
+            } else if (event.type === "tool/result") {
+              this.emitToolEvent("tool_execution_end", {
+                toolCallId: String(event.data.message.toolCallId),
+                result: {
+                  content: event.data.message.content,
+                  isError: event.data.message.isError === true,
+                  ...(event.data.meta === undefined ? {} : { meta: event.data.meta }),
+                },
+                isError: event.data.message.isError === true,
+              });
+            }
           }),
           ctx.on("agent/error", (event) => {
             if (event.agent === agent) failure = event.error;
@@ -1090,6 +1188,20 @@ export class Runtime {
     }
   }
 }
+/** The model emits tool arguments as a raw JSON string; a partial or malformed
+ * stream has no usable arguments yet, so fall back to an empty object. */
+function parseArguments(raw: unknown): Record<string, unknown> {
+  if (typeof raw !== "string") return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
 function latestFailure(event: SessionEvent) {
   if (event.type !== "assistant/attempt") return;
   const finish = event.data.stream.findLast(

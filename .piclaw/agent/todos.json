@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "phases": [
+    {
+      "id": "phase-1",
+      "name": "Align with DSH (no reimplementation)",
+      "tasks": [
+        {
+          "id": "task-1",
+          "content": "Delete src/bash-utils.ts, src/keybinding-schema.ts, src/components/markdown-transform.ts (duplicated/non-DSH-aligned)",
+          "status": "in_progress"
+        },
+        {
+          "id": "task-2",
+          "content": "Rewrite src/tool-presentation.ts: map DSH ToolCallView/ToolResultView to pi-tui components",
+          "status": "pending"
+        },
+        {
+          "id": "task-3",
+          "content": "Rewrite src/tool-execution.ts around DSH views",
+          "status": "pending"
+        },
+        {
+          "id": "task-4",
+          "content": "Rewrite src/bash-execution.ts as DSH terminal card renderer",
+          "status": "pending"
+        },
+        {
+          "id": "task-5",
+          "content": "Fix runtime.ts tool events: emit from tool/call + tool/result with meta",
+          "status": "pending"
+        },
+        {
+          "id": "task-6",
+          "content": "Fix keybindings.ts: declaration merging, drop typebox, fix watcher typing",
+          "status": "pending"
+        },
+        {
+          "id": "task-7",
+          "content": "Fix theme-controller.ts to be a real implementation over theme.ts",
+          "status": "pending"
+        },
+        {
+          "id": "task-8",
+          "content": "Fix model-selector/session-selector imports + DynamicBorder/visual-truncate",
+          "status": "pending"
+        },
+        {
+          "id": "task-9",
+          "content": "Fix ui.ts wiring (tool events, selectors)",
+          "status": "pending"
+        },
+        {
+          "id": "task-10",
+          "content": "npm run check --fix green",
+          "status": "pending"
+        }
+      ]
+    }
+  ],
+  "nextTaskId": 11,
+  "nextPhaseId": 2,
+  "updatedAt": "2026-11-16T08:26:06.120Z"
+}

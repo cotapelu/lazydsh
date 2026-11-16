@@ -1,22 +1,50 @@
-import { stripVTControlCharacters } from "node:util";
+/**
+ * Theme entry point.
+ *
+ * The theme system lives in `./theme/` (tokens, JSON, and the controller). This
+ * module re-exports it so components can import from a single place, and keeps
+ * the named helpers the older call sites use.
+ */
 
-export const accent = (text: string) => `\x1b[38;2;77;107;254m${text}\x1b[0m`;
-export const gray = (text: string) => `\x1b[38;2;160;166;172m${text}\x1b[0m`;
-export const dim = (text: string) => `\x1b[2m${text}\x1b[0m`;
+export {
+  DEFAULT_THEME,
+  SYSTEM_THEME,
+  customThemesDir,
+  fg,
+  formatNotification,
+  getEditorTheme,
+  getMarkdownTheme,
+  getSelectListTheme,
+  initTheme,
+  onThemeChange,
+  safeText,
+  setTerminalColorScheme,
+  setTerminalColors,
+  setTheme,
+  setThemeInstance,
+  terminalColor,
+  terminalTheme,
+  theme,
+  Theme,
+} from "./theme/theme.js";
+export { THEME_TOKENS, type ThemeTokenName } from "./theme/theme-tokens.js";
+export { ThemeController, type ThemeControllerOptions } from "./theme/theme-controller.js";
 
-export function safeText(value: unknown) {
-  // oxlint-disable-next-line no-control-regex -- Preserve tabs/newlines while removing terminal controls.
-  return stripVTControlCharacters(String(value)).replace(/[\x00-\x08\x0b-\x1f\x7f]/g, "");
-}
+import { fg as fgColors, theme as activeTheme } from "./theme/theme.js";
 
-export function terminalColor(stream: { isTTY?: boolean }) {
-  return Boolean(stream.isTTY && process.env.NO_COLOR === undefined && process.env.TERM !== "dumb");
-}
+/** `bg(token, text)` in the same shape as `fg`, for tool-card backgrounds. */
+export const bg = {
+  toolPendingBg: (text: string) => activeTheme.bg("toolPendingBg", text),
+  toolSuccessBg: (text: string) => activeTheme.bg("toolSuccessBg", text),
+  toolErrorBg: (text: string) => activeTheme.bg("toolErrorBg", text),
+};
 
-export function formatNotification(label: string, text: unknown = "", color = true) {
-  const icon = /error/i.test(label) ? "✗" : "✓";
-  const prefix = safeText(label).toLowerCase();
-  const body = safeText(text);
-  const head = body ? prefix + ":" : prefix;
-  return `${color ? accent(icon) : icon} ${color ? dim(head) : head}${body ? " " + body : ""}`;
-}
+/** Text attributes, kept for call sites that colorize by hand. */
+export const accent = (text: string) => fgColors.accent(text);
+export const gray = (text: string) => fgColors.muted(text);
+export const dim = (text: string) => fgColors.dim(text);
+export const bold = (text: string) => activeTheme.bold(text);
+export const italic = (text: string) => activeTheme.italic(text);
+export const inverse = (text: string) => activeTheme.inverse(text);
+export const underline = (text: string) => activeTheme.underline(text);
+export const strikethrough = (text: string) => activeTheme.strikethrough(text);

@@ -64,11 +64,14 @@ export class StatusPanel extends Text {
     const gray = (text: string) => `\x1b[38;2;160;166;172m${text}\x1b[39m`;
     const content = safeText(formatStats(stats))
       .split("\n")
-      .map((line) =>
+      .map((line: string) =>
         line
           .replace(/^([^:]+: +)/, gray)
           .replace(/\([^)]*\)/g, gray)
-          .replace(/░+/g, (cells) => `\x1b[38;2;60;63;68m${"█".repeat(cells.length)}\x1b[39m`)
+          .replace(
+            /░+/g,
+            (cells: string) => `\x1b[38;2;60;63;68m${"█".repeat(cells.length)}\x1b[39m`,
+          )
           .replace(/·+/g, gray),
       )
       .join("\n");

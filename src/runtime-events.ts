@@ -13,6 +13,15 @@ export type RuntimeEvent =
         | { type: "start" | "end" }
         | { type: "usage"; usage: TokenUsage }
       );
+    }
+  | {
+      method: "tool_execution_start";
+      params: { toolName: string; toolCallId: string; args: Record<string, unknown> };
+    }
+  | { method: "tool_execution_update"; params: { toolCallId: string; partialResult: any } }
+  | {
+      method: "tool_execution_end";
+      params: { toolCallId: string; result: any; isError: boolean; durationMs?: number };
     };
 
 export function isAuthFailure(failure: unknown) {

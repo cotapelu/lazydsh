@@ -3,11 +3,13 @@ import { accent, dim } from "./theme.ts";
 import type { SessionEvent } from "@deepseek-ai/dsh-session";
 import { eventText } from "./runtime-events.ts";
 import { latestRequestStats } from "./stats.ts";
-import { ToolLog, ToolRow } from "./tools.ts";
+import { ToolLog } from "./tools.ts";
 
-type HistoryRow =
-  | ToolRow
-  | { kind: "user" | "assistant" | "metrics" | "notice"; text: string; label?: string };
+type HistoryRow = {
+  kind: "user" | "assistant" | "metrics" | "notice" | "tool";
+  text: string;
+  label?: string;
+};
 
 export function historyRows(events: readonly SessionEvent[], sessionId: string): HistoryRow[] {
   const rows: HistoryRow[] = [];
@@ -61,7 +63,7 @@ export function historyRows(events: readonly SessionEvent[], sessionId: string):
       if (item.text) rows.push({ kind: "assistant", text: item.text });
     } else if (item) {
       const row = tools.record(item);
-      if (row) rows.push(row);
+      if (row) rows.push({ kind: "tool", text: row.summary, label: "tool" });
     }
     if (event.type === "turn/end" && started !== undefined && rows.length > turnStartRow)
       rows.push({
