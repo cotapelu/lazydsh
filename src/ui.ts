@@ -16,6 +16,9 @@ import type { AdmittedPromptContentPart } from "@deepseek-ai/dsh-attachment";
 import { ToolLog, ToolRow } from "./tools.ts";
 import { SessionSelector } from "./session-selector.js";
 import { LoginDialog } from "./components/login-dialog.js";
+import { editInExternalEditor, editorCommand } from "./external-editor.ts";
+import { copyToClipboard } from "./clipboard.ts";
+import { getKeybindings } from "@earendil-works/pi-tui";
 import type { SessionRecord } from "./session-selector.js";
 import {
   TuiAltScreen,
@@ -25,7 +28,6 @@ import {
   Text,
   Markdown,
   Container,
-  matchesKey,
   type Component,
 } from "@earendil-works/pi-tui";
 import { eventText, isAuthFailure } from "./runtime-events.ts";
@@ -1216,8 +1218,64 @@ export async function runUI(
     })();
   };
 
+  const keybindings = getKeybindings();
+
+  /** Ctrl+G: hand the draft to $EDITOR and read it back. */
+  async function openExternalEditor() {
+    const command = editorCommand();
+    if (command === undefined) {
+      add("Error", "No editor configured. Set $EDITOR or $VISUAL.");
+      return;
+    }
+    const draft = editor.getText();
+    tui.stop({ preserveScreen: true });
+    try {
+      const result = await editInExternalEditor({ content: draft, command });
+      if (result.status === "complete") {
+        editor.setText(result.content ?? "");
+        add("Editor", "Saved from " + command + ".");
+      } else {
+        add("Editor", result.message ?? "Editor cancelled.");
+      }
+    } finally {
+      tui.start();
+      tui.setFocus(editor);
+      update();
+    }
+  }
+
+  /** Ctrl+X: copy the last assistant message, or the whole transcript. */
+  async function copyLastMessage() {
+    const rows = transcript.children;
+    for (let index = rows.length - 1; index >= 0; index--) {
+      const row = rows[index];
+      if (row === undefined) continue;
+      const text = renderToText(row);
+      if (text !== undefined && text.trim() !== "") {
+        if (await copyToClipboard(text)) add("Copied", "Last message copied to clipboard.");
+        else add("Error", "No clipboard mechanism available.");
+        return;
+      }
+    }
+    add("Error", "Nothing to copy yet.");
+  }
+
+  function renderToText(component: Component): string | undefined {
+    const rendered = component.render(80);
+    if (rendered.length === 0) return undefined;
+    // Strip ANSI so the clipboard receives plain text.
+    return (
+      rendered
+        // eslint-disable-next-line no-control-regex
+        .map((line) => line.replace(/\x1b\[[0-9;]*m/g, ""))
+        .join("\n")
+        .trim()
+    );
+  }
+
   tui.addInputListener((data) => {
-    if (matchesKey(data, "ctrl+c")) {
+    const kb = keybindings;
+    if (kb.matches(data, "app.clear")) {
       if (editor.getText().length > 0 || pendingFiles.length > 0) {
         editor.setText("");
         pendingFiles = [];
@@ -1225,7 +1283,7 @@ export async function runUI(
       } else void stop();
       return { consume: true };
     }
-    if (matchesKey(data, "escape") && !selecting) {
+    if (kb.matches(data, "app.interrupt") && !selecting) {
       if (decision) decision(null);
       else if (busy || running) {
         const queued = queue.length;
@@ -1247,6 +1305,15 @@ export async function runUI(
       }
       return { consume: true };
     }
+    if (kb.matches(data, "app.editor.external")) {
+      void openExternalEditor();
+      return { consume: true };
+    }
+    if (kb.matches(data, "app.message.copy")) {
+      void copyLastMessage();
+      return { consume: true };
+    }
+    return undefined;
   });
   const signalHandler = () => {
     void stop();

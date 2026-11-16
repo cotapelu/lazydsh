@@ -356,15 +356,16 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
   - [x] Select list for login-method choice
   - [x] Wired into Runtime.onAuth in ui.ts
 
-### 6.6 External Editor Integration (MEDIUM) - 4h
+### 6.6 External Editor Integration (MEDIUM) - 4h ✅ COMPLETE
 
-- [ ] **Ctrl+G** → open `$EDITOR` with current text
-- [ ] Temp file handling, cleanup on exit
-- [ ] On save, update editor content
+- [x] **Ctrl+G** → open `$VISUAL`/`$EDITOR` with current text (src/external-editor.ts)
+- [x] Temp file handling, cleanup on exit
+- [x] On save, editor content replaced
 
-### 6.7 Copy Message (MEDIUM) - 2h
+### 6.7 Copy Message (MEDIUM) - 2h ✅ COMPLETE
 
-- [ ] **Ctrl+X** → copy last assistant message or selection to clipboard
+- [x] **Ctrl+X** → copy last transcript message to clipboard (src/clipboard.ts)
+- [x] Native clipboard helper with pbcopy/clip/wl-copy/xclip fallback
 
 ### 6.8 Thinking Selector (MEDIUM) - 3h
 
