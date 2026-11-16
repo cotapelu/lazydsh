@@ -383,9 +383,11 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
 
 - [ ] **`/bug` command** with auto-attached crash details
 
-### 6.10 Program Status (LOW) - 3h
+### 6.10 Program Status (LOW) - 3h ✅ COMPLETE
 
-- [ ] **OSC 7501** shell integration (working/blocked/done/error)
+- [x] **OSC 7501** shell integration (idle/working/blocked/done/error)
+- [x] src/program-status.ts wraps pi-tui formatProgramStatus
+- [x] Wired to ui.ts: working on turn start, done on turn end, blocked on panels
 
 ### 6.11 Session Share (LOW) - 4h
 

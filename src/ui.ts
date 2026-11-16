@@ -20,6 +20,8 @@ import { AssistantMessageComponent } from "./components/assistant-message.js";
 import { UserMessageComponent } from "./components/user-message.js";
 import { editInExternalEditor, editorCommand } from "./external-editor.ts";
 import { copyToClipboard } from "./clipboard.ts";
+import { ProgramStatusReporter } from "./program-status.ts";
+import { StatusIndicatorContainer } from "./components/status-container.js";
 import { getKeybindings } from "@earendil-works/pi-tui";
 import type { SessionRecord } from "./session-selector.js";
 import {
@@ -125,8 +127,8 @@ export async function runUI(
   // them one at a time as each turn finishes.
   const queueView = new QueueView();
   const queue: { text: string; view: QueuedMessage }[] = [];
-  const composer = new Container();
-  const status = new Text("", 2, 1);
+  const statusContainer = new StatusIndicatorContainer(tui);
+  const programStatus = new ProgramStatusReporter(tui);
   const editor = new PromptEditor(tui, {
     borderColor: editorBorder,
     selectList: { ...selectionTheme, noMatch: dim },
@@ -162,12 +164,11 @@ export async function runUI(
   history.addChild(transcript);
   history.addChild(queueView);
   const scroll = new ScrollView(history, { primary: true, follow: "end", scrollbar: "auto" });
-  composer.addChild(editor);
-  composer.addChild(status);
   tui.setLayoutRoot(
     new VStack([
-      { component: scroll, basis: 0, grow: 1, minSize: 0 },
-      { component: composer, shrink: 0 },
+      { component: scroll, basis: 0, grow: 1, minSize: 1 },
+      { component: statusContainer, shrink: 0 },
+      { component: editor, shrink: 0 },
     ]),
   );
   tui.setFocus(editor);
@@ -204,11 +205,15 @@ export async function runUI(
           ? "~" + directory.slice(home.length)
           : directory;
     const queued = queue.length ? ` · ${queue.length} queued` : "";
-    status.setText(
-      dim(
-        `${safeText(route.provider)} · ${safeText(route.model ?? "no model")} · ${safeText(displayDirectory)}${queued}`,
-      ),
-    );
+    // The route/context line lives in the footer; the queue count rides the status area.
+    if (queued) {
+      statusContainer.show("idle", { message: `Ready · ${queue.length} queued` });
+      programStatus.idle(
+        `${route.provider}/${route.model ?? "no model"} · ${displayDirectory}${queued}`,
+      );
+    } else {
+      programStatus.idle(`${route.provider}/${route.model ?? "no model"} · ${displayDirectory}`);
+    }
     editor.disableSubmit = (busy || starting || startupFailed || stopping) && !decision;
     tui.requestRender();
   }
@@ -491,18 +496,14 @@ export async function runUI(
 
   function dismissPanel() {
     selecting = false;
-    composer.clear();
-    composer.addChild(editor);
-    composer.addChild(status);
     tui.setFocus(editor);
     tui.requestRender();
   }
 
+  /** Show a panel (picker, dialog) above the editor while keeping focus. */
   function showPanel(panel: Component) {
     selecting = true;
-    composer.clear();
-    composer.addChild(panel);
-    composer.addChild(status);
+    programStatus.blocked("question", "Waiting for input");
     tui.setFocus(panel);
     tui.requestRender();
   }
@@ -864,7 +865,7 @@ export async function runUI(
                     ? record.pinned
                     : true),
           );
-          if (composer.children.includes(picker))
+          if (!selecting)
             picker.setItems(
               records.map((record) => ({
                 value: record.id,
@@ -877,7 +878,7 @@ export async function runUI(
           tui.requestRender();
         })
         .catch((error) => {
-          if (composer.children.includes(picker)) dismissPanel();
+          if (!selecting) dismissPanel();
           add("Error", error instanceof Error ? error.message : String(error));
         });
       return;
@@ -904,7 +905,7 @@ export async function runUI(
         void runtime
           .jobs()
           .then((jobs) => {
-            if (composer.children.includes(picker))
+            if (!selecting)
               picker.setItems(
                 jobs
                   .filter(
@@ -1027,7 +1028,7 @@ export async function runUI(
       void runtime
         .efforts()
         .then((info) => {
-          if (!composer.children.includes(picker)) return;
+          if (!selecting) return;
           picker.setItems(
             [
               {
@@ -1047,7 +1048,7 @@ export async function runUI(
           );
         })
         .catch((error) => {
-          if (composer.children.includes(picker)) dismissPanel();
+          if (!selecting) dismissPanel();
           add("Error", error instanceof Error ? error.message : String(error));
         })
         .finally(() => {
@@ -1107,8 +1108,11 @@ export async function runUI(
     }
     if (text.startsWith("/dsh ")) text = "/" + text.slice(5).trimStart().replace(/^\//, "");
     const ownsTurn = !running;
-    if (ownsTurn) running = true;
-    else busy = true;
+    if (ownsTurn) {
+      running = true;
+      statusContainer.show("working", { message: "Working" });
+      programStatus.working();
+    } else busy = true;
     update();
     void (async () => {
       let lastAssistant: string | undefined;
@@ -1213,6 +1217,8 @@ export async function runUI(
           }
           thinking = undefined;
           running = false;
+          statusContainer.show("idle", { message: "Ready" });
+          programStatus.done();
         } else busy = false;
         tui.requestRender();
         if (ownsTurn && !closing) drainQueue();
@@ -1325,6 +1331,8 @@ export async function runUI(
       else if (busy || running) {
         const queued = queue.length;
         stopping = true;
+        statusContainer.show("retry", { message: "Stopping" });
+        programStatus.working("Stopping");
         update();
         void runtime
           .cancel()
@@ -1336,6 +1344,10 @@ export async function runUI(
           .catch((error) => add("Error", error instanceof Error ? error.message : String(error)))
           .finally(() => {
             stopping = false;
+            statusContainer.show(running ? "working" : "idle", {
+              message: running ? "Working" : "Ready",
+            });
+            programStatus.idle();
             drainQueue();
             update();
           });
