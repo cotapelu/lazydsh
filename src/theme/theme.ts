@@ -469,3 +469,12 @@ export function getEditorTheme() {
 
 export type { ThemeTokenName };
 export { THEME_TOKENS };
+
+/** Convenience functions that delegate to the active theme. */
+export const accent = (text: string) => active().fg("accent", text);
+export const dim = (text: string) => active().fg("dim", text);
+export const bold = (text: string) => active().bold(text);
+export const muted = (text: string) => active().fg("muted", text);
+export const warning = (text: string) => active().fg("warning", text);
+export const error = (text: string) => active().fg("error", text);
+export const success = (text: string) => active().fg("success", text);

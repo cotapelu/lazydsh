@@ -27,6 +27,44 @@ This document describes the agent architecture, development patterns, and guidel
 - **Boot**: Two-phase (paint shell first, defer 50+ tool plugins)
 - **Runtime Wrapper**: `src/runtime.ts` (~1200 lines) - wraps DSH Agent for TUI consumption
 
+## Current Implementation Status
+
+### ✅ Core Structure Complete (Phases 1-5)
+
+| Component                        | Status   | Notes                                              |
+| -------------------------------- | -------- | -------------------------------------------------- |
+| Layout (`chat-viewport.ts`)      | ✅       | Header/Chat/Pending/Status/Editor/Footer           |
+| Footer (`footer.ts`)             | ✅       | Tokens, git, model, context%, responsive           |
+| Tool Cards (`tool-execution.ts`) | ⚠️ Basic | Expandable, diffs, images, but no custom renderers |
+| Bash Execution                   | ⚠️ Basic | ANSI strip, exit code, no truncation warning       |
+| Model Selector                   | ⚠️ Basic | Fuzzy search, no async refresh/progress            |
+| Session Selector                 | ⚠️ Basic | Tree view, no progress/loading states              |
+| Keybindings                      | ✅       | Configurable, hot-reload, legacy migration         |
+| Theme System                     | ✅       | Tokens, DA1 sync, live reload, auto-sync           |
+| Assistant Message                | ⚠️ Basic | Thinking toggle, no OSC133 zones                   |
+| User Message                     | ⚠️ Basic | No OSC133 zones                                    |
+| Theme System                     | ✅       | Tokens, DA1 query, live reload, auto-sync          |
+
+### ❌ Missing Polish (vs pi-coding-agent's 199 components)
+
+| Missing Feature                                   | Priority |
+| ------------------------------------------------- | -------- |
+| Status Indicators (Working/Retry/Compaction/Idle) | High     |
+| Header with Logo/Key Hints/Changelog              | High     |
+| Keybinding Hints in UI (Header/Footer/Pickers)    | High     |
+| Model Selector: Async Refresh/Progress/Errors     | High     |
+| Session Selector: Progress/Loading/Delete/Rename  | High     |
+| Login Dialog (OAuth Flow UI)                      | Medium   |
+| External Editor Integration (Ctrl+G)              | Medium   |
+| Copy Message (Ctrl+X)                             | Medium   |
+| Thinking Selector (Ctrl+T)                        | Medium   |
+| Bug Report (/bug)                                 | Low      |
+| Program Status (OSC 7501)                         | Low      |
+| Session Share                                     | Low      |
+| Extension Widgets                                 | Low      |
+| Changelog Display                                 | Low      |
+| Settings Selector                                 | Low      |
+
 ## Development Patterns
 
 ### 1. Event-Driven Architecture
@@ -97,7 +135,7 @@ src/
 ├── dynamic-border.ts      # Colored borders
 ├── markdown-transform.ts  # Markdown transformers
 ├── theme/
-│   ├── theme.json         # Default theme
+│   ├── lazydsh.json       # Default theme (renamed from theme.json)
 │   ├── theme-tokens.ts    # Token definitions
 │   └── theme-controller.ts # Live reload, DA1 query
 ├── presentation.ts        # Legacy message components (StartupBanner, etc.)
@@ -114,7 +152,6 @@ src/
 ├── native-commands.ts     # Native DSH commands
 ├── open-url.ts            # OAuth URL opening
 ├── picker.ts              # SearchPicker component
-├── plugin-patch.ts        # Legacy (to be removed)
 ├── plugin.ts              # Main plugin, Runtime creation
 ├── preferences.ts         # Model preference persistence
 ├── provider.ts            # Provider normalization
@@ -130,7 +167,8 @@ src/
 ├── terminal-login.ts      # Terminal-based auth
 ├── tui-console.ts         # Console capture
 ├── ui-commands.ts         # Command utilities
-└── upgrade.ts             # Self-upgrade logic
+├── upgrade.ts             # Self-upgrade logic
+├── types.ts               # Consolidated types
 ```
 
 ## Key Interfaces
@@ -276,4 +314,4 @@ PI_STARTUP_BENCHMARK=1 npm run start
 
 ---
 
-_Updated to reflect completed implementation (Phases 1-5)._
+_Current state: Core structure complete (Phases 1-5), but missing polish vs pi-coding-agent (199 components). See TODO.md for remaining work._

@@ -3,62 +3,107 @@
   "phases": [
     {
       "id": "phase-1",
-      "name": "Align with DSH (no reimplementation)",
+      "name": "Phase 6: Polish (High Priority)",
       "tasks": [
         {
           "id": "task-1",
-          "content": "Delete src/bash-utils.ts, src/keybinding-schema.ts, src/components/markdown-transform.ts (duplicated/non-DSH-aligned)",
+          "content": "Create status-indicator.ts (Working/Retry/Compaction/Idle)",
           "status": "in_progress"
         },
         {
           "id": "task-2",
-          "content": "Rewrite src/tool-presentation.ts: map DSH ToolCallView/ToolResultView to pi-tui components",
+          "content": "Wire status indicators into ui.ts",
           "status": "pending"
         },
         {
           "id": "task-3",
-          "content": "Rewrite src/tool-execution.ts around DSH views",
+          "content": "Create header component (logo, key hints, changelog)",
           "status": "pending"
         },
         {
           "id": "task-4",
-          "content": "Rewrite src/bash-execution.ts as DSH terminal card renderer",
+          "content": "Wire header into chat-viewport.ts",
           "status": "pending"
         },
         {
           "id": "task-5",
-          "content": "Fix runtime.ts tool events: emit from tool/call + tool/result with meta",
+          "content": "Add keybinding hints to UI (header, footer, pickers)",
           "status": "pending"
         },
         {
           "id": "task-6",
-          "content": "Fix keybindings.ts: declaration merging, drop typebox, fix watcher typing",
+          "content": "Model selector: async refresh, progress, save default",
           "status": "pending"
         },
         {
           "id": "task-7",
-          "content": "Fix theme-controller.ts to be a real implementation over theme.ts",
+          "content": "Session selector: progress, delete (Ctrl+D), rename (Ctrl+R)",
           "status": "pending"
         },
         {
           "id": "task-8",
-          "content": "Fix model-selector/session-selector imports + DynamicBorder/visual-truncate",
+          "content": "Login dialog (OAuth flow UI)",
           "status": "pending"
         },
         {
           "id": "task-9",
-          "content": "Fix ui.ts wiring (tool events, selectors)",
+          "content": "External editor (Ctrl+G)",
           "status": "pending"
         },
         {
           "id": "task-10",
-          "content": "npm run check --fix green",
+          "content": "Copy message (Ctrl+X)",
+          "status": "pending"
+        },
+        {
+          "id": "task-11",
+          "content": "Thinking selector (Ctrl+T)",
+          "status": "pending"
+        },
+        {
+          "id": "task-12",
+          "content": "Message components: OSC133 zones, stop reasons",
+          "status": "pending"
+        },
+        {
+          "id": "task-13",
+          "content": "Bug report (/bug)",
+          "status": "pending"
+        },
+        {
+          "id": "task-14",
+          "content": "Program status (OSC 7501)",
+          "status": "pending"
+        },
+        {
+          "id": "task-15",
+          "content": "Session share",
+          "status": "pending"
+        },
+        {
+          "id": "task-16",
+          "content": "Model catalog refresh",
+          "status": "pending"
+        },
+        {
+          "id": "task-17",
+          "content": "Changelog display",
+          "status": "pending"
+        },
+        {
+          "id": "task-18",
+          "content": "Extension widgets",
+          "status": "pending"
+        },
+        {
+          "id": "task-19",
+          "content": "Settings selector",
           "status": "pending"
         }
       ]
     }
   ],
-  "nextTaskId": 11,
+  "nextTaskId": 20,
   "nextPhaseId": 2,
-  "updatedAt": "2026-11-16T08:26:06.120Z"
+  "updatedAt": "2026-11-16T09:45:44.564Z"
 }

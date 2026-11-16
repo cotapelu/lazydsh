@@ -35,6 +35,15 @@ export {
 export { AssistantMessageComponent } from "./assistant-message.js";
 export { UserMessageComponent } from "./user-message.js";
 export { FooterComponent } from "../footer.js";
+export {
+  WorkingStatusIndicator,
+  RetryStatusIndicator,
+  CompactionStatusIndicator,
+  IdleStatus,
+  createStatusIndicator,
+  type StatusIndicator,
+} from "./status-indicator.js";
+export { StatusIndicatorContainer } from "./status-container.js";
 export { KeybindingsManager, APP_KEYBINDINGS, KEYBINDINGS } from "../keybindings.js";
 export { ThemeController } from "../theme/theme-controller.js";
 export { getMarkdownTheme, getSelectListTheme, getEditorTheme } from "../theme/theme.js";

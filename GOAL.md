@@ -42,18 +42,34 @@
 
 ## Current State
 
-**Completed (Phases 1-5)**: All core functionality implemented
+**Completed (Phases 1-5)**: Core structure implemented - all basic functionality works.
 
-- ✅ Foundation layout with context footer (tokens, git, model, context%)
-- ✅ Rich tool cards (pending/running/success/error, expandable, diffs, images)
-- ✅ Model selector (fuzzy search, scoped/all, save default)
-- ✅ Session selector (tree view, threaded, fuzzy search, delete/rename)
-- ✅ Keybindings system (configurable, hot-reload, legacy migration)
-- ✅ Theme system (tokens, DA1 query, system auto-sync, live reload)
-- ✅ Message components (thinking toggle, OSC133, streaming markdown)
-- ✅ Bash mode (! prefix), thinking toggle, external editor, copy
+| Feature                              | Status   |
+| ------------------------------------ | -------- |
+| Layout (`chat-viewport.ts`)          | ✅       |
+| Footer (`footer.ts`)                 | ✅       |
+| Tool Cards (`tool-execution.ts`)     | ⚠️ Basic |
+| Bash Execution (`bash-execution.ts`) | ⚠️ Basic |
+| Model Selector                       | ⚠️ Basic |
+| Session Selector                     | ⚠️ Basic |
+| Keybindings                          | ✅       |
+| Theme System                         | ✅       |
+| Assistant Message                    | ⚠️ Basic |
+| User Message                         | ⚠️ Basic |
 
-**Remaining**: Documentation, performance audit, final integration tests
+**Missing Polish (vs pi-coding-agent's 199 components):**
+
+- Status Indicators (Working/Retry/Compaction/Idle)
+- Header with Logo/Key Hints/Changelog
+- Keybinding Hints in UI
+- Model Selector: Async Refresh/Progress/Errors
+- Session Selector: Progress/Delete/Rename
+- Login Dialog (OAuth Flow UI)
+- External Editor Integration (Ctrl+G)
+- Copy Message (Ctrl+X)
+- Thinking Selector (Ctrl+T)
+- Bug Report (/bug)
+- Program Status (OSC 7501)
 
 ## Development Commands
 

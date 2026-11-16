@@ -18,13 +18,46 @@
 │  └────────┬─────────┘     └──────────────────┘     └──────────────────┘   │
 │           │                                                 ▲              │
 │           ▼                                                 │              │
-│  ┌──────────────────┐     ┌──────────────────┐             │              │
+│  ┌──────────────────┐     ┌────────────────__┐             │              │
 │  │  DSH Plugins     │     │  Tool Events     │─────────────┘              │
 │  │  (80+ plugins)   │     │  (execution)     │                            │
 │  └──────────────────┘     └──────────────────┘                            │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+## Implementation Status
+
+### ✅ Core Structure Complete (Phases 1-5)
+
+| Layer                | Status            | Notes                               |
+| -------------------- | ----------------- | ----------------------------------- |
+| UI Layer             | ✅ Core structure | 5/199 components vs pi-coding-agent |
+| Runtime Wrapper      | ✅ Complete       | 50+ methods, typed events           |
+| DSH Core Integration | ✅ Complete       | Cordis context, 80+ plugins         |
+| Boot Process         | ✅ Complete       | Two-phase (< 500ms)                 |
+
+### ⚠️ Components Implemented (Basic vs Polished)
+
+| Component                        | Status     | Missing Polish                           |
+| -------------------------------- | ---------- | ---------------------------------------- |
+| Layout (`chat-viewport.ts`)      | ✅         | Missing header widget area               |
+| Footer (`footer.ts`)             | ✅         | Missing extension statuses               |
+| Tool Cards (`tool-execution.ts`) | ⚠️ Basic   | No custom renderers, no images           |
+| Bash Execution                   | ⚠️ Basic   | No truncation warning, no exit code pill |
+| Model Selector                   | ⚠️ Basic   | No async refresh, no progress            |
+| Session Selector                 | ⚠️ Basic   | No progress, no delete/rename            |
+| Keybindings                      | ✅         | No UI hints                              |
+| Theme System                     | ✅         | Missing key hints in UI                  |
+| Assistant Message                | ⚠️ Basic   | No OSC133, no stop reasons               |
+| User Message                     | ⚠️ Basic   | No OSC133                                |
+| Status Indicators                | ❌ Missing | Working/Retry/Compaction/Idle            |
+| Header                           | ❌ Missing | Logo, key hints, changelog               |
+| Keybinding Hints                 | ❌ Missing | Everywhere in pi                         |
+| Login Dialog                     | ❌ Missing | OAuth flow UI                            |
+| Model Selector Refresh           | ❌ Missing | Async refresh with progress              |
+| Session Selector Loading         | ❌ Missing | Progress states                          |
+| Status Indicators                | ❌ Missing | Working/Retry/Compaction/Idle            |
 
 ## Layer Details
 
@@ -54,14 +87,14 @@
 ```
 ui.ts (Main Orchestrator, 1300+ lines)
 ├── Layout (chat-viewport.ts)
-│   ├── Header (startup banner, key hints)
+│   ├── Header (startup banner, key hints) ❌ MISSING
 │   ├── Transcript (ScrollView)
 │   │   ├── User Messages (UserMessageComponent)
 │   │   ├── Assistant Messages (AssistantMessageComponent)
 │   │   ├── Tool Executions (ToolExecutionComponent)
 │   │   └── Bash Executions (BashExecutionComponent)
 │   ├── Pending Messages Queue (QueueView)
-│   ├── Status Indicators (working/retry/compaction)
+│   ├── Status Indicators (working/retry/compaction) ❌ MISSING
 │   ├── Editor (PromptEditor with autocomplete)
 │   └── Footer (FooterComponent)
 ├── Event Handling
@@ -325,7 +358,7 @@ runtime.on("agent_end", handler);
 ```
 ~/.config/lazydsh/
 ├── keybindings.json      # Custom keybindings (migrated from pi)
-├── theme.json            # Custom theme (or theme name)
+├── lazydsh.json          # Custom theme (or theme name)
 └── preferences.json      # Last used provider/model/effort
 ```
 
@@ -436,4 +469,4 @@ interface ThemeTokens {
 
 ---
 
-_Architecture derived from analysis of pi-coding-agent InteractiveMode, DSH core libraries, and lazydsh codebase. All Phases 1-5 implemented._
+_Gap Analysis: Core structure complete (Phases 1-5), but ~194 components missing vs pi-coding-agent's polished interactive mode. See TODO.md for remaining work._
