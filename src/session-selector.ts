@@ -21,7 +21,7 @@ import {
   truncateToWidth,
   visibleWidth,
 } from "@earendil-works/pi-tui";
-import { theme } from "./theme/theme.js";
+import { theme } from "./theme/theme.ts";
 import { KeybindingsManager } from "./keybindings.ts";
 import { DynamicBorder } from "./components/dynamic-border.ts";
 import { keyHint, keyText } from "./keybinding-hints.ts";

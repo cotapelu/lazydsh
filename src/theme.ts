@@ -26,11 +26,11 @@ export {
   terminalTheme,
   theme,
   Theme,
-} from "./theme/theme.js";
-export { THEME_TOKENS, type ThemeTokenName } from "./theme/theme-tokens.js";
-export { ThemeController, type ThemeControllerOptions } from "./theme/theme-controller.js";
+} from "./theme/theme.ts";
+export { THEME_TOKENS, type ThemeTokenName } from "./theme/theme-tokens.ts";
+export { ThemeController, type ThemeControllerOptions } from "./theme/theme-controller.ts";
 
-import { fg as fgColors, theme as activeTheme } from "./theme/theme.js";
+import { fg as fgColors, theme as activeTheme } from "./theme/theme.ts";
 
 /** `bg(token, text)` in the same shape as `fg`, for tool-card backgrounds. */
 export const bg = {

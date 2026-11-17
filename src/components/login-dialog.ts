@@ -9,9 +9,9 @@
  */
 
 import { Container, Input, Loader, Spacer, Text, type Component } from "@earendil-works/pi-tui";
-import { theme } from "../theme/theme.js";
+import { theme } from "../theme/theme.ts";
 import { DynamicBorder } from "./dynamic-border.js";
-import { accent, dim, safeText } from "../theme/theme.js";
+import { accent, dim, safeText } from "../theme/theme.ts";
 import { keyHint } from "../keybinding-hints.js";
 
 export type LoginPromptKind = "secret" | "select" | "notice";

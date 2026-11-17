@@ -65,7 +65,7 @@ import type {
   ToolResultView,
   WebResultView,
 } from "@deepseek-ai/dsh-tools";
-import { theme } from "./theme/theme.js";
+import { theme } from "./theme/theme.ts";
 import { renderDiff } from "./diff.ts";
 import { highlightCode } from "./highlight.ts";
 

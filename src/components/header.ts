@@ -6,7 +6,7 @@
  */
 
 import { Spacer, Text, type Component } from "@earendil-works/pi-tui";
-import { theme } from "../theme/theme.js";
+import { theme } from "../theme/theme.ts";
 import { keyDisplayText, keyHint, rawKeyHint } from "../keybinding-hints.js";
 
 /** Official deepseek.com SVG silhouette sampled into 2×4 Braille cells. */

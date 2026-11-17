@@ -6,7 +6,7 @@
  */
 
 import { Container, Loader, Text, Spacer, type TUI } from "@earendil-works/pi-tui";
-import { theme } from "../theme/theme.js";
+import { theme } from "../theme/theme.ts";
 
 /** Base status indicator interface */
 export interface StatusIndicator extends Container {

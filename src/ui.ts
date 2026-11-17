@@ -91,6 +91,41 @@ export function shouldQueueDuringTurn(text: string) {
   return Boolean(text.trim()) && !/^\s*\//.test(text) && !canRunDuringTurn(text);
 }
 
+/**
+ * The Runtime handed to the TUI before the deferred plugins load is a proxy that
+ * throws on any access. These helpers let the footer render an empty bar during
+ * that window instead of failing the first paint.
+ */
+function safeRead<T>(runtime: Runtime, read: () => T): T | undefined {
+  try {
+    return read();
+  } catch {
+    return undefined;
+  }
+}
+function safeSessionId(runtime: Runtime): string {
+  try {
+    return runtime.session?.id ?? "";
+  } catch {
+    return "";
+  }
+}
+function safeLeafId(runtime: Runtime): string {
+  try {
+    return String(runtime.session?.seq ?? 0);
+  } catch {
+    return "0";
+  }
+}
+function safeSessionName(runtime: Runtime): string | undefined {
+  try {
+    const name = runtime.sessionManager?.getSessionName?.();
+    return typeof name === "string" ? name : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Map DSH session records onto the selector's view model. */
 function toSessionRecords(
   records: Awaited<ReturnType<Runtime["sessions"]>>,
@@ -138,42 +173,67 @@ export async function runUI(
   const footerDataProvider = createFooterDataProvider(
     options.cwd,
     () => {
-      const name = runtime.sessionManager?.getSessionName?.();
-      return typeof name === "string" ? name : undefined;
+      // The runtime is a lazy proxy until the deferred plugins attach, so every
+      // read here must tolerate an unstarted runtime rather than throw during
+      // the first paint.
+      try {
+        const name = runtime.sessionManager?.getSessionName?.();
+        return typeof name === "string" ? name : undefined;
+      } catch {
+        return undefined;
+      }
     },
     () => ({
       getAvailableSnapshot: () => [],
-      getProviders: () => runtime.authProviders(),
+      getProviders: () => {
+        try {
+          return runtime.authProviders();
+        } catch {
+          return [];
+        }
+      },
     }),
   );
-  footerDataProvider.setAvailableProviderCount(runtime.authProviders().length);
-  const footer = new FooterComponent({
-    session: {
-      sessionManager: {
-        getCwd: () => options.cwd,
-        getSessionId: () => runtime.session?.id ?? "",
-        getLeafId: () => String(runtime.session?.seq ?? 0),
-        getEntryCount: () => 0,
-        getSessionName: () => runtime.sessionManager?.getSessionName?.(),
-        getEntries: () => [],
-      },
-      routedModel: runtime.routedModel,
-      model: runtime.selection()
-        ? {
-            provider: runtime.selection()!.provider,
-            id: runtime.selection()!.model,
-            contextWindow: runtime.contextUsage?.contextWindow,
-          }
-        : undefined,
-      thinkingLevel: runtime.thinkingLevel,
-      autoCompactionEnabled: true,
-      getContextUsage: () => runtime.contextUsage,
-    },
-    footerData: footerDataProvider,
-  });
   footerDataProvider.onBranchChange(() => tui.requestRender());
   const footerContainer = new Container();
-  footerContainer.addChild(footer);
+
+  /**
+   * Build the footer on first use. Reading the runtime is only safe once the
+   * deferred plugins have attached, so the component is created lazily and the
+   * session adapter reads through safe accessors on every render.
+   */
+  let footer: FooterComponent | undefined;
+  const footerSession = () => ({
+    sessionManager: {
+      getCwd: () => options.cwd,
+      getSessionId: () => safeSessionId(runtime),
+      getLeafId: () => safeLeafId(runtime),
+      getEntryCount: () => 0,
+      getSessionName: () => safeSessionName(runtime),
+      getEntries: () => [],
+    },
+    routedModel: safeRead(runtime, () => runtime.routedModel),
+    model: safeRead(runtime, () => {
+      const selection = runtime.selection();
+      return selection === undefined
+        ? undefined
+        : {
+            provider: selection.provider,
+            id: selection.model,
+            contextWindow: runtime.contextUsage?.contextWindow,
+          };
+    }),
+    thinkingLevel: safeRead(runtime, () => runtime.thinkingLevel),
+    autoCompactionEnabled: true,
+    getContextUsage: () => safeRead(runtime, () => runtime.contextUsage),
+  });
+  function ensureFooter(): FooterComponent {
+    if (footer === undefined) {
+      footer = new FooterComponent({ session: footerSession(), footerData: footerDataProvider });
+      footerContainer.addChild(footer);
+    }
+    return footer;
+  }
   const editor = new PromptEditor(tui, {
     borderColor: editorBorder,
     selectList: { ...selectionTheme, noMatch: dim },
@@ -271,7 +331,7 @@ export async function runUI(
       if (runtime.session?.id === sessionId && !closing) {
         stats = next;
         footerDataProvider.setCwd(options.cwd);
-        footer.invalidate();
+        ensureFooter().invalidate();
         update();
       }
     } catch {
@@ -490,6 +550,15 @@ export async function runUI(
         if (resumeDirectory === requestedDirectory) resumeDirectory = undefined;
       }
       await persistSelection();
+      // The provider count reads the runtime, which is only live after the
+      // deferred plugins attach; seed it here rather than during first paint.
+      try {
+        footerDataProvider.setAvailableProviderCount(runtime.authProviders().length);
+        footerDataProvider.setCwd(options.cwd);
+        ensureFooter();
+      } catch {
+        // The footer is cosmetic; never block the session on it.
+      }
       commands = commandMenu(await runtime.commands());
       options.cwd = await runtime.cd();
       setAutocomplete();

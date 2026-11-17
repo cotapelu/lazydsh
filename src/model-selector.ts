@@ -15,7 +15,7 @@ import {
   Spacer,
   Text,
 } from "@earendil-works/pi-tui";
-import { theme } from "./theme/theme.js";
+import { theme } from "./theme/theme.ts";
 import { DynamicBorder } from "./components/dynamic-border.js";
 import { keyDisplayText, keyHint } from "./keybinding-hints.js";
 

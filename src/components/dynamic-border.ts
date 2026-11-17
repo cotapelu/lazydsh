@@ -6,7 +6,7 @@
  */
 
 import { type Component } from "@earendil-works/pi-tui";
-import { theme } from "../theme/theme.js";
+import { theme } from "../theme/theme.ts";
 
 export class DynamicBorder implements Component {
   private readonly colorFn: (text: string) => string;

@@ -28,6 +28,7 @@ import {
 import { provideCmdline } from "@deepseek-ai/dsh-cmdline";
 import type { PatchOptions } from "@deepseek-ai/cordis-plugin-include";
 import { withTelemetryExporterDisabled } from "./telemetry-patch.ts";
+import { appendFileSync } from "node:fs";
 import {
   canDeferEveryRow,
   selectAllDeferredPlugins,
@@ -244,6 +245,16 @@ export async function runProfile(options: RunProfileOptions) {
       });
     });
     app = ctx;
+    appendFileSync(
+      "/tmp/afp.log",
+      "boot done: interrupted=" +
+        interrupted +
+        " fiberState=" +
+        ctx.fiber.state +
+        " loader=" +
+        (ctx.get("loader") !== undefined) +
+        String.fromCharCode(10),
+    );
     if (!interrupted && ctx.fiber.state === 2 && ctx.get("loader") !== undefined) appReady.commit();
     return { ctx, shutdown };
   } catch (error) {

@@ -5,7 +5,7 @@
  * Ported from pi-coding-agent's keybinding-hints.js.
  */
 
-import { fg } from "./theme/theme.js";
+import { fg } from "./theme/theme.ts";
 
 /** Raw key text without formatting */
 export function keyText(key: string): string {

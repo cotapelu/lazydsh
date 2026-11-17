@@ -40,7 +40,7 @@
   },
   "scripts": {
     "prepublishOnly": "vp check && vp test run",
-    "start": "node src/cli.ts",
+    "start": "node dist/cli.mjs",
     "demo": "node scripts/demo.ts",
     "build": "vp pack",
     "postbuild": "node -e \"const {copyFileSync,mkdirSync}=require('fs');const {resolve}=require('path');const src=resolve('src/theme/lazydsh.json');const dest=resolve('dist/theme/lazydsh.json');mkdirSync(resolve('dist/theme'),{recursive:true});copyFileSync(src,dest);console.log('copied lazydsh.json')\"",

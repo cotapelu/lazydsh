@@ -10,7 +10,7 @@
 
 import { Box, Container, Text } from "@earendil-works/pi-tui";
 import type { TerminalCallView, TerminalResultView } from "@deepseek-ai/dsh-tools";
-import { theme } from "./theme/theme.js";
+import { theme } from "./theme/theme.ts";
 import { DynamicBorder } from "./components/dynamic-border.js";
 import { keyHint } from "./keybinding-hints.ts";
 
