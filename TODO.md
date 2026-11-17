@@ -425,12 +425,12 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
 
 ## Phase 7: Documentation & Final Testing (Week 9-10 - 20h)
 
-### 7.1 Documentation - 8h
+### 7.1 Documentation - 8h ✅ COMPLETE
 
-- [ ] Update `README.md` with new features
-- [ ] Add keybindings reference
-- [ ] Add theme customization guide
-- [ ] Document tool card interactions
+- [x] Update `README.md` with new features
+- [x] Add keybindings reference
+- [x] Add theme customization guide
+- [x] Document tool card interactions
 
 ### 7.2 Performance Audit - 6h
 
@@ -461,6 +461,6 @@ npm i diff @types/diff
 ## Summary
 
 **Completed (Phases 1-6)**: Core structure + all polish items implemented - all basic functionality works.
-**Phase 7 (Final)**: ~20h for docs, perf, final testing.
+**Phase 7 (Final)**: ~12h remaining (docs ✅, perf ~6h, testing ~6h).
 
-**Total remaining: ~20 hours** to reach pi-coding-agent parity.
+**Total remaining: ~12 hours** to reach pi-coding-agent parity.
