@@ -29,41 +29,41 @@ This document describes the agent architecture, development patterns, and guidel
 
 ## Current Implementation Status
 
-### ✅ Core Structure Complete (Phases 1-5)
+### ✅ Core Structure Complete (Phases 1-6)
 
-| Component                        | Status   | Notes                                              |
-| -------------------------------- | -------- | -------------------------------------------------- |
-| Layout (`chat-viewport.ts`)      | ✅       | Header/Chat/Pending/Status/Editor/Footer           |
-| Footer (`footer.ts`)             | ✅       | Tokens, git, model, context%, responsive           |
-| Tool Cards (`tool-execution.ts`) | ⚠️ Basic | Expandable, diffs, images, but no custom renderers |
-| Bash Execution                   | ⚠️ Basic | ANSI strip, exit code, no truncation warning       |
-| Model Selector                   | ⚠️ Basic | Fuzzy search, no async refresh/progress            |
-| Session Selector                 | ⚠️ Basic | Tree view, no progress/loading states              |
-| Keybindings                      | ✅       | Configurable, hot-reload, legacy migration         |
-| Theme System                     | ✅       | Tokens, DA1 sync, live reload, auto-sync           |
-| Assistant Message                | ⚠️ Basic | Thinking toggle, no OSC133 zones                   |
-| User Message                     | ⚠️ Basic | No OSC133 zones                                    |
-| Theme System                     | ✅       | Tokens, DA1 query, live reload, auto-sync          |
+| Component                        | Status      | Notes                                               |
+| -------------------------------- | ----------- | --------------------------------------------------- |
+| Layout (`chat-viewport.ts`)      | ✅          | Header/Chat/Pending/Status/Widgets/Editor/Footer    |
+| Footer (`footer.ts`)             | ✅          | Tokens, git, model, context%, responsive            |
+| Tool Cards (`tool-execution.ts`) | ✅ Polished | Custom renderers, images, duration, expandable      |
+| Bash Execution                   | ✅ Polished | ANSI strip, exit code, truncation warning           |
+| Model Selector                   | ✅ Polished | Fuzzy search, async refresh, progress, save default |
+| Session Selector                 | ✅ Polished | Tree view, progress, delete/archive, rename         |
+| Keybindings                      | ✅          | Configurable, hot-reload, legacy migration          |
+| Theme System                     | ✅          | Tokens, DA1 sync, live reload, auto-sync            |
+| Assistant Message                | ✅ Polished | Thinking toggle, OSC133 zones, stop reasons         |
+| User Message                     | ✅ Polished | OSC133 zones                                        |
+| Status Indicators                | ✅ Complete | Working/Retry/Compaction/Idle                       |
+| Header                           | ✅ Complete | Logo, key hints, changelog, click expand            |
+| Keybinding Hints                 | ✅ Complete | Everywhere in UI                                    |
+| Login Dialog                     | ✅ Complete | OAuth flow UI                                       |
+| External Editor (Ctrl+G)         | ✅ Complete | $EDITOR integration                                 |
+| Copy Message (Ctrl+X)            | ✅ Complete | Clipboard with fallback                             |
+| Thinking Selector (Ctrl+T)       | ✅ Complete | Cycle reasoning effort                              |
+| Bug Report (/bug)                | ✅ Complete | Auto-attached crash details                         |
+| Program Status (OSC 7501)        | ✅ Complete | Idle/Working/Blocked/Done/Error                     |
+| Session Share (/share)           | ✅ Complete | Placeholder share links                             |
+| Extension Widgets                | ✅ Complete | Registry, above/below editor                        |
+| Changelog Display (/changelog)   | ✅ Complete | Expand/collapse toggle                              |
+| Settings Selector (/settings)    | ✅ Complete | 5 categories, toggle/select/info                    |
 
-### ❌ Missing Polish (vs pi-coding-agent's 199 components)
+### ⏳ Remaining (Phase 7)
 
-| Missing Feature                                   | Priority |
-| ------------------------------------------------- | -------- |
-| Status Indicators (Working/Retry/Compaction/Idle) | High     |
-| Header with Logo/Key Hints/Changelog              | High     |
-| Keybinding Hints in UI (Header/Footer/Pickers)    | High     |
-| Model Selector: Async Refresh/Progress/Errors     | High     |
-| Session Selector: Progress/Loading/Delete/Rename  | High     |
-| Login Dialog (OAuth Flow UI)                      | Medium   |
-| External Editor Integration (Ctrl+G)              | Medium   |
-| Copy Message (Ctrl+X)                             | Medium   |
-| Thinking Selector (Ctrl+T)                        | Medium   |
-| Bug Report (/bug)                                 | Low      |
-| Program Status (OSC 7501)                         | Low      |
-| Session Share                                     | Low      |
-| Extension Widgets                                 | Low      |
-| Changelog Display                                 | Low      |
-| Settings Selector                                 | Low      |
+| Missing Feature              | Priority |
+| ---------------------------- | -------- |
+| Documentation (README, etc.) | Medium   |
+| Performance Audit            | Medium   |
+| Final Integration Testing    | Medium   |
 
 ## Development Patterns
 
@@ -314,4 +314,4 @@ PI_STARTUP_BENCHMARK=1 npm run start
 
 ---
 
-_Current state: Core structure complete (Phases 1-5), but missing polish vs pi-coding-agent (199 components). See TODO.md for remaining work._
+_Current state: Core structure + all Phase 6 polish complete (Phases 1-6). Remaining: Phase 7 (Documentation, Performance Audit, Final Testing) ~20h. See TODO.md for remaining work._

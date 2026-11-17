@@ -3,107 +3,43 @@
   "phases": [
     {
       "id": "phase-1",
-      "name": "Phase 6: Polish (High Priority)",
+      "name": "Phase 6 Remaining - Low Priority Items",
       "tasks": [
         {
           "id": "task-1",
-          "content": "Create status-indicator.ts (Working/Retry/Compaction/Idle)",
-          "status": "completed"
+          "content": "Bug Report (/bug command) - collect crash details",
+          "status": "in_progress",
+          "notes": "Create /bug command that gathers session info, error details, and opens GitHub issue"
         },
         {
           "id": "task-2",
-          "content": "Wire status indicators into ui.ts",
-          "status": "in_progress"
+          "content": "Session Share - share session via link",
+          "status": "pending"
         },
         {
           "id": "task-3",
-          "content": "Create header component (logo, key hints, changelog)",
+          "content": "Model Catalog Refresh - background refresh with progress",
           "status": "pending"
         },
         {
           "id": "task-4",
-          "content": "Wire header into chat-viewport.ts",
+          "content": "Changelog Display - startup changelog with collapse toggle",
           "status": "pending"
         },
         {
           "id": "task-5",
-          "content": "Add keybinding hints to UI (header, footer, pickers)",
+          "content": "Extension Widgets - widgets above/below editor",
           "status": "pending"
         },
         {
           "id": "task-6",
-          "content": "Model selector: async refresh, progress, save default",
-          "status": "pending"
-        },
-        {
-          "id": "task-7",
-          "content": "Session selector: progress, delete (Ctrl+D), rename (Ctrl+R)",
-          "status": "pending"
-        },
-        {
-          "id": "task-8",
-          "content": "Login dialog (OAuth flow UI)",
-          "status": "pending"
-        },
-        {
-          "id": "task-9",
-          "content": "External editor (Ctrl+G)",
-          "status": "pending"
-        },
-        {
-          "id": "task-10",
-          "content": "Copy message (Ctrl+X)",
-          "status": "pending"
-        },
-        {
-          "id": "task-11",
-          "content": "Thinking selector (Ctrl+T)",
-          "status": "pending"
-        },
-        {
-          "id": "task-12",
-          "content": "Message components: OSC133 zones, stop reasons",
-          "status": "pending"
-        },
-        {
-          "id": "task-13",
-          "content": "Bug report (/bug)",
-          "status": "pending"
-        },
-        {
-          "id": "task-14",
-          "content": "Program status (OSC 7501)",
-          "status": "pending"
-        },
-        {
-          "id": "task-15",
-          "content": "Session share",
-          "status": "pending"
-        },
-        {
-          "id": "task-16",
-          "content": "Model catalog refresh",
-          "status": "pending"
-        },
-        {
-          "id": "task-17",
-          "content": "Changelog display",
-          "status": "pending"
-        },
-        {
-          "id": "task-18",
-          "content": "Extension widgets",
-          "status": "pending"
-        },
-        {
-          "id": "task-19",
-          "content": "Settings selector",
+          "content": "Settings Selector - full settings UI",
           "status": "pending"
         }
       ]
     }
   ],
-  "nextTaskId": 20,
+  "nextTaskId": 7,
   "nextPhaseId": 2,
-  "updatedAt": "2026-11-16T10:12:50.942Z"
+  "updatedAt": "2026-11-17T06:39:19.783Z"
 }

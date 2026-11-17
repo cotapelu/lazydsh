@@ -39,25 +39,24 @@
 
 ### ⚠️ Components Implemented (Basic vs Polished)
 
-| Component                        | Status     | Missing Polish                           |
-| -------------------------------- | ---------- | ---------------------------------------- |
-| Layout (`chat-viewport.ts`)      | ✅         | Missing header widget area               |
-| Footer (`footer.ts`)             | ✅         | Missing extension statuses               |
-| Tool Cards (`tool-execution.ts`) | ⚠️ Basic   | No custom renderers, no images           |
-| Bash Execution                   | ⚠️ Basic   | No truncation warning, no exit code pill |
-| Model Selector                   | ⚠️ Basic   | No async refresh, no progress            |
-| Session Selector                 | ⚠️ Basic   | No progress, no delete/rename            |
-| Keybindings                      | ✅         | No UI hints                              |
-| Theme System                     | ✅         | Missing key hints in UI                  |
-| Assistant Message                | ⚠️ Basic   | No OSC133, no stop reasons               |
-| User Message                     | ⚠️ Basic   | No OSC133                                |
-| Status Indicators                | ❌ Missing | Working/Retry/Compaction/Idle            |
-| Header                           | ❌ Missing | Logo, key hints, changelog               |
-| Keybinding Hints                 | ❌ Missing | Everywhere in pi                         |
-| Login Dialog                     | ❌ Missing | OAuth flow UI                            |
-| Model Selector Refresh           | ❌ Missing | Async refresh with progress              |
-| Session Selector Loading         | ❌ Missing | Progress states                          |
-| Status Indicators                | ❌ Missing | Working/Retry/Compaction/Idle            |
+| Component                        | Status      | Missing Polish                        |
+| -------------------------------- | ----------- | ------------------------------------- |
+| Layout (`chat-viewport.ts`)      | ✅          | Header widget area done               |
+| Footer (`footer.ts`)             | ✅          | Extension statuses done               |
+| Tool Cards (`tool-execution.ts`) | ✅ Polished | Custom renderers, images, duration    |
+| Bash Execution                   | ✅ Polished | Truncation warning, exit code pill    |
+| Model Selector                   | ✅ Polished | Async refresh, progress, save default |
+| Session Selector                 | ✅ Polished | Progress, delete/archive, rename      |
+| Keybindings                      | ✅          | UI hints done                         |
+| Theme System                     | ✅          | Key hints in UI done                  |
+| Assistant Message                | ✅ Polished | OSC133 zones, stop reasons            |
+| User Message                     | ✅ Polished | OSC133 zones                          |
+| Status Indicators                | ✅ Complete | Working/Retry/Compaction/Idle         |
+| Header                           | ✅ Complete | Logo, key hints, changelog            |
+| Keybinding Hints                 | ✅ Complete | Everywhere in pi                      |
+| Login Dialog                     | ✅ Complete | OAuth flow UI                         |
+| Model Selector Refresh           | ✅ Complete | Async refresh with progress           |
+| Session Selector Loading         | ✅ Complete | Progress states                       |
 
 ## Layer Details
 
@@ -87,18 +86,19 @@
 ```
 ui.ts (Main Orchestrator, 1300+ lines)
 ├── Layout (chat-viewport.ts)
-│   ├── Header (startup banner, key hints) ❌ MISSING
+│   ├── Header (logo, version, key hints, click to expand) ✅
 │   ├── Transcript (ScrollView)
-│   │   ├── User Messages (UserMessageComponent)
-│   │   ├── Assistant Messages (AssistantMessageComponent)
-│   │   ├── Tool Executions (ToolExecutionComponent)
-│   │   └── Bash Executions (BashExecutionComponent)
+│   │   ├── User Messages (UserMessageComponent) ✅ OSC133
+│   │   ├── Assistant Messages (AssistantMessageComponent) ✅ OSC133, stop reasons
+│   │   ├── Tool Executions (ToolExecutionComponent) ✅ custom renderers, images
+│   │   └── Bash Executions (BashExecutionComponent) ✅ truncation, exit codes
 │   ├── Pending Messages Queue (QueueView)
-│   ├── Status Indicators (working/retry/compaction) ❌ MISSING
+│   ├── Status Indicators (Working/Retry/Compaction/Idle) ✅
+│   ├── Extension Widgets (above/below editor) ✅
 │   ├── Editor (PromptEditor with autocomplete)
-│   └── Footer (FooterComponent)
+│   └── Footer (FooterComponent) ✅
 ├── Event Handling
-│   ├── Keyboard (keybindings.ts)
+│   ├── Keyboard (keybindings.ts) ✅ hints everywhere
 │   ├── Mouse (click tool cards to expand)
 │   └── Runtime Events (tool_execution_*, message_*, agent_*)
 ├── State Management
@@ -107,7 +107,7 @@ ui.ts (Main Orchestrator, 1300+ lines)
 │   ├── Thinking visibility
 │   └── Queued messages
 └── Command System
-    ├── Slash commands (/model, /session, /login, etc.)
+    ├── Slash commands (/model, /session, /login, /bug, /share, /changelog, /settings, etc.)
     ├── Extension commands
     └── Bash mode (! prefix)
 ```
@@ -469,4 +469,4 @@ interface ThemeTokens {
 
 ---
 
-_Gap Analysis: Core structure complete (Phases 1-5), but ~194 components missing vs pi-coding-agent's polished interactive mode. See TODO.md for remaining work._
+_Gap Analysis: Core structure + all Phase 6 polish complete (Phases 1-6). Remaining: Phase 7 (Documentation, Performance Audit, Final Testing) ~20h. See TODO.md for remaining work._

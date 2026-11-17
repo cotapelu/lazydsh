@@ -19,6 +19,9 @@ import { LoginDialog } from "./components/login-dialog.js";
 import { AssistantMessageComponent } from "./components/assistant-message.js";
 import { UserMessageComponent } from "./components/user-message.js";
 import { editInExternalEditor, editorCommand } from "./external-editor.ts";
+import { reportBug } from "./bug-report.ts";
+import { showChangelog } from "./show-changelog.ts";
+import { extensionWidgets, createExtensionWidgetContainer } from "./extensions.ts";
 import { copyToClipboard } from "./clipboard.ts";
 import { ProgramStatusReporter } from "./program-status.ts";
 import { StatusIndicatorContainer } from "./components/status-container.js";
@@ -269,11 +272,15 @@ export async function runUI(
   history.addChild(transcript);
   history.addChild(queueView);
   const scroll = new ScrollView(history, { primary: true, follow: "end", scrollbar: "auto" });
+  const widgetsAbove = createExtensionWidgetContainer(extensionWidgets, "above");
+  const widgetsBelow = createExtensionWidgetContainer(extensionWidgets, "below");
   tui.setLayoutRoot(
     new VStack([
       { component: scroll, basis: 0, grow: 1, minSize: 1 },
       { component: statusContainer, shrink: 0 },
+      { component: widgetsAbove, shrink: 0 },
       { component: editor, shrink: 0 },
+      { component: widgetsBelow, shrink: 0 },
       { component: footerContainer, shrink: 0 },
     ]),
   );
@@ -880,6 +887,32 @@ export async function runUI(
       void stop();
       return;
     }
+    if (text === "/bug") {
+      void (async () => {
+        const url = await reportBug(runtime, options, text.slice(4).trim());
+        add("Bug Report", `Opened GitHub issue: ${url}`);
+      })();
+      return;
+    }
+    if (text === "/share") {
+      void (async () => {
+        const { generateShareLink } = await import("./session-share.ts");
+        const url = await generateShareLink(runtime, options);
+        add("Share", `Session share link: ${url}`);
+      })();
+      return;
+    }
+    if (text === "/changelog") {
+      showChangelog(tui, showPanel, dismissPanel);
+      return;
+    }
+    if (text === "/settings") {
+      const { SettingsSelectorComponent } = await import("./settings-selector.ts");
+      const settings = new SettingsSelectorComponent(tui);
+      settings.onCancel = dismissPanel;
+      showPanel(settings);
+      return;
+    }
     if (text === "/model") {
       void pickModel();
       return;
@@ -1436,11 +1469,34 @@ export async function runUI(
   tui.addInputListener((data) => {
     const kb = keybindings;
     if (kb.matches(data, "app.clear")) {
-      if (editor.getText().length > 0 || pendingFiles.length > 0) {
+      if (running || busy) {
+        const queued = queue.length;
+        stopping = true;
+        statusContainer.show("retry", { message: "Stopping" });
+        programStatus.working("Stopping");
+        update();
+        void runtime
+          .cancel()
+          .then(() => {
+            if (queued === 0) add("Interrupted");
+          })
+          .catch((error) => add("Error", error instanceof Error ? error.message : String(error)))
+          .finally(() => {
+            stopping = false;
+            statusContainer.show(running ? "working" : "idle", {
+              message: running ? "Working" : "Ready",
+            });
+            programStatus.idle();
+            drainQueue();
+            update();
+          });
+      } else if (editor.getText().length > 0 || pendingFiles.length > 0) {
         editor.setText("");
         pendingFiles = [];
         update();
-      } else void stop();
+      } else {
+        void stop();
+      }
       return { consume: true };
     }
     if (kb.matches(data, "app.interrupt") && !selecting) {

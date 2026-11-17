@@ -47,6 +47,14 @@ const localCommands: SlashCommand[] = [
     description: "Show model, usage, account, and settings",
   },
   { name: "quit", description: "Exit lazydsh" },
+  { name: "bug", argumentHint: "[description]", description: "Report a bug with crash details" },
+  {
+    name: "share",
+    argumentHint: "[session-id]",
+    description: "Generate a share link for a session",
+  },
+  { name: "changelog", description: "Show the changelog" },
+  { name: "settings", description: "Open settings" },
 ];
 
 const nativeCommands = [
