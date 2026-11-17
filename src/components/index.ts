@@ -19,7 +19,7 @@ export type {
   SessionScope,
   SessionSortMode,
   SessionNameFilter,
-} from "../session-selector.js";
+} from "../components/session-selector-search.js";
 export {
   filterAndSortSessions,
   buildSessionTree,
@@ -28,7 +28,7 @@ export {
   hasSessionName,
   parseSearchQuery,
 } from "../session-selector-search.js";
-export { BashExecutionComponent, BorderedBashExecution } from "../bash-execution.js";
+export { BashExecutionComponent } from "../bash-execution.js";
 export { ToolExecutionComponent, type ToolExecutionOptions } from "../tool-execution.js";
 export {
   genericCallFallback,
@@ -47,7 +47,6 @@ export {
   RetryStatusIndicator,
   CompactionStatusIndicator,
   IdleStatus,
-  createStatusIndicator,
   type StatusIndicator,
 } from "./status-indicator.js";
 export { StatusIndicatorContainer } from "./status-container.js";

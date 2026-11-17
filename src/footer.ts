@@ -5,8 +5,9 @@
  * context usage %, model, thinking level, routed model, extension statuses.
  * Ported from pi-coding-agent's FooterComponent.
  */
+
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
-import { fg } from "./theme.ts";
+import { theme } from "./theme/theme.ts";
 import { formatTokens, formatCwdForFooter, FooterDataProvider } from "./footer-data-provider.ts";
 
 interface FooterOptions {
@@ -174,9 +175,9 @@ export class FooterComponent {
     }
     const sessionName = this.session.sessionManager.getSessionName();
     if (sessionName) {
-      pwd = `${pwd} • ${sessionName}`;
+      pwd = `${pwd} ${theme.fg("dim", "•")} ${sessionName}`;
     }
-    const pwdLine = truncateToWidth(fg.dim(pwd), width, fg.dim("..."));
+    const pwdLine = truncateToWidth(theme.fg("dim", pwd), width, theme.fg("dim", "..."));
 
     // Line 2: tokens + context % + model
     const statsParts: string[] = [];
@@ -210,16 +211,15 @@ export class FooterComponent {
 
     let contextPercentStr: string;
     if (contextPercentValue > 90) {
-      contextPercentStr = fg.error(contextPercentDisplay);
+      contextPercentStr = theme.fg("error", contextPercentDisplay);
     } else if (contextPercentValue > 70) {
-      contextPercentStr = fg.warning(contextPercentDisplay);
+      contextPercentStr = theme.fg("warning", contextPercentDisplay);
     } else {
       contextPercentStr = contextPercentDisplay;
     }
     statsParts.push(contextPercentStr);
 
     // Experimental features indicator
-    // TODO: check experimental features
     // if (areExperimentalFeaturesEnabled()) {
     //   statsParts.push(`${theme.fg("dim", "•")} ${theme.bold(theme.fg("warning", "xp"))}`);
     // }
@@ -243,20 +243,22 @@ export class FooterComponent {
     if (state.model?.reasoning) {
       const thinkingLevel = state.thinkingLevel || "off";
       rightSideWithoutProvider =
-        thinkingLevel === "off" ? `${modelName} • thinking off` : `${modelName} • ${thinkingLevel}`;
+        thinkingLevel === "off"
+          ? `${modelName} ${theme.fg("dim", "• thinking off")}`
+          : `${modelName} ${theme.fg("dim", "•")} ${thinkingLevel}`;
     }
 
     // Routed model indicator
     const routed = state.routedModel;
     if (routed) {
-      const level = routed.thinkingLevel ? ` • ${routed.thinkingLevel}` : "";
-      rightSideWithoutProvider += ` → ${routed.model.id}${level}`;
+      const level = routed.thinkingLevel ? ` ${theme.fg("dim", "•")} ${routed.thinkingLevel}` : "";
+      rightSideWithoutProvider += ` ${theme.fg("dim", "→")} ${routed.model.id}${level}`;
     }
 
     // Prepend provider if multiple available and space permits
     let rightSide = rightSideWithoutProvider;
     if (this.footerData.getAvailableProviderCount() > 1 && state.model) {
-      rightSide = `(${state.model.provider}) ${rightSideWithoutProvider}`;
+      rightSide = `${theme.fg("dim", "(")}${state.model.provider}${theme.fg("dim", ")")} ${rightSideWithoutProvider}`;
       if (statsLeftWidth + minPadding + visibleWidth(rightSide) > width) {
         rightSide = rightSideWithoutProvider;
       }
@@ -282,9 +284,9 @@ export class FooterComponent {
     }
 
     // Apply dim to parts separately to preserve color codes
-    const dimStatsLeft = fg.dim(statsLeft);
-    const remainder = statsLine.slice(statsLeft.length);
-    const dimRemainder = fg.dim(remainder);
+    const dimStatsLeft = theme.fg("dim", statsLeft);
+    const remainder = statsLine.slice(statsLeft.length); // padding + rightSide
+    const dimRemainder = theme.fg("dim", remainder);
 
     // Extension statuses line (if any)
     const extensionStatuses = this.footerData.getExtensionStatuses();
@@ -295,7 +297,7 @@ export class FooterComponent {
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([, text]) => sanitizeStatusText(text));
       const statusLine = sortedStatuses.join(" ");
-      lines.push(truncateToWidth(statusLine, width, fg.dim("...")));
+      lines.push(truncateToWidth(statusLine, width, theme.fg("dim", "...")));
     }
 
     return lines;
@@ -304,9 +306,6 @@ export class FooterComponent {
 
 // Helper for homedir (inline to avoid circular import)
 function homedir(): string {
-  // This will be replaced by the actual homedir from footer-data-provider
-  // but we need it here for formatCwdForFooter. The footer data provider
-  // already has the cwd, so we can use process.env.HOME as fallback.
   return process.env.HOME || process.env.USERPROFILE || "";
 }
 

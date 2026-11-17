@@ -5,146 +5,143 @@
  * Ported from pi-coding-agent's status-indicator.js.
  */
 
-import { Container, Loader, Text, Spacer, type TUI } from "@earendil-works/pi-tui";
+import { Container, Loader, Spacer, Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { theme } from "../theme/theme.ts";
+import { CountdownTimer } from "./countdown-timer.js";
+import { keyText } from "../keybinding-hints.js";
 
-/** Base status indicator interface */
-export interface StatusIndicator extends Container {
-  setMessage(message: string): void;
-}
+export class StatusIndicator extends Loader {
+  kind: string;
+  constructor(
+    kind: string,
+    ui: any,
+    spinnerColorFn: (text: string) => string,
+    messageColorFn: (text: string) => string,
+    message: string,
+    indicator?: any,
+  ) {
+    super(ui, spinnerColorFn, messageColorFn, message, indicator);
+    this.kind = kind;
+  }
 
-/** Working status indicator with spinner */
-export class WorkingStatusIndicator extends Container {
-  private loader: Loader;
-  private message: string;
-
-  constructor(tui: TUI, message = "Working") {
-    super();
-    this.message = message;
-    this.loader = new Loader(
-      tui,
-      (spinner) => theme.fg("accent", spinner),
-      (text) => theme.fg("muted", text),
-      message,
+  renderInBorder(width: number): string {
+    const line = super.render(width + 2)[1] ?? "";
+    return truncateToWidth(
+      line.startsWith(" ") ? line.slice(1).trimEnd() : line.trimEnd(),
+      width,
+      "",
     );
-    this.addChild(new Spacer(1));
-    this.addChild(this.loader);
-    this.addChild(new Spacer(1));
   }
 
-  setMessage(message: string): void {
-    this.message = message;
-    this.loader.setMessage(message);
+  renderSpinnerInBorder(width: number): string {
+    return truncateToWidth(this.getRenderedIndicator(), width, "");
   }
 
-  setVisible(_visible: boolean): void {
-    // Implementation depends on parent container
+  dispose(): void {
+    this.stop();
   }
 }
 
-/** Retry status indicator */
-export class RetryStatusIndicator extends Container {
-  private text: Text;
-  private retryCount: number;
-  private message: string;
-
-  constructor(message = "Retrying", retryCount = 0) {
-    super();
-    this.message = message;
-    this.retryCount = retryCount;
-    this.text = new Text("", 1, 0);
-    this.addChild(new Spacer(1));
-    this.addChild(this.text);
-    this.addChild(new Spacer(1));
-    this.updateDisplay();
-  }
-
-  setRetryCount(count: number): void {
-    this.retryCount = count;
-    this.updateDisplay();
-  }
-
-  setMessage(message: string): void {
-    this.message = message;
-    this.updateDisplay();
-  }
-
-  private updateDisplay(): void {
-    const retryText = this.retryCount > 0 ? ` (retry ${this.retryCount})` : "";
-    this.text.setText(theme.fg("warning", `${this.message}${retryText}`));
+export class WorkingStatusIndicator extends StatusIndicator {
+  constructor(ui: any, message: string, indicator?: any, colorFn?: (text: string) => string) {
+    super(
+      "working",
+      ui,
+      colorFn ?? ((text: string) => theme.fg("accent", text)),
+      colorFn ?? ((text: string) => theme.fg("muted", text)),
+      message,
+      indicator,
+    );
   }
 }
 
-/** Compaction status indicator */
-export class CompactionStatusIndicator extends Container {
-  private text: Text;
-  private progress: number; // 0-100
-
-  constructor() {
-    super();
-    this.progress = 0;
-    this.text = new Text("", 1, 0);
-    this.addChild(new Spacer(1));
-    this.addChild(this.text);
-    this.addChild(new Spacer(1));
-    this.updateDisplay();
+export class RetryStatusIndicator extends StatusIndicator {
+  countdown: CountdownTimer | undefined;
+  constructor(ui: any, attempt: number, maxAttempts: number, delayMs: number) {
+    const retryMessage = (seconds: number) =>
+      `Retrying (${attempt}/${maxAttempts}) in ${seconds}s... (${keyText("app.interrupt")} to cancel)`;
+    super(
+      "retry",
+      ui,
+      (spinner: string) => theme.fg("warning", spinner),
+      (text: string) => theme.fg("muted", text),
+      retryMessage(Math.ceil(delayMs / 1000)),
+    );
+    this.countdown = new CountdownTimer(
+      delayMs,
+      ui,
+      (seconds: number) => {
+        this.setMessage(retryMessage(seconds));
+      },
+      () => {
+        this.countdown = undefined;
+      },
+    );
   }
 
-  setProgress(progress: number): void {
-    this.progress = Math.max(0, Math.min(100, progress));
-    this.updateDisplay();
-  }
-
-  private updateDisplay(): void {
-    const bar = this.renderProgressBar(this.progress);
-    this.text.setText(theme.fg("accent", `Compacting ${bar} ${this.progress}%`));
-  }
-
-  private renderProgressBar(percent: number): string {
-    const width = 20;
-    const filled = Math.round((percent / 100) * width);
-    const empty = width - filled;
-    return "[" + "█".repeat(filled) + "░".repeat(empty) + "]";
+  dispose(): void {
+    this.countdown?.dispose();
+    this.countdown = undefined;
+    super.dispose();
   }
 }
 
-/** Idle status indicator */
+export class CompactionStatusIndicator extends StatusIndicator {
+  constructor(ui: any, reason: "manual" | "overflow", colorFn?: (text: string) => string) {
+    const cancelHint = `(${keyText("app.interrupt")} to cancel)`;
+    const label =
+      reason === "manual"
+        ? `Compacting context... ${cancelHint}`
+        : `${reason === "overflow" ? "Context overflow detected, " : ""}Auto-compacting... ${cancelHint}`;
+    super(
+      "compaction",
+      ui,
+      colorFn ?? ((spinner: string) => theme.fg("accent", spinner)),
+      colorFn ?? ((text: string) => theme.fg("muted", text)),
+      label,
+    );
+  }
+}
+
+export class BranchSummaryStatusIndicator extends StatusIndicator {
+  constructor(ui: any) {
+    super(
+      "branchSummary",
+      ui,
+      (spinner: string) => theme.fg("accent", spinner),
+      (text: string) => theme.fg("muted", text),
+      `Summarizing branch... (${keyText("app.interrupt")} to cancel)`,
+    );
+  }
+}
+
 export class IdleStatus extends Container {
   private text: Text;
+  private message: string;
 
   constructor(message = "Ready") {
     super();
-    this.text = new Text(theme.fg("muted", message), 1, 0);
+    this.message = message;
+    this.text = new Text(String(theme.fg("muted", message)), 1, 0);
     this.addChild(new Spacer(1));
     this.addChild(this.text);
     this.addChild(new Spacer(1));
   }
 
   setMessage(message: string): void {
-    this.text.setText(theme.fg("muted", message));
+    this.message = message;
+    this.text.setText(String(theme.fg("muted", message)));
   }
-}
 
-/** Status indicator factory */
-export function createStatusIndicator(
-  type: "working" | "retry" | "compaction" | "idle",
-  tui: TUI,
-  options?: {
-    message?: string;
-    retryCount?: number;
-    progress?: number;
-  },
-): Container {
-  switch (type) {
-    case "working":
-      return new WorkingStatusIndicator(tui, options?.message);
-    case "retry":
-      return new RetryStatusIndicator(options?.message, options?.retryCount);
-    case "compaction":
-      return new CompactionStatusIndicator();
-    case "idle":
-      return new IdleStatus(options?.message);
-    default:
-      return new IdleStatus();
+  invalidate(): void {
+    // No cached state to invalidate.
+  }
+
+  render(width: number): string[] {
+    return super.render(width);
+  }
+
+  dispose(): void {
+    // No resources to clean up
   }
 }

@@ -25,22 +25,12 @@ import { theme } from "./theme/theme.ts";
 import { KeybindingsManager } from "./keybindings.ts";
 import { DynamicBorder } from "./components/dynamic-border.ts";
 import { keyHint, keyText } from "./keybinding-hints.ts";
-
-/** One DSH session as the picker sees it. */
-export interface SessionRecord {
-  id: string;
-  title: string;
-  directory: string;
-  archived: boolean;
-  pinned: boolean;
-  /** Epoch millis of the last event; used for age and relevance ordering. */
-  modified: number;
-  messageCount: number;
-}
-
-export type SessionScope = "all" | "current";
-export type SessionSortMode = "threaded" | "recent" | "relevance";
-export type SessionNameFilter = "all" | "named";
+import type {
+  SessionRecord,
+  SessionScope,
+  SessionSortMode,
+  SessionNameFilter,
+} from "./components/session-selector-search.js";
 
 export interface SessionSelectorCallbacks {
   onSelect(sessionId: string): void | Promise<void>;

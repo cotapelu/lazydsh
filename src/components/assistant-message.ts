@@ -8,6 +8,7 @@
 
 import { Container, Markdown, MouseRegion, Spacer, Text } from "@earendil-works/pi-tui";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
+import { createMarkdownTransform } from "./markdown-transform.js";
 
 const OSC133_ZONE_START = "\x1b]133;A\x07";
 const OSC133_ZONE_END = "\x1b]133;B\x07";
@@ -23,6 +24,8 @@ interface AssistantMessage {
   content: MessageContent[];
   stopReason?: "length" | "aborted" | "error";
   errorMessage?: string;
+  messageId?: string;
+  timestamp?: number;
 }
 
 /** One markdown slot per content run, so a streaming update reuses instances. */
@@ -40,6 +43,9 @@ export class AssistantMessageComponent extends Container {
   private lastMessage: AssistantMessage | undefined;
   private hasToolCalls = false;
   private isStreaming = false;
+  private markdownTransformers: any[];
+  private messageId: string | undefined;
+  private timestamp: number | undefined;
   private thinkingVisibilityOverrides = new Map<number, boolean>();
   private markdownSlots: MarkdownSlot[] = [];
 
@@ -49,12 +55,18 @@ export class AssistantMessageComponent extends Container {
     markdownTheme = getMarkdownTheme(),
     hiddenThinkingLabel = "Thinking...",
     outputPad = 1,
+    markdownTransformers: any[] = [],
+    messageId?: string,
+    timestamp?: number,
   ) {
     super();
     this.hideThinkingBlock = hideThinkingBlock;
     this.markdownTheme = markdownTheme;
     this.hiddenThinkingLabel = hiddenThinkingLabel;
     this.outputPad = outputPad;
+    this.markdownTransformers = markdownTransformers;
+    this.messageId = messageId;
+    this.timestamp = timestamp;
     this.contentContainer = new Container();
     this.addChild(this.contentContainer);
     if (message !== undefined) this.updateContent(message);
@@ -128,7 +140,16 @@ export class AssistantMessageComponent extends Container {
           markdownBlock(
             "text",
             text,
-            () => new Markdown(text, this.outputPad, 0, this.markdownTheme),
+            () =>
+              new Markdown(text, this.outputPad, 0, this.markdownTheme, undefined, {
+                transform: createMarkdownTransform(
+                  "assistant",
+                  () => this.isStreaming,
+                  this.markdownTransformers,
+                  this.messageId,
+                  this.timestamp,
+                ),
+              }),
           ),
         );
       } else if (content.type === "thinking") {
@@ -158,10 +179,25 @@ export class AssistantMessageComponent extends Container {
               "thinking",
               thinking,
               () =>
-                new Markdown(thinking, this.outputPad, 0, this.markdownTheme, {
-                  color: (text: string) => theme.fg("thinkingText", text),
-                  italic: true,
-                }),
+                new Markdown(
+                  thinking,
+                  this.outputPad,
+                  0,
+                  this.markdownTheme,
+                  {
+                    color: (text: string) => theme.fg("thinkingText", text),
+                    italic: true,
+                  },
+                  {
+                    transform: createMarkdownTransform(
+                      "assistant-thinking",
+                      () => this.isStreaming,
+                      this.markdownTransformers,
+                      this.messageId,
+                      this.timestamp,
+                    ),
+                  },
+                ),
             );
         addVisibleChild(
           new MouseRegion(component, (event) => {

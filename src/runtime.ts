@@ -46,6 +46,7 @@ import { contentText, isAuthFailure, type RuntimeEvent } from "./runtime-events.
 
 export { eventText, isAuthFailure } from "./runtime-events.ts";
 export type { RuntimeEvent } from "./runtime-events.ts";
+export type ModelRuntime = any;
 
 export type Route = { provider: string; model: string };
 export type QuestionResult = AskUserQuestionAnswer | { cancelled: true };

@@ -18,17 +18,20 @@ import {
 import { theme } from "./theme/theme.ts";
 import { DynamicBorder } from "./components/dynamic-border.js";
 import { keyDisplayText, keyHint } from "./keybinding-hints.js";
+import { refreshModelCatalogs } from "./model-catalog-refresh.js";
+import { getDistinctModelName, getModelSelectorSearchText } from "./model-search.js";
+import { modelsAreEqual } from "./utils/models-are-equal.js";
 
 const MAX_VISIBLE = 10;
 
-interface ModelInfo {
+interface ModelItem {
   provider: string;
   id: string;
   name: string;
 }
 
 interface ScopedModel {
-  model: ModelInfo;
+  model: ModelItem;
 }
 
 /**
@@ -40,22 +43,22 @@ export class ModelSelectorComponent extends Container {
   private searchInput: Input;
   private _focused = false;
   private listContainer: Container;
-  private allModels: ModelInfo[] = [];
-  private scopedModelItems: ModelInfo[] = [];
-  private activeModels: ModelInfo[] = [];
-  private filteredModels: ModelInfo[] = [];
+  private allModels: ModelItem[] = [];
+  private scopedModelItems: ModelItem[] = [];
+  private activeModels: ModelItem[] = [];
+  private filteredModels: ModelItem[] = [];
   private selectedIndex = 0;
-  private currentModel: ModelInfo | undefined;
+  private currentModel: ModelItem | undefined;
   private modelRuntime: any;
-  private onSelectCallback: (model: ModelInfo) => void;
-  private onSelectAsDefaultCallback: ((model: ModelInfo) => void) | undefined;
+  private onSelectCallback: (model: ModelItem) => void;
+  private onSelectAsDefaultCallback: ((model: ModelItem) => void) | undefined;
   private onCancelCallback: () => void;
   private errorMessage: string | undefined;
   private refreshStatusMessage = "Refreshing model catalogs…";
   private refreshStatusSuccess = false;
   private tui: any;
   private scopedModels: ScopedModel[];
-  private defaultModel: ModelInfo | undefined;
+  private defaultModel: ModelItem | undefined;
   private scope = "all";
   private scopeText: Text | undefined;
   private scopeHintText: Text | undefined;
@@ -65,14 +68,14 @@ export class ModelSelectorComponent extends Container {
 
   constructor(
     tui: any,
-    currentModel: ModelInfo | undefined,
+    currentModel: ModelItem | undefined,
     modelRuntime: any,
     scopedModels: ScopedModel[],
-    onSelect: (model: ModelInfo) => void,
+    onSelect: (model: ModelItem) => void,
     onCancel: () => void,
     initialSearchInput = "",
-    onSelectAsDefault?: (model: ModelInfo) => void,
-    defaultModel?: ModelInfo,
+    onSelectAsDefault?: (model: ModelItem) => void,
+    defaultModel?: ModelItem,
   ) {
     super();
     this.tui = tui;
@@ -161,17 +164,22 @@ export class ModelSelectorComponent extends Container {
     const models = this.modelRuntime.getAvailableSnapshot().map((model: any) => ({
       provider: model.provider,
       id: model.id,
-      name: model.name,
+      model,
     }));
     this.allModels = this.sortModels(models);
-    this.scopedModelItems = this.scopedModels.map((scoped) => {
+    this.scopedModels = this.scopedModels.map((scoped) => {
       const refreshed = this.modelRuntime.getModel(scoped.model.provider, scoped.model.id);
-      return refreshed ? { ...scoped.model, ...refreshed } : scoped.model;
+      return refreshed ? { ...scoped, model: refreshed } : scoped;
     });
+    this.scopedModelItems = this.scopedModels.map((scoped) => ({
+      provider: scoped.model.provider,
+      id: scoped.model.id,
+      name: scoped.model.name,
+    }));
     this.activeModels = this.scope === "scoped" ? this.scopedModelItems : this.allModels;
     this.filteredModels = this.activeModels;
     const currentIndex = this.filteredModels.findIndex((item) =>
-      this.modelsAreEqual(this.currentModel, item),
+      modelsAreEqual(this.currentModel, item),
     );
     this.selectedIndex =
       currentIndex >= 0
@@ -188,18 +196,28 @@ export class ModelSelectorComponent extends Container {
     }, timeoutMs);
 
     try {
-      // Note: In lazydsh, model catalog refresh might be different
-      // For now we just use the snapshot
+      const result = await refreshModelCatalogs(
+        this.modelRuntime,
+        this.refreshAbortController.signal,
+      );
       if (this.closed) return;
       this.refreshStatusMessage = "";
-      this.errorMessage = this.modelRuntime.getError?.();
-      if (!this.errorMessage) {
-        this.refreshStatusMessage = "Model catalogs refreshed.";
-        this.refreshStatusSuccess = true;
+      if (result.aborted && timedOut) {
+        this.errorMessage = "Model refresh timed out; showing cached models.";
+      } else if (result.errors.size === 1) {
+        this.errorMessage = `Could not refresh ${result.errors.keys().next().value}; showing cached models.`;
+      } else if (result.errors.size > 1) {
+        this.errorMessage = `Could not refresh ${result.errors.size} model catalogs (${[...result.errors.keys()].join(", ")}); showing cached models.`;
+      } else {
+        this.errorMessage = this.modelRuntime.getError?.();
+        if (!this.errorMessage) {
+          this.refreshStatusMessage = "Model catalogs refreshed.";
+          this.refreshStatusSuccess = true;
+        }
       }
       const selectedModel = this.filteredModels[this.selectedIndex];
       this.loadModelsFromSnapshot();
-      // The user may have moved while the refresh was in flight
+      // The user may have moved while the refresh was in flight, and the refresh can shift rows.
       this.filterModels(this.searchInput.getValue(), selectedModel);
       this.tui.requestRender();
     } catch (error) {
@@ -222,21 +240,25 @@ export class ModelSelectorComponent extends Container {
     this.refreshAbortController.abort();
   }
 
-  sortModels(models: ModelInfo[]): ModelInfo[] {
+  sortModels(models: Array<{ provider: string; id: string; model: any }>): ModelItem[] {
     const sorted = [...models];
-    // Sort: current model first, default model second, then by provider
+    // Sort: current model first, default model second, then by provider.
     sorted.sort((a, b) => {
-      const aIsCurrent = this.modelsAreEqual(this.currentModel, a);
-      const bIsCurrent = this.modelsAreEqual(this.currentModel, b);
+      const aIsCurrent = modelsAreEqual(this.currentModel, a.model);
+      const bIsCurrent = modelsAreEqual(this.currentModel, b.model);
       if (aIsCurrent && !bIsCurrent) return -1;
       if (!aIsCurrent && bIsCurrent) return 1;
-      const aIsDefault = this.isDefaultModel(a);
-      const bIsDefault = this.isDefaultModel(b);
+      const aIsDefault = this.isDefaultModel(a.model);
+      const bIsDefault = this.isDefaultModel(b.model);
       if (aIsDefault && !bIsDefault) return -1;
       if (!aIsDefault && bIsDefault) return 1;
       return a.provider.localeCompare(b.provider);
     });
-    return sorted;
+    return sorted.map(({ provider, id, model }) => ({
+      provider,
+      id,
+      name: model.name ?? id,
+    }));
   }
 
   getScopeText(): string {
@@ -250,7 +272,7 @@ export class ModelSelectorComponent extends Container {
     return keyHint("tui.input.tab", "scope") + theme.fg("muted", " (all/scoped)");
   }
 
-  isDefaultModel(model: ModelInfo): boolean {
+  isDefaultModel(model: ModelItem): boolean {
     return this.defaultModel?.provider === model.provider && this.defaultModel.id === model.id;
   }
 
@@ -264,7 +286,7 @@ export class ModelSelectorComponent extends Container {
     this.scope = scope;
     this.activeModels = this.scope === "scoped" ? this.scopedModelItems : this.allModels;
     const currentIndex = this.activeModels.findIndex((item) =>
-      this.modelsAreEqual(this.currentModel, item),
+      modelsAreEqual(this.currentModel, item),
     );
     this.selectedIndex = currentIndex >= 0 ? currentIndex : 0;
     this.filterModels(this.searchInput.getValue());
@@ -273,11 +295,11 @@ export class ModelSelectorComponent extends Container {
     }
   }
 
-  filterModels(query: string, preferredModel?: ModelInfo): void {
+  filterModels(query: string, preferredModel?: any): void {
     if (query) {
       const filtered = fuzzyFilter(this.activeModels, query, (item) => {
         const defaultText = this.isDefaultModel(item) ? " default" : "";
-        return `${this.getModelSelectorSearchText(item)}${defaultText}`;
+        return `${getModelSelectorSearchText({ id: item.id, provider: item.provider, name: item.name })}${defaultText}`;
       });
       if (this.isDefaultSearch(query)) {
         const defaultItems = this.activeModels.filter((item) => this.isDefaultModel(item));
@@ -292,10 +314,11 @@ export class ModelSelectorComponent extends Container {
     } else {
       this.filteredModels = this.activeModels;
     }
-
-    // Keep the preferred model selected if it is still listed
+    // Keep the preferred model selected if it is still listed. Otherwise, when filtering
+    // by a query, move the selector to the top row so the best match is highlighted.
+    // When the query is cleared, keep the current position clamped to the (restored) list length.
     const preferredIndex = preferredModel
-      ? this.filteredModels.findIndex((item) => this.modelsAreEqual(preferredModel, item))
+      ? this.filteredModels.findIndex((item) => modelsAreEqual(preferredModel, item))
       : -1;
     if (preferredIndex >= 0) this.selectedIndex = preferredIndex;
     else
@@ -303,10 +326,6 @@ export class ModelSelectorComponent extends Container {
         ? 0
         : Math.min(this.selectedIndex, Math.max(0, this.filteredModels.length - 1));
     this.updateList();
-  }
-
-  getModelSelectorSearchText(item: ModelInfo): string {
-    return `${item.id} ${item.provider} ${item.name}`;
   }
 
   updateList(): void {
@@ -319,25 +338,23 @@ export class ModelSelectorComponent extends Container {
       ),
     );
     const endIndex = Math.min(startIndex + MAX_VISIBLE, this.filteredModels.length);
-
     // Show visible slice of filtered models
     for (let i = startIndex; i < endIndex; i++) {
       const item = this.filteredModels[i];
       if (!item) continue;
       const isSelected = i === this.selectedIndex;
-      const isCurrent = this.modelsAreEqual(this.currentModel, item);
+      const isCurrent = modelsAreEqual(this.currentModel, item);
       const isDefault = this.isDefaultModel(item);
       const defaultBadge = isDefault ? theme.fg("muted", " · default") : "";
       const cursor = isSelected ? theme.fg("accent", "→ ") : "  ";
       const currentMarker = isCurrent ? theme.fg("accent", "✓ ") : "  ";
       const modelText = isSelected ? theme.fg("accent", item.id) : item.id;
-      const name = this.getDistinctModelName(item);
+      const name = getDistinctModelName({ id: item.id, provider: item.provider, name: item.name });
       const nameText = name ? theme.fg("muted", ` (${name})`) : "";
       const providerBadge = theme.fg("muted", `[${item.provider}]`);
       const line = `${cursor}${currentMarker}${modelText}${nameText} ${providerBadge}${defaultBadge}`;
       this.listContainer.addChild(new Text(line, 0, 0));
     }
-
     // Add scroll indicator if needed
     if (startIndex > 0 || endIndex < this.filteredModels.length) {
       const scrollInfo = theme.fg(
@@ -346,7 +363,6 @@ export class ModelSelectorComponent extends Container {
       );
       this.listContainer.addChild(new Text(scrollInfo, 0, 0));
     }
-
     // Show error message or "no results" if empty
     if (this.errorMessage) {
       // Show error in red
@@ -377,18 +393,6 @@ export class ModelSelectorComponent extends Container {
         ),
       );
     }
-  }
-
-  getDistinctModelName(item: ModelInfo): string | undefined {
-    // Return model name if it differs from id
-    if (item.name && item.name !== item.id) {
-      return item.name;
-    }
-    return undefined;
-  }
-
-  modelsAreEqual(a: ModelInfo | undefined, b: ModelInfo): boolean {
-    return a !== undefined && a.provider === b.provider && a.id === b.id;
   }
 
   handleInput(keyData: string): void {
@@ -459,7 +463,7 @@ export class ModelSelectorComponent extends Container {
     }
   }
 
-  handleSelect(model: ModelInfo): void {
+  handleSelect(model: ModelItem): void {
     this.dispose();
     this.onSelectCallback(model);
   }

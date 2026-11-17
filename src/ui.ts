@@ -28,7 +28,7 @@ import { StatusIndicatorContainer } from "./components/status-container.js";
 import { FooterComponent } from "./footer.js";
 import { createFooterDataProvider } from "./footer-data-provider.js";
 import { getKeybindings } from "@earendil-works/pi-tui";
-import type { SessionRecord } from "./session-selector.js";
+import type { SessionRecord } from "./components/session-selector-search.js";
 import {
   TuiAltScreen,
   ScrollView,

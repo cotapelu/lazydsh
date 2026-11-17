@@ -2,6 +2,7 @@
  * Header Component
  *
  * The startup header: whale logo, version, and dynamic keybinding hints.
+ * Clicking the logo toggles between compact and expanded hints.
  * Ported from pi-coding-agent's BuiltInHeader.
  */
 

@@ -1,11 +1,11 @@
 /**
  * Status Indicator Container
  *
- * A container that manages and displays different status indicators
- * (working, retry, compaction, idle) based on the current state.
+ * Manages transitions between working/retry/compaction/idle status indicators.
+ * Ported from pi-coding-agent's status handling in interactive-mode.ts.
  */
 
-import { Container, type TUI } from "@earendil-works/pi-tui";
+import { Container } from "@earendil-works/pi-tui";
 import {
   WorkingStatusIndicator,
   RetryStatusIndicator,
@@ -13,77 +13,73 @@ import {
   IdleStatus,
 } from "./status-indicator.js";
 
-type StatusType = "idle" | "working" | "retry" | "compaction";
+export interface StatusOptions {
+  message?: string;
+  retryCount?: number;
+  delayMs?: number;
+  reason?: "manual" | "overflow";
+}
 
 export class StatusIndicatorContainer extends Container {
-  private currentIndicator: Container | null = null;
-  private currentType: StatusType = "idle";
-  private readonly tui: TUI;
+  private tui: any;
+  private currentIndicator:
+    | WorkingStatusIndicator
+    | RetryStatusIndicator
+    | CompactionStatusIndicator
+    | IdleStatus
+    | null = null;
+  private currentKind: string | null = null;
 
-  // Pre-created indicators
-  private readonly indicators: Record<string, Container>;
-
-  constructor(tui: TUI) {
+  constructor(tui: any) {
     super();
     this.tui = tui;
-    this.indicators = {
-      idle: new IdleStatus("Ready"),
-      working: new WorkingStatusIndicator(tui, "Working"),
-      retry: new RetryStatusIndicator("Retrying"),
-      compaction: new CompactionStatusIndicator(),
-    };
-    this.show("idle");
   }
 
-  /** Show a specific status indicator */
-  show(
-    type: StatusType,
-    options?: { message?: string; retryCount?: number; progress?: number },
-  ): void {
-    if (this.currentType === type && this.currentIndicator) {
-      this.updateIndicator(type, options);
-      return;
-    }
-
-    // Hide current indicator
+  show(kind: "working" | "retry" | "compaction" | "idle", options: StatusOptions = {}): void {
+    // Dispose of current indicator
     if (this.currentIndicator) {
+      this.currentIndicator.dispose();
       this.removeChild(this.currentIndicator);
+      this.currentIndicator = null;
     }
 
-    // Show new indicator
-    const indicator = this.indicators[type];
-    this.updateIndicator(type, options);
-
-    this.currentIndicator = indicator;
-    this.currentType = type;
-    this.addChild(indicator);
-    this.invalidate();
-  }
-
-  private updateIndicator(
-    type: StatusType,
-    options?: { message?: string; retryCount?: number; progress?: number },
-  ): void {
-    const indicator = this.indicators[type];
-    if (type === "working" && options?.message && indicator instanceof WorkingStatusIndicator) {
-      indicator.setMessage(options.message);
-    } else if (type === "retry" && indicator instanceof RetryStatusIndicator) {
-      if (options?.message) indicator.setMessage(options.message);
-      if (options?.retryCount !== undefined) indicator.setRetryCount(options.retryCount);
-    } else if (type === "compaction" && indicator instanceof CompactionStatusIndicator) {
-      if (options?.progress !== undefined) indicator.setProgress(options.progress);
-    } else if (type === "idle" && options?.message && indicator instanceof IdleStatus) {
-      indicator.setMessage(options.message);
+    // Create new indicator
+    switch (kind) {
+      case "working":
+        this.currentIndicator = new WorkingStatusIndicator(
+          this.tui,
+          options.message ?? "Working",
+          undefined,
+        );
+        break;
+      case "retry":
+        this.currentIndicator = new RetryStatusIndicator(
+          this.tui,
+          options.retryCount ?? 1,
+          3,
+          options.delayMs ?? 1000,
+        );
+        break;
+      case "compaction":
+        this.currentIndicator = new CompactionStatusIndicator(this.tui, options.reason ?? "manual");
+        break;
+      case "idle":
+        this.currentIndicator = new IdleStatus(options.message ?? "Ready");
+        break;
     }
+
+    this.currentKind = kind;
+    this.addChild(this.currentIndicator);
+    this.tui.requestRender();
   }
 
-  /** Get current status type */
-  getCurrentType(): StatusType {
-    return this.currentType;
+  getCurrentKind(): string | null {
+    return this.currentKind;
   }
 
-  /** Get current indicator */
-  getCurrentIndicator(): Container | null {
-    return this.currentIndicator;
+  invalidate(): void {
+    if (this.currentIndicator) {
+      this.currentIndicator.invalidate();
+    }
   }
 }
