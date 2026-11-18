@@ -43,7 +43,7 @@
     "start": "node dist/cli.mjs",
     "demo": "node scripts/demo.ts",
     "build": "vp pack",
-    "postbuild": "node -e \"const {copyFileSync,mkdirSync}=require('fs');const {resolve}=require('path');const src=resolve('src/theme/lazydsh.json');const dest=resolve('dist/theme/lazydsh.json');mkdirSync(resolve('dist/theme'),{recursive:true});copyFileSync(src,dest);console.log('copied lazydsh.json')\"",
+    "postbuild": "node -e \"const {copyFileSync,mkdirSync,readdirSync}=require('fs');const {resolve}=require('path');const srcDir=resolve('src/theme');const destDir=resolve('dist/theme');mkdirSync(destDir,{recursive:true});for(const file of readdirSync(srcDir)){if(file.endsWith('.json')){copyFileSync(resolve(srcDir,file),resolve(destDir,file));console.log('copied',file);}}\"",
     "check": "vp check",
     "test": "vp test run",
     "prepack": "vp pack"
