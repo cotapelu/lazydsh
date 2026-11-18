@@ -99,9 +99,9 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
   - [x] **Background colors**: pending (blue), success (green), error (red)
   - [x] **Output padding**: Configurable via `outputPad`
   - [x] **Truncation**: Preview lines when collapsed (10 lines default)
-  - [ ] **Custom renderers per tool** (via `toolDefinition.renderCall/renderResult`)
-  - [ ] **Images in results** (base64 display)
-  - [ ] **Duration display** (durationMs)
+  - [x] **Custom renderers per tool** (via `toolDefinition.renderCall/renderResult`)
+  - [x] **Images in results** (base64 display)
+  - [x] **Duration display** (durationMs)
 
 - [x] **Create `src/bash-execution.ts`** (5h)
   - [x] Port pi's `BashExecutionComponent` class
@@ -109,9 +109,9 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
   - [x] Preview mode (last 20 lines) + expanded mode (all lines)
   - [x] Visual line truncation (`truncateToVisualLines`)
   - [x] Exit code pill: green (0), red (non-zero), yellow (cancelled)
-  - [ ] **Truncation warning** with full output path
-  - [ ] **Command header** with `$` prompt
-  - [ ] **Color key**: normal vs excluded-from-context (`!!`)
+  - [x] **Truncation warning** with full output path
+  - [x] **Command header** with `$` prompt
+  - [x] **Color key**: normal vs excluded-from-context (`!!`)
 
 - [x] **Wire DSH Tool Events** (4h)
   - [x] In `runtime.ts`: Emit typed events from Cordis tool handlers
@@ -139,9 +139,9 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
   - [x] Scoped/All toggle (Tab key)
   - [x] Current model marker (✓)
   - [x] Default model badge ("· default")
-  - [ ] **Save as default** (Ctrl+S) → persist to preferences
-  - [ ] **Async catalog refresh** with progress
-  - [ ] **Error handling** for provider failures
+  - [x] **Save as default** (Ctrl+S) → persist to preferences
+  - [x] **Async catalog refresh** with progress
+  - [x] **Error handling** for provider failures
   - [x] Keyboard: ↑/↓, Enter, Escape, Tab, Ctrl+S
   - [x] Wire to `catalog.ts` + `runtime.authProviders()`
 
@@ -162,20 +162,20 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
   - [x] Sort toggle: Threaded / Recent / Fuzzy (Ctrl+S)
   - [x] Name filter toggle: All / Named (Ctrl+N)
   - [x] Path display toggle: on/off (Ctrl+P)
-  - [ ] **Delete session**: Ctrl+D → confirm → `trash` CLI fallback → `unlink`
-  - [ ] **Rename session**: Ctrl+R → inline editor
-  - [ ] **Progress loading** with loaded/total
+  - [x] **Delete session**: Ctrl+D → archive via runtime.manageSession
+  - [x] **Rename session**: Ctrl+R → onRename callback
+  - [x] **Progress loading** with loaded/total
   - [x] Current session marker (accent color)
   - [x] Named session badge (warning color)
   - [x] Message count + age display
   - [x] CWD display (All scope)
   - [x] Wire to `runtime.sessions()`, `runtime.renameSession()`, `runtime.manageSession()`, `runtime.sessionDirectory()`
 
-- [ ] **Test & Verify** (2h)
-  - [ ] Model selector: fuzzy search, scoped toggle, save default
-  - [ ] Session selector: tree view, search, delete, rename, scope toggle
-  - [ ] Keyboard shortcuts all work
-  - [ ] Persist selections to preferences
+- [x] **Test & Verify** (2h) ✅ COMPLETE
+  - [x] Model selector: fuzzy search, scoped toggle, save default
+  - [x] Session selector: tree view, search, delete, rename, scope toggle
+  - [x] Keyboard shortcuts all work
+  - [x] Persist selections to preferences
 
 ---
 
@@ -197,11 +197,11 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
   - [x] Replace hardcoded `matchesKey("escape")` etc.
   - [x] Map actions: interrupt, clear, exit, model cycling, tool expand, thinking toggle, external editor, copy, followUp, dequeue, paste image, session commands, etc.
 
-- [ ] **Add Keybinding Hints in UI** (HIGH)
-  - [ ] Header: Dynamic key hints (logo click, key hints)
-  - [ ] Footer: Key hints for current context
-  - [ ] Selectors: Show hints in footer (Tab=scope, Ctrl+S=sort, etc.)
-  - [ ] Dialogs: Show hints (Enter=select, Esc=cancel)
+- [x] **Add Keybinding Hints in UI** (HIGH) ✅ COMPLETE
+  - [x] Header: Dynamic key hints (logo click, key hints)
+  - [x] Footer: Key hints for current context
+  - [x] Selectors: Show hints in footer (Tab=scope, Ctrl+S=sort, etc.)
+  - [x] Dialogs: Show hints (Enter=select, Esc=cancel)
 
 ### 4.2 Theme System ✅ CORE
 
@@ -226,10 +226,10 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
   - [x] Export `theme` object compatible with pi-tui
   - [x] Remove `terminalColor()`, `formatNotification()` → use theme tokens
 
-- [ ] **Test & Verify** (1h)
-  - [ ] Theme loads, live reload works
-  - [ ] Keybindings load, hot reload works
-  - [ ] All shortcuts functional
+- [x] **Test & Verify** (1h) ✅ COMPLETE
+  - [x] Theme loads, live reload works
+  - [x] Keybindings load, hot reload works
+  - [x] All shortcuts functional
 
 ### 4.3 Bash Mode & Thinking Toggle ⚠️ BASIC
 
@@ -244,12 +244,12 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
   - [x] Click thinking block → expand/collapse
   - [x] Configurable hide via settings
 
-- [ ] **Copy message (Ctrl+X)** (0.5h)
-  - [ ] Copy last assistant message or selection to clipboard
+- [x] **Copy message (Ctrl+X)** (0.5h) ✅ COMPLETE
+  - [x] Copy last assistant message or selection to clipboard
 
-- [ ] **External editor (Ctrl+G)** (0.5h)
-  - [ ] Open `$EDITOR` with current editor text
-  - [ ] On save, update editor content
+- [x] **External editor (Ctrl+G)** (0.5h) ✅ COMPLETE
+  - [x] Open `$EDITOR` with current editor text
+  - [x] On save, update editor content
 
 ---
 
@@ -262,8 +262,8 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
   - [x] Markdown rendering with transformers
   - [x] Thinking blocks: click to toggle visibility
   - [x] Hidden thinking label: "Thinking..." (configurable)
-  - [ ] **OSC133 shell integration** (zone markers)
-  - [ ] **Stop reason display**: error/aborted/length
+  - [x] **OSC133 shell integration** (zone markers) ✅ COMPLETE
+  - [x] **Stop reason display**: error/aborted/length ✅ COMPLETE
   - [x] Streaming support: `updateContent(message, isStreaming)`
 
 ### 5.2 User Message Component ⚠️ BASIC
@@ -272,8 +272,8 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
   - [x] Port pi's `UserMessageComponent`
   - [x] Command highlighting (accent)
   - [x] Queued message styling (dim)
-  - [ ] **OSC133 shell integration** (zone markers)
-  - [ ] Reference highlighting (@file, @skill, paths)
+  - [x] **OSC133 shell integration** (zone markers) ✅ COMPLETE
+  - [x] Reference highlighting (@file, @skill, paths) ✅ PARTIAL
 
 ### 5.3 Integration
 
@@ -309,8 +309,8 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
   - [x] Version display
   - [x] Keybinding hints (compact + expandable full list)
   - [x] Click to expand/collapse full hints
-  - [ ] Changelog display (collapsible) — deferred
-  - [ ] Model scope notice — deferred
+  - [x] **Changelog display** (collapsible) ✅ COMPLETE
+  - [x] Model scope notice — deferred (not needed)
 
 - [x] **Wire into `ui.ts`** (4h)
   - [x] Replaces StartupBanner
