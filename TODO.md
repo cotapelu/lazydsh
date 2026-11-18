@@ -371,6 +371,7 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
 
 - [x] **Ctrl+T** → cycle thinking level (cycles runtime.efforts() list)
 - [x] Applies /effort and reports the new level in the transcript
+- [x] **Thinking Selector Component** (src/components/thinking-selector.ts) with fuzzy search, save-as-default, scoped/all toggle
 
 ### 6.10 Message Components Polish (MEDIUM) - 6h ✅ COMPLETE
 
@@ -397,16 +398,24 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
 - [x] src/session-share.ts with generateShareLink()
 - [x] Placeholder URL (ready for sharing service integration)
 
-### 6.14 Model Catalog Refresh (LOW) - 4h
+### 6.14 Model Catalog Refresh (LOW) - 4h ✅ COMPLETE
 
-- [ ] Background refresh with progress
-- [ ] Error handling
+- [x] **Background refresh** with progress (src/model-catalog-refresh.ts)
+- [x] **Error handling** with timeout and error display
+- [x] **Scoped/All toggle** with Tab in Model Selector
 
 ### 6.15 Changelog Display (LOW) - 3h ✅ COMPLETE
 
 - [x] **`/changelog` command** shows version history
 - [x] src/changelog.ts with expand/collapse toggle
 - [x] Hardcoded entries (ready for GitHub releases API)
+
+### 6.18 Theme System Enhancements (LOW) - 4h ✅ COMPLETE
+
+- [x] **ThemedText component** (src/components/themed-text.ts) for live theme updates
+- [x] **Theme Selector component** (src/components/theme-selector.ts) with live preview
+- [x] **getAvailableThemes()** in theme.ts for theme discovery
+- [x] **getAvailableThemesWithPaths()** for theme metadata
 
 ### 6.16 Extension Widgets (LOW) - 4h ✅ COMPLETE
 
@@ -461,6 +470,6 @@ npm i diff @types/diff
 ## Summary
 
 **Completed (Phases 1-6)**: Core structure + all polish items implemented - all basic functionality works.
-**Phase 7 (Final)**: ~6h remaining (docs ✅, perf ✅ cold startup benchmark, testing ~6h).
+**Phase 7 (Final)**: ~4h remaining (docs ✅, perf ✅ cold startup benchmark, testing ~4h).
 
-**Total remaining: ~6 hours** to reach pi-coding-agent parity.
+**Total remaining: ~4 hours** to reach pi-coding-agent parity.

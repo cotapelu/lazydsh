@@ -30,6 +30,7 @@ export const APP_KEYBINDINGS = {
     description: "Suspend to background",
   },
   "app.thinking.cycle": { defaultKeys: "shift+tab", description: "Cycle thinking level" },
+  "app.thinking.save": { defaultKeys: "ctrl+s", description: "Save thinking level" },
   "app.model.cycleForward": { defaultKeys: "ctrl+p", description: "Cycle to next model" },
   "app.model.cycleBackward": {
     defaultKeys: windowsKeybindings ? "alt+p" : "shift+ctrl+p",
@@ -141,6 +142,7 @@ const KEYBINDING_NAME_MIGRATIONS: Record<string, string> = {
   exit: "app.exit",
   suspend: "app.suspend",
   cycleThinkingLevel: "app.thinking.cycle",
+  saveThinkingLevel: "app.thinking.save",
   cycleModelForward: "app.model.cycleForward",
   cycleModelBackward: "app.model.cycleBackward",
   selectModel: "app.model.select",

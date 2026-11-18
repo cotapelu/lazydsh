@@ -320,6 +320,51 @@ function loadTheme(name: string): Theme {
   return createTheme(loadThemeJson(name));
 }
 
+export interface ThemeInfo {
+  name: string;
+  path: string | undefined;
+}
+
+function getAvailableThemeInfos(): ThemeInfo[] {
+  const result: ThemeInfo[] = [];
+  const seen = new Set<string>();
+  const addTheme = (themeInfo: ThemeInfo) => {
+    if (seen.has(themeInfo.name)) return;
+    seen.add(themeInfo.name);
+    result.push(themeInfo);
+  };
+  // Built-in themes
+  addTheme({ name: SYSTEM_THEME, path: undefined });
+  try {
+    for (const file of fs.readdirSync(themesDir())) {
+      if (!file.endsWith(".json")) continue;
+      const name = file.slice(0, -5);
+      addTheme({ name, path: path.join(themesDir(), file) });
+    }
+  } catch {}
+  // Custom themes
+  try {
+    for (const file of fs.readdirSync(customThemesDir())) {
+      if (!file.endsWith(".json")) continue;
+      const name = file.slice(0, -5);
+      addTheme({ name, path: path.join(customThemesDir(), file) });
+    }
+  } catch {}
+  // Sort: system theme first, then alphabetically
+  result.sort((a, b) =>
+    a.name === SYSTEM_THEME ? -1 : b.name === SYSTEM_THEME ? 1 : a.name.localeCompare(b.name),
+  );
+  return result;
+}
+
+export function getAvailableThemesWithPaths(): ThemeInfo[] {
+  return getAvailableThemeInfos();
+}
+
+export function getAvailableThemes(): string[] {
+  return getAvailableThemeInfos().map(({ name }) => name);
+}
+
 let currentTheme: Theme | undefined;
 let currentThemeName = DEFAULT_THEME;
 let changeCallback: (() => void) | undefined;
