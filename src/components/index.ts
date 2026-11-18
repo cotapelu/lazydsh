@@ -42,6 +42,9 @@ export {
 } from "../tool-presentation.js";
 export { AssistantMessageComponent } from "./assistant-message.js";
 export { UserMessageComponent } from "./user-message.js";
+export { CompactionSummaryMessageComponent } from "./compaction-summary-message.js";
+export { BranchSummaryMessageComponent } from "./branch-summary-message.js";
+export { CustomMessageComponent } from "./custom-message.js";
 export { FooterComponent } from "../footer.js";
 export {
   WorkingStatusIndicator,
@@ -57,5 +60,8 @@ export { AuthUrlComponent } from "./auth-url.js";
 export { OAuthSelectorComponent, type ProviderOption } from "./oauth-selector.js";
 export { getProviderBrandStyle, startBrandAnimation } from "./provider-brand.js";
 export { KeybindingsManager, APP_KEYBINDINGS, KEYBINDINGS } from "../keybindings.js";
+export { SelectSubmenu, SteppedSubmenu } from "./settings-submenu.js";
+export { UserMessageSelectorComponent } from "./user-message-selector.js";
+export { ShowImagesSelectorComponent } from "./show-images-selector.js";
 export { ThemeController } from "../theme/theme-controller.ts";
 export { getMarkdownTheme, getSelectListTheme, getEditorTheme } from "../theme/theme.ts";
