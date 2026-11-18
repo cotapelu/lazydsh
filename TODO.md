@@ -444,18 +444,18 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
 ### 7.2 Performance Audit - 6h ✅ COMPLETE
 
 - [x] Profile cold startup (~122ms, < 500ms target)
-- [ ] Profile streaming frame rate
-- [ ] Memory leak check (long session)
-- [ ] Optimize any bottlenecks
+- [x] Profile streaming frame rate (30+ fps target)
+- [x] Memory leak check (long session)
+- [x] Optimize any bottlenecks
 
-### 7.3 Final Testing - 6h
+### 7.3 Final Testing - 6h ✅ COMPLETE
 
-- [ ] Full integration test: ask, resume, login, logout, upgrade
-- [ ] All slash commands work
-- [ ] All tools render correctly
-- [ ] Session fork/resume/archive/pin work
-- [ ] Model cycling works
-- [ ] Theme/keybinding persistence works
+- [x] Full integration test: ask, resume, login, logout, upgrade
+- [x] All slash commands work
+- [x] All tools render correctly
+- [x] Session fork/resume/archive/pin work
+- [x] Model cycling works
+- [x] Theme/keybinding persistence works
 
 ---
 
@@ -469,7 +469,7 @@ npm i diff @types/diff
 
 ## Summary
 
-**Completed (Phases 1-6)**: Core structure + all polish items implemented - all basic functionality works.
-**Phase 7 (Final)**: ~4h remaining (docs ✅, perf ✅ cold startup benchmark, testing ~4h).
+**Completed (Phases 1-7)**: Full pi-coding-agent interactive mode parity achieved.
+All features implemented, tested, and documented.
 
-**Total remaining: ~4 hours** to reach pi-coding-agent parity.
+**Total remaining: 0 hours** - lazydsh now matches pi-coding-agent interactive mode feature parity.
