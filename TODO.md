@@ -171,11 +171,11 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
   - [x] CWD display (All scope)
   - [x] Wire to `runtime.sessions()`, `runtime.renameSession()`, `runtime.manageSession()`, `runtime.sessionDirectory()`
 
-- [ ] **Test & Verify** (2h)
-  - [ ] Model selector: fuzzy search, scoped toggle, save default
-  - [ ] Session selector: tree view, search, delete, rename, scope toggle
-  - [ ] Keyboard shortcuts all work
-  - [ ] Persist selections to preferences
+- [x] **Test & Verify** (2h) ✅ COMPLETE
+  - [x] Model selector: fuzzy search, scoped toggle, save default
+  - [x] Session selector: tree view, search, delete, rename, scope toggle
+  - [x] Keyboard shortcuts all work
+  - [x] Persist selections to preferences
 
 ---
 
@@ -310,7 +310,7 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
   - [x] Keybinding hints (compact + expandable full list)
   - [x] Click to expand/collapse full hints
   - [x] **Changelog display** (collapsible) ✅ COMPLETE
-  - [ ] Model scope notice — deferred (not needed)
+  - [x] Model scope notice — deferred (not needed)
 
 - [x] **Wire into `ui.ts`** (4h)
   - [x] Replaces StartupBanner
