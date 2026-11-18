@@ -53,6 +53,9 @@ export {
 export { StatusIndicatorContainer } from "./status-container.js";
 export { HeaderComponent, type HeaderOptions } from "./header.js";
 export { LoginDialog, type LoginPrompt, type LoginPromptKind } from "./login-dialog.js";
+export { AuthUrlComponent } from "./auth-url.js";
+export { OAuthSelectorComponent, type ProviderOption } from "./oauth-selector.js";
+export { getProviderBrandStyle, startBrandAnimation } from "./provider-brand.js";
 export { KeybindingsManager, APP_KEYBINDINGS, KEYBINDINGS } from "../keybindings.js";
 export { ThemeController } from "../theme/theme-controller.ts";
 export { getMarkdownTheme, getSelectListTheme, getEditorTheme } from "../theme/theme.ts";

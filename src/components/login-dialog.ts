@@ -12,7 +12,8 @@ import { Container, Input, Loader, Spacer, Text, type Component } from "@earendi
 import { theme } from "../theme/theme.ts";
 import { DynamicBorder } from "./dynamic-border.js";
 import { accent, dim, safeText } from "../theme/theme.ts";
-import { keyHint } from "../keybinding-hints.js";
+import { keyHint, keyText } from "../keybinding-hints.js";
+import { AuthUrlComponent } from "./auth-url.js";
 
 export type LoginPromptKind = "secret" | "select" | "notice";
 
@@ -35,6 +36,7 @@ export class LoginDialog extends Container {
   private settle: ((value: string | null) => void) | undefined;
   private loader: Loader | undefined;
   private input: Input | undefined;
+  private authUrl: AuthUrlComponent | undefined;
   private optionIndex = 0;
   private disposed = false;
 
@@ -97,12 +99,31 @@ export class LoginDialog extends Container {
     const url = this.prompt.url;
     const code = this.prompt.code;
     if (url !== undefined) {
-      this.addChild(new Text(theme.fg("mdLink", url), 1, 0));
+      this.authUrl = new AuthUrlComponent(this.tui, url);
+      this.addChild(this.authUrl);
       this.addChild(new Text(dim("Opening your browser…"), 1, 0));
     }
     if (code !== undefined) {
       this.addChild(new Spacer(1));
       this.addChild(new Text(`${dim("Device code:")} ${theme.bold(safeText(code))}`, 1, 0));
+      this.addChild(new Spacer(1));
+      // Device code action hint
+      const hint = new Text(
+        dim(`${keyHint("tui.select.confirm", "open browser and copy code")}`),
+        1,
+        0,
+      );
+      this.addChild(hint);
+      this.tui.requestRender();
+      // Handle Enter key for device code action
+      const originalHandleInput = this.handleInput.bind(this);
+      this.handleInput = (data: string) => {
+        if (data === "enter") {
+          void this.activateDeviceCode();
+          return;
+        }
+        originalHandleInput(data);
+      };
     }
     this.addChild(new Spacer(1));
     this.loader = new Loader(
@@ -112,6 +133,18 @@ export class LoginDialog extends Container {
       "Waiting for authorization…",
     );
     this.addChild(this.loader);
+  }
+
+  private async activateDeviceCode(): Promise<void> {
+    if (!this.authUrl) return;
+    void this.authUrl.copy();
+    const { openAuthUrl } = await import("../open-url.ts");
+    try {
+      const target = this.prompt.url;
+      if (target && /^https?:\/\//.test(target)) void openAuthUrl(target);
+    } catch {
+      // Launcher failures must not interrupt login.
+    }
   }
 
   private renderSelect(): void {
@@ -159,13 +192,21 @@ export class LoginDialog extends Container {
           0,
           0,
         );
+      case "notice":
+        return new Text(
+          dim(
+            `${keyHint("tui.select.confirm", "open browser and copy code")} · ${keyHint("tui.select.cancel", "cancel")}`,
+          ),
+          0,
+          0,
+        );
       default:
         return new Text(dim(`${keyHint("tui.select.cancel", "cancel")}`), 0, 0);
     }
   }
 
   get focused(): boolean {
-    return this.input?.focused ?? true;
+    return (this.input?.focused ?? false) || this.authUrl !== undefined || true;
   }
 
   set focused(value: boolean) {
@@ -174,7 +215,10 @@ export class LoginDialog extends Container {
 
   handleInput(data: string): void {
     if (this.prompt.kind === "notice") {
-      // The OAuth notice is cancelled, never answered with text.
+      // The OAuth notice is cancelled with Escape, Enter activates device code
+      if (data === "escape") {
+        this.done(null);
+      }
       return;
     }
     if (this.prompt.kind === "select") {
