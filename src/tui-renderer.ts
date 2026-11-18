@@ -9,7 +9,6 @@
  */
 
 import { ProcessTerminal, TuiAltScreen, TuiMainScreen } from "@earendil-works/pi-tui";
-import { copyToClipboard } from "./clipboard.ts";
 import { keyDisplayText } from "./keybinding-hints.js";
 import { theme } from "./theme/theme.js";
 
@@ -54,6 +53,7 @@ export function createInteractiveTui(options: InteractiveTuiOptions = {}): any {
       wheelScrollLines: options.fullscreenWheelScrollLines ?? "auto",
       copySelection: async (text: string) => {
         try {
+          const { copyToClipboard } = await import("./clipboard.ts");
           await copyToClipboard(text);
           return true;
         } catch (error) {

@@ -63,5 +63,12 @@ export { KeybindingsManager, APP_KEYBINDINGS, KEYBINDINGS } from "../keybindings
 export { SelectSubmenu, SteppedSubmenu } from "./settings-submenu.js";
 export { UserMessageSelectorComponent } from "./user-message-selector.js";
 export { ShowImagesSelectorComponent } from "./show-images-selector.js";
+export { ExtensionSelectorComponent } from "./extension-selector.js";
+export { ExtensionInputComponent } from "./extension-input.js";
+export { ExtensionEditorComponent } from "./extension-editor.js";
+export { CustomEditor } from "./custom-editor.js";
+export { CustomEntryComponent } from "./custom-entry.js";
+export { TrustSelectorComponent } from "./trust-selector.js";
+export { FirstTimeSetupComponent } from "./first-time-setup.js";
 export { ThemeController } from "../theme/theme-controller.ts";
 export { getMarkdownTheme, getSelectListTheme, getEditorTheme } from "../theme/theme.ts";

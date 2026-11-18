@@ -23,7 +23,6 @@ import { editInExternalEditor, editorCommand } from "./external-editor.ts";
 import { reportBug } from "./bug-report.ts";
 import { showChangelog } from "./show-changelog.ts";
 import { extensionWidgets, createExtensionWidgetContainer } from "./extensions.ts";
-import { copyToClipboard } from "./clipboard.ts";
 import { ProgramStatusReporter } from "./program-status.ts";
 import { StatusIndicatorContainer } from "./components/status-container.js";
 import { FooterComponent } from "./footer.js";
@@ -720,22 +719,6 @@ export async function runUI(
     };
   }
 
-  function chooseAuthProvider(command: "login" | "logout") {
-    return new Promise<string | null>((resolve) => {
-      const picker: SearchPicker = select(
-        runtime.authProviders(),
-        command === "login" ? "Choose a provider to log in to" : "Choose a provider to log out of",
-        (value) => resolve(value),
-        undefined,
-        true,
-      );
-      picker.onCancel = () => {
-        dismissPanel();
-        resolve(null);
-      };
-    });
-  }
-
   function announceCredentialSource(provider: string, source: CredentialSource) {
     if (source.kind !== "environment") {
       announcedAuth.delete(provider);
@@ -815,7 +798,6 @@ export async function runUI(
               source: authStatus.label,
             }
           : undefined;
-      const subscription = false;
 
       options.push({
         id: providerId,
@@ -1555,6 +1537,7 @@ export async function runUI(
       if (row === undefined) continue;
       const text = renderToText(row);
       if (text !== undefined && text.trim() !== "") {
+        const { copyToClipboard } = await import("./clipboard.ts");
         if (await copyToClipboard(text)) add("Copied", "Last message copied to clipboard.");
         else add("Error", "No clipboard mechanism available.");
         return;

@@ -12,13 +12,11 @@ import {
   getSelectPageIndex,
   Input,
   Spacer,
-  Text,
   TruncatedText,
 } from "@earendil-works/pi-tui";
 import { theme } from "../theme/theme.ts";
 import { DynamicBorder } from "./dynamic-border.js";
 import { getProviderBrandStyle, startBrandAnimation } from "./provider-brand.js";
-import { keyDisplayText, keyHint } from "../keybinding-hints.js";
 
 const MAX_VISIBLE = 8;
 

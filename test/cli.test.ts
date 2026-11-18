@@ -7,11 +7,12 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const executable = process.execPath;
+const cliEntry = resolve("dist/cli.mjs");
 
 function cli(executable: string, args: string[], input = "", env: NodeJS.ProcessEnv = {}) {
   return new Promise<{ code: number | null; stdout: string; stderr: string }>(
     (resolveResult, reject) => {
-      const child = spawn(executable, [resolve("src/cli.ts"), ...args], {
+      const child = spawn(executable, [cliEntry, ...args], {
         env: { PATH: process.env.PATH, NO_COLOR: "1", DSH_TELEMETRY_DISABLED: "1", ...env },
       });
       let stdout = "",

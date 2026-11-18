@@ -12,7 +12,7 @@ import { Container, Input, Loader, Spacer, Text, type Component } from "@earendi
 import { theme } from "../theme/theme.ts";
 import { DynamicBorder } from "./dynamic-border.js";
 import { accent, dim, safeText } from "../theme/theme.ts";
-import { keyHint, keyText } from "../keybinding-hints.js";
+import { keyHint } from "../keybinding-hints.js";
 import { AuthUrlComponent } from "./auth-url.js";
 
 export type LoginPromptKind = "secret" | "select" | "notice";

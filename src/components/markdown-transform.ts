@@ -13,7 +13,7 @@ export type MarkdownTransformers = Array<
 
 /** Context passed to Markdown transformers. */
 export interface MarkdownTransformContext {
-  messageType: "assistant" | "assistant-thinking" | "user" | "skill";
+  messageType: "assistant" | "assistant-thinking" | "user" | "skill" | "summary" | "custom";
   isStreaming: boolean;
   availableWidth: number;
   messageId: string | undefined;

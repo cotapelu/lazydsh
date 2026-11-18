@@ -2,6 +2,7 @@
 
 > Kiến trúc **3 lớp flat, minimal**: Interactive TUI (Frontend) ↔ Shared Utils ↔ DSH Bridge (Backend) + 2 Contract files ở root.
 > **Không có bridge/ layer thừa thãi**. FE chỉ gọi BE qua **1 class `Runtime`**.
+> **Cập nhật**: 2025-11-18 - Scan thực tế 89 files, có 3 file mới từ agent khác.
 
 ---
 
@@ -9,8 +10,8 @@
 
 ```
 src/
-├── interactive-mode/          # 🎨 FE: TUI/UI (~36 files)
-│   ├── components/            # Chỉ subdir duy nhất (20 files)
+├── interactive-mode/          # 🎨 FE: TUI/UI (~38 files)
+│   ├── components/            # Chỉ subdir duy nhất (22 files)
 │   └── *.ts, *.json          # Flat: TUI files + theme files
 │
 ├── runtime/                   # ⚙️ BE: DSH Bridge (~10 files)
@@ -58,11 +59,11 @@ export class RuntimeImpl implements Runtime { ... }
 
 ---
 
-## 📁 CHI TIẾT TẤT CẢ FILES
+## 📁 CHI TIẾT TẤT CẢ FILES (TRẠNG THÁI HIỆN TẠI: 89 FILES)
 
-### 🎨 `interactive-mode/` — FE: TUI/UI (~36 files)
+### 🎨 `interactive-mode/` — FE: TUI/UI (~38 files)
 
-#### Root (`interactive-mode/`) — 36 files (FLAT)
+#### Root (`interactive-mode/`) — 38 files (FLAT)
 
 | File                         | Nguồn                                       | Mô tả                                                  |
 | ---------------------------- | ------------------------------------------- | ------------------------------------------------------ |
@@ -106,7 +107,7 @@ export class RuntimeImpl implements Runtime { ... }
 | `system-theme.ts`            | `src/theme/system-theme.ts`                 | System theme từ terminal                               |
 | `lazydsh.json`               | `src/theme/lazydsh.json`                    | Default theme                                          |
 
-#### Subdirectory duy nhất: `interactive-mode/components/` — 20 files (FLAT)
+#### Subdirectory duy nhất: `interactive-mode/components/` — 22 files (FLAT)
 
 | File                      | Nguồn                                  | Component                                    |
 | ------------------------- | -------------------------------------- | -------------------------------------------- |
@@ -132,6 +133,9 @@ export class RuntimeImpl implements Runtime { ... }
 | `countdown-timer.ts`      | `src/components/countdown-timer.ts`    | `CountdownTimer`                             |
 | `themed-text.ts`          | `src/components/themed-text.ts`        | `ThemedText`                                 |
 | `keybinding-hints.ts`     | `src/keybinding-hints.ts`              | Key display formatting                       |
+| `oauth-selector.ts`       | `src/components/oauth-selector.ts`     | **MỚI** OAuth provider selector              |
+| `provider-brand.ts`       | `src/components/provider-brand.ts`     | **MỚI** Provider branding                    |
+| `auth-url.ts`             | `src/components/auth-url.ts`           | **MỚI** Auth URL display                     |
 
 > ❌ **XÓA**: `src/components/session-selector.ts` (dead code 748 lines, file-path based)
 
@@ -186,18 +190,18 @@ export class RuntimeImpl implements Runtime { ... }
 
 ---
 
-## 📊 TỔNG KẾT SỐ FILE
+## 📊 TỔNG KẾT SỐ FILE (HIỆN TẠI: 89 FILES)
 
 | Layer        | Thư mục/File                         | Files  | Subdirs           |
 | ------------ | ------------------------------------ | ------ | ----------------- |
-| **FE**       | `interactive-mode/`                  | 36     | `components/` (1) |
+| **FE**       | `interactive-mode/`                  | 38     | `components/` (1) |
 | **BE**       | `runtime/`                           | 10     | 0 (flat)          |
 | **Shared**   | `utils/`                             | 4      | 0 (flat)          |
 | **Contract** | `interfaces.ts`, `runtime-events.ts` | 2      | -                 |
 | **Root**     | `cli.ts`, `plugin.ts`, `types.ts`    | 3      | -                 |
 | **Tổng**     |                                      | **65** | **1 subdir**      |
 
-> Giảm từ **87 → 65** (xóa 4 duplicates + 1 dead code + 17 merged/moved)
+> **Chênh lệch**: Hiện tại 89 files vs Target 65 files. Cần xóa 4 duplicates + 1 dead code + 19 merged/moved.
 
 ---
 
@@ -268,29 +272,33 @@ utils/             ──imports──▶  (nothing)
 
 ---
 
-## ❌ FILES XÓA / GỘP / DI CHUYỂN
+## ❌ FILES XÓA / GỘP / DI CHUYỂN (TỪ TRẠNG THÁI HIỆN TẠI)
 
-| File cũ                              | Xử lý                                                                                                                 |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| `src/components/session-selector.ts` | **XÓA** (748 lines, dead code, file-path based)                                                                       |
-| `src/models-are-equal.ts`            | **XÓA** (giữ `utils/models-are-equal.ts`)                                                                             |
-| `src/theme.ts`                       | **GỘP** vào `interactive-mode/theme.ts`                                                                               |
-| `src/theme/theme.ts`                 | **GỘP** vào `interactive-mode/theme.ts`                                                                               |
-| `src/session-selector-search.ts`     | **GỘP** với `src/components/session-selector-search.ts` → `interactive-mode/session-selector-search.ts`               |
-| `src/session-selector.ts`            | **GỘP** với `src/components/session-selector.ts` → `interactive-mode/components/session-selector.ts` (giữ DSH-native) |
-| `src/theme/` (thư mục)               | Xóa sau khi move                                                                                                      |
-| `src/components/` (thư mục)          | Xóa sau khi move                                                                                                      |
-| `src/utils/` (thư mục)               | Xóa sau khi move                                                                                                      |
-| `src/components/session-selector.ts` | **XÓA** (dead code 748 lines)                                                                                         |
-| `src/components/index.ts`            | Rewrite → `interactive-mode/components/index.ts`                                                                      |
+| File cũ                                     | Xử lý                                                                                                                 |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `src/components/session-selector.ts`        | **XÓA** (748 lines, dead code, file-path based)                                                                       |
+| `src/models-are-equal.ts`                   | **XÓA** (giữ `utils/models-are-equal.ts`)                                                                             |
+| `src/theme.ts`                              | **GỘP** vào `interactive-mode/theme.ts`                                                                               |
+| `src/theme/theme.ts`                        | **GỘP** vào `interactive-mode/theme.ts`                                                                               |
+| `src/session-selector-search.ts`            | **GỘP** với `src/components/session-selector-search.ts` → `interactive-mode/session-selector-search.ts`               |
+| `src/session-selector.ts`                   | **GỘP** với `src/components/session-selector.ts` → `interactive-mode/components/session-selector.ts` (giữ DSH-native) |
+| `src/theme/` (thư mục)                      | Xóa sau khi move                                                                                                      |
+| `src/components/` (thư mục)                 | Xóa sau khi move (chỉ giữ `components/` trong `interactive-mode/`)                                                    |
+| `src/utils/` (thư mục)                      | Xóa sau khi move                                                                                                      |
+| `src/components/index.ts`                   | Rewrite → `interactive-mode/components/index.ts`                                                                      |
+| `src/components/oauth-selector.ts`          | Move → `interactive-mode/components/oauth-selector.ts`                                                                |
+| `src/components/provider-brand.ts`          | Move → `interactive-mode/components/provider-brand.ts`                                                                |
+| `src/components/auth-url.ts`                | Move → `interactive-mode/components/auth-url.ts`                                                                      |
+| `src/components/session-selector-search.ts` | Gộp với `src/session-selector-search.ts` → `interactive-mode/session-selector-search.ts`                              |
+| `src/theme/` JSON files                     | Copy → `interactive-mode/`                                                                                            |
 
 ---
 
 ## ✅ CHECKLIST REFACTOR (7 PHASES)
 
 - [ ] Tạo `src/interactive-mode/`, `src/interactive-mode/components/`, `src/runtime/`, `src/utils/`
-- [ ] Move 20 components → `interactive-mode/components/`
-- [ ] Move 36 TUI files → `interactive-mode/` (flat)
+- [ ] Move 22 components → `interactive-mode/components/` (bao gồm 3 file mới: oauth-selector, provider-brand, auth-url)
+- [ ] Move 38 TUI files → `interactive-mode/` (flat)
 - [ ] Move 10 runtime files → `runtime/` (flat)
 - [ ] Move 4 utils → `utils/` (flat)
 - [ ] Tạo `interfaces.ts` (extract từ `runtime.ts`)
@@ -303,10 +311,10 @@ utils/             ──imports──▶  (nothing)
 
 ## 📁 CẤU TRÚC HIỆN TẠI vs TARGET
 
-| Hiện tại (87 files)           | Target (65 files)                                                     |
+| Hiện tại (89 files)           | Target (65 files)                                                     |
 | ----------------------------- | --------------------------------------------------------------------- |
 | 62 files ở root               | 3 files ở root (`cli.ts`, `plugin.ts`, `types.ts`) + 2 contract files |
-| `src/components/` (17)        | `interactive-mode/components/` (20)                                   |
+| `src/components/` (19)        | `interactive-mode/components/` (22)                                   |
 | `src/theme/` (8)              | `interactive-mode/` flat (7)                                          |
 | `src/utils/` (3)              | `utils/` (4)                                                          |
 | `src/runtime.ts` (1219 lines) | `runtime/runtime.ts` + `interfaces.ts`                                |
@@ -326,4 +334,4 @@ utils/             ──imports──▶  (nothing)
 
 ---
 
-_Cập nhật: 2025-11-18 — Kiến trúc flat, minimal, 1 class Runtime_
+_Cập nhật: 2025-11-18 — Scan thực tế 89 files, 3 file mới từ agent khác (oauth-selector, provider-brand, auth-url)_
