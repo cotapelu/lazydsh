@@ -22,6 +22,21 @@ import {
   styleTextWithAnsi,
 } from "@earendil-works/pi-tui";
 import { THEME_TOKENS, type ThemeTokenName } from "./theme-tokens.js";
+import {
+  terminalColors,
+  _terminalColorsPending,
+  terminalColorsPending,
+  terminalTheme,
+  GUESSED_DEFAULTS,
+} from "./system-theme.js";
+
+// Re-export terminal color functions
+export {
+  setTerminalColors,
+  setTerminalColorScheme,
+  markTerminalColorsPending,
+  terminalTheme,
+} from "./system-theme.js";
 
 /** The generated theme that follows the terminal's own colors. */
 export const SYSTEM_THEME = "system";
@@ -79,30 +94,6 @@ function resolveThemeColors(
   for (const [key, value] of Object.entries(colors)) resolved[key] = resolveVarRefs(value, vars);
   return resolved;
 }
-
-// ── terminal colors ──
-
-let terminalColors: ReportedColors = {};
-let terminalColorsPending = false;
-let terminalColorScheme: "light" | "dark" | undefined;
-
-export function setTerminalColors(colors: ReportedColors): void {
-  terminalColors = { ...colors };
-  terminalColorsPending = false;
-}
-
-export function setTerminalColorScheme(scheme: "light" | "dark"): void {
-  terminalColorScheme = scheme;
-}
-
-export function markTerminalColorsPending(): void {
-  terminalColorsPending = true;
-}
-
-const GUESSED_DEFAULTS = {
-  dark: { foreground: parseColor("#e5e5e7"), background: parseColor("#000000") },
-  light: { foreground: parseColor("#000000"), background: parseColor("#ffffff") },
-};
 
 // ── Theme ──
 
@@ -442,20 +433,13 @@ export const fg: FgColors = new Proxy({} as FgColors, {
 });
 
 /** Dark or light from what the terminal has reported so far. */
-export function terminalTheme(): "light" | "dark" {
-  const { background } = terminalColors;
-  if (background !== undefined) {
-    const lightness = (0.2126 * background.r + 0.7152 * background.g + 0.0722 * background.b) / 255;
-    return lightness > 0.5 ? "light" : "dark";
-  }
-  return terminalColorScheme ?? "dark";
-}
-
-// ── utilities ──
-
 export function safeText(value: unknown): string {
-  // eslint-disable-next-line no-control-regex
-  return stripVTControlCharacters(String(value)).replace(/[\u0000-\u001f\u007f]/gu, "");
+  // Preserve newlines (\n), carriage returns (\r), and tabs (\t)
+  return stripVTControlCharacters(String(value)).replace(
+    // eslint-disable-next-line no-control-regex
+    /[\u0000-\b\u000b-\f\u000e-\u001f\u007f]/gu,
+    "",
+  );
 }
 
 export function terminalColor(stream: { isTTY?: boolean }): boolean {

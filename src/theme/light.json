@@ -1,0 +1,25 @@
+{
+  "name": "light",
+  "appearance": "light",
+  "colors": {
+    "accent": "#0047d9",
+    "success": "#28a745",
+    "error": "#dc3545",
+    "warning": "#e09000",
+    "muted": "#6a7282",
+    "dim": "#868e96",
+    "syntaxKeyword": "#c01b9e",
+    "syntaxString": "#862aa1",
+    "syntaxComment": "#6a7282",
+    "syntaxFunction": "#28a745",
+    "syntaxNumber": "#8442d6",
+    "syntaxType": "#1c75bc",
+    "toolDiffAdded": "#28a745",
+    "toolDiffRemoved": "#dc3545",
+    "thinkingLow": "#28a745",
+    "thinkingMedium": "#e09000",
+    "thinkingHigh": "#fd7e14",
+    "thinkingXhigh": "#c01b9e",
+    "bashMode": "#fd7e14"
+  }
+}

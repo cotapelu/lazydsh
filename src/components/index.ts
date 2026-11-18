@@ -6,6 +6,7 @@
  */
 
 export { DynamicBorder } from "./dynamic-border.js";
+export { BorderedLoader } from "./bordered-loader.js";
 export { truncateToVisualLines, displayWidth, lineCount } from "./visual-truncate.js";
 export { ModelSelectorComponent } from "../model-selector.js";
 export {
