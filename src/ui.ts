@@ -61,6 +61,7 @@ import {
   editorBorder,
 } from "./presentation.ts";
 import { HeaderComponent } from "./components/header.js";
+import { ThemeController } from "./theme/theme-controller.ts";
 import { safeText, accent, dim } from "./theme.ts";
 
 const identity = (text: string) => text;
@@ -241,6 +242,16 @@ export async function runUI(
     borderColor: editorBorder,
     selectList: { ...selectionTheme, noMatch: dim },
   });
+
+  // Theme controller: applies theme, queries terminal colors (DA1), auto-syncs with terminal light/dark mode
+  let themeSetting: string | undefined = "lazydsh";
+  const themeController = new ThemeController(tui, {
+    getSettingsManager: () => ({ getThemeSetting: () => themeSetting }),
+    showError: (msg) => add("Error", msg),
+    onChanged: () => tui.requestRender(),
+    initialThemeSetting: themeSetting,
+  });
+
   const toolLog = new ToolLog();
   let route = initial;
   let resume = initial.resume;
@@ -1398,6 +1409,7 @@ export async function runUI(
       }
     } finally {
       tui.start();
+      themeController.rebindTui(tui);
       tui.setFocus(editor);
       update();
     }
@@ -1557,6 +1569,8 @@ export async function runUI(
     );
     tui.start();
     update();
+    // Initialize theme controller: applies theme, queries terminal colors (DA1)
+    themeController.applyFromSettings();
     if (hooks.afterFirstPaint) {
       // Paint the startup screen before optional plugins are imported, then
       // keep submit disabled until their tools are registered.
@@ -1573,6 +1587,9 @@ export async function runUI(
         update();
       }
     }
+    // Wait for terminal colors to be reported (DA1) before connecting
+    await themeController.waitForTerminalColors();
+
     if (!startupFailed) {
       if (route.model)
         await connect({ provider: route.provider, model: route.model }, resume, false, true);
@@ -1589,6 +1606,7 @@ export async function runUI(
     process.off("SIGTERM", signalHandler);
     decision?.(null);
     thinking?.finish();
+    themeController.disableAutoSync();
     tui.stop({ preserveScreen: true });
     try {
       await runtime.close();
