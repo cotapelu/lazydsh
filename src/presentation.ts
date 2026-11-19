@@ -1,7 +1,6 @@
 import { extractAnsiCode } from "@earendil-works/pi-tui/dist/utils.js";
 import { stripVTControlCharacters } from "node:util";
-import { formatDuration, formatTokens } from "./format.ts";
-import { accent, dim, gray, safeText, formatNotification } from "./theme.ts";
+import { accent, dim, gray, italic, safeText, theme, formatNotification } from "./theme.ts";
 import { formatStats, type SessionStats } from "./stats.ts";
 import {
   Editor,
@@ -220,41 +219,37 @@ export class QueuedMessage extends SentMessage {
 }
 
 export class ThinkingView extends Container {
-  private readonly loader?: Loader;
-  private readonly started = performance.now();
-  private ended?: number;
   /**
-   * A row restored from history has no live loader: it renders one frozen
-   * line whose duration comes from the recorded event time, and can still hold
-   * the model's reasoning text for expansion.
+   * One quiet "Thinking…" row while the model reasons, and — for restored
+   * sessions — one frozen label standing in for the reasoning block. No
+   * seconds or token counters tick here: per-turn noise stays out of the
+   * transcript, and cumulative usage lives in the footer. Clicking a row with
+   * reasoning expands it in place.
    */
+  private readonly loader?: Loader;
+  private ended?: number;
   private readonly staticView: boolean;
-  private readonly fixedDuration?: number;
-  private input?: number;
-  private output?: number;
-  private message = "";
   private reasoning = "";
   private expanded = false;
-  private readonly preview = new Text("", 2, 0);
+  private readonly label = new Text("", 2, 0);
   private readonly body = new Text("", 2, 0);
-  constructor(tui?: TUI, options: { text?: string; duration?: number } = {}) {
+
+  constructor(tui?: TUI, options: { text?: string } = {}) {
     super();
     this.staticView = tui === undefined;
-    this.fixedDuration = options.duration;
     this.reasoning = options.text ?? "";
     if (tui !== undefined) {
       this.loader = new Loader(tui, accent, dim, "Thinking…");
       this.loader.setPaddingX(2);
       this.addChild(this.loader);
     } else {
-      // Frozen rows are already finished; the loader never starts.
-      this.ended = performance.now();
-      this.preview.setText(dim(this.metrics()));
-      this.addChild(this.preview);
+      this.label.setText(this.thinkingLabel());
+      this.addChild(this.label);
+      if (this.expanded && this.hasReasoning) this.addChild(this.body);
     }
   }
   get running() {
-    return this.ended === undefined;
+    return this.ended === undefined && !this.staticView;
   }
   get hasReasoning() {
     return this.reasoning.trim().length > 0;
@@ -262,9 +257,9 @@ export class ThinkingView extends Container {
   get isExpanded() {
     return this.expanded;
   }
-  setTokens(input: number, output: number) {
-    this.input = input;
-    this.output = output;
+  /** The frozen label shown for restored reasoning rows. */
+  private thinkingLabel(): string {
+    return italic(theme.fg("thinkingText", "Thinking…"));
   }
   setReasoning(text: string) {
     if (text === this.reasoning) return;
@@ -286,43 +281,22 @@ export class ThinkingView extends Container {
   private syncBody() {
     const show = this.expanded && this.hasReasoning;
     if (show && !this.children.includes(this.body)) {
-      this.body.setText(dim(this.reasoning));
+      this.body.setText(this.reasoning);
       this.addChild(this.body);
     } else if (!show && this.children.includes(this.body)) {
       this.removeChild(this.body);
     }
   }
-  private metrics() {
-    const seconds =
-      this.fixedDuration !== undefined
-        ? Math.floor(this.fixedDuration)
-        : Math.floor(((this.ended ?? performance.now()) - this.started) / 1000);
-    const tokens =
-      this.input === undefined || this.output === undefined
-        ? ""
-        : ` (↑${formatTokens(this.input)} ↓${formatTokens(this.output)})`;
-    return `${formatDuration(seconds)}${tokens}`;
+  invalidate() {
+    this.loader?.invalidate();
+    this.label.invalidate();
+    this.body.invalidate();
   }
-  override render(width: number): string[] {
-    if (this.ended === undefined) {
-      const message = this.metrics().replace(/^([^(]+?)(?= \(↑|$)/, "Thinking ($1)");
-      if (message !== this.message) {
-        this.message = message;
-        this.loader?.setMessage(message);
-      }
-    } else if (this.loader !== undefined) this.preview.setText(dim(this.metrics()));
-    const lines = super.render(width);
-    return lines[0] === "" ? lines.slice(1) : lines;
-  }
+  /** Stop the spinner. The transcript drops the row once the answer renders. */
   finish() {
+    if (this.staticView) return;
     this.ended ??= performance.now();
     this.loader?.stop();
-    if (this.loader !== undefined) {
-      this.removeChild(this.loader);
-      this.removeChild(this.preview);
-      this.preview.setText(dim(this.metrics()));
-      this.addChild(this.preview);
-    }
   }
 }
 

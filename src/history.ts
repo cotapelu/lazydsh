@@ -10,8 +10,6 @@ type HistoryRow =
       kind: "user" | "assistant" | "metrics" | "notice" | "thinking";
       text: string;
       label?: string;
-      /** Seconds a restored reasoning row took, frozen for the history view. */
-      duration?: number;
     }
   /** Tool rows stay component instances so their expandable details survive. */
   | ToolRow;
@@ -67,12 +65,7 @@ export function historyRows(events: readonly SessionEvent[], sessionId: string):
       // Restored sessions show the model's reasoning as a frozen Thinking row
       // above the answer, mirroring what the live view displayed.
       const reasoning = reasoningText(event.data.message.content);
-      if (reasoning.trim())
-        rows.push({
-          kind: "thinking",
-          text: reasoning,
-          duration: started === undefined ? undefined : Math.max(0, (event.time - started) / 1000),
-        });
+      if (reasoning.trim()) rows.push({ kind: "thinking", text: reasoning });
     }
     const item = eventText({ method: "session.event", params: { sessionId, event } });
     if (item?.kind === "assistant") {

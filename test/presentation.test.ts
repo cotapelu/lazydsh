@@ -1,5 +1,5 @@
 import { ToolRow } from "../src/tools.ts";
-import { test, vi } from "vite-plus/test";
+import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 import { ProcessTerminal, TuiMainScreen, Text, visibleWidth } from "@earendil-works/pi-tui";
 import { stripVTControlCharacters } from "node:util";
@@ -142,37 +142,36 @@ test("queued prompts stack below the transcript with one blank row between", () 
   );
 });
 
-test("Thinking shows elapsed time and usage, then only frozen metrics", () => {
-  const now = vi.spyOn(performance, "now").mockReturnValue(1000);
+test("Thinking stays a quiet label while live and disappears when finished", () => {
   const tui = new TuiMainScreen(new ProcessTerminal());
   tui.requestRender = () => {};
   const view = new ThinkingView(tui);
   try {
-    now.mockReturnValue(2400);
-    assert.match(view.render(80).map(stripVTControlCharacters).join("\n"), /Thinking \(1s\)/);
-    assert.doesNotMatch(view.render(80).map(stripVTControlCharacters).join("\n"), /↑|↓/);
-    view.setTokens(2, 13);
-    assert.match(
-      view.render(80).map(stripVTControlCharacters).join("\n"),
-      /Thinking \(1s\) \(↑2 ↓13\)/,
-    );
-    view.setTokens(1200, 3200000);
-    assert.match(
-      view.render(80).map(stripVTControlCharacters).join("\n"),
-      /Thinking \(1s\) \(↑1.2K ↓3.2M\)/,
-    );
-    now.mockReturnValue(4000);
+    const live = view.render(80).map(stripVTControlCharacters).join("\n");
+    assert.match(live, /Thinking/);
+    // No ticking seconds or token counters in the transcript.
+    assert.doesNotMatch(live, /\(|↑|↓|\d/);
+    view.appendReasoning("first");
+    view.appendReasoning("second");
     view.finish();
-    now.mockReturnValue(9000);
-    view.finish();
-    assert.deepEqual(
-      view.render(80).map((line) => stripVTControlCharacters(line).trimEnd()),
-      ["  3s (↑1.2K ↓3.2M)"],
-    );
+    assert.equal(view.running, false);
+    assert.equal(view.hasReasoning, true);
   } finally {
     view.finish();
-    now.mockRestore();
   }
+});
+
+test("a restored reasoning row shows one frozen label that expands on click", () => {
+  const restored = new ThinkingView(undefined, { text: "private reasoning" });
+  const plain = restored.render(80).map(stripVTControlCharacters).join("\n");
+  assert.match(plain, /Thinking/);
+  assert.doesNotMatch(plain, /private reasoning|\(|↑|↓/);
+  assert.equal(restored.running, false);
+  assert.equal(restored.isExpanded, false);
+  assert.equal(restored.toggle(), true);
+  assert.match(restored.render(80).map(stripVTControlCharacters).join("\n"), /private reasoning/);
+  assert.equal(restored.toggle(), true);
+  assert.doesNotMatch(restored.render(80).map(stripVTControlCharacters).join("\n"), /private/);
 });
 
 test("tool and Thinking groups keep one empty row before the composer and chat", () => {
@@ -198,7 +197,7 @@ test("tool and Thinking groups keep one empty row before the composer and chat",
     activity.addChild(view);
     view.finish();
     const rendered = activity.render(80).map(stripVTControlCharacters);
-    const thought = rendered.findIndex((line) => /\d+s/.test(line));
+    const thought = rendered.findIndex((line) => /Thinking/.test(line));
     assert.equal(rendered[thought - 1].trim(), "");
     assert.match(rendered[thought - 2], /┃ hello/);
     assert.equal(rendered.at(-1), "");
@@ -276,9 +275,9 @@ test("tools and Thinking have exactly one blank row; unknown tokens stay hidden 
     assert.match(lines[index - 2], /read file/);
     thinking.finish();
     lines = transcript.render(80).map((line) => stripVTControlCharacters(line).trimEnd());
-    assert.match(lines.at(-2)!, /^  \d+s$/);
+    assert.match(lines.at(-2)!, /Thinking/);
     assert.equal(lines.at(-3), "");
-    assert.doesNotMatch(lines.join("\n"), /↑|↓/);
+    assert.doesNotMatch(lines.join("\n"), /↑|↓|\(|\d/);
   } finally {
     thinking.finish();
   }

@@ -208,14 +208,36 @@ export async function runUI(
    * session adapter reads through safe accessors on every render.
    */
   let footer: FooterComponent | undefined;
+  /**
+   * The footer's usage counters are cumulative session totals, but this fork's
+   * runtime exposes them through `stats()` rather than session entries, so the
+   * footer sees one synthetic usage entry carrying the latest totals.
+   */
+  const footerUsageEntries = () => {
+    const totals = stats?.totals;
+    if (totals === undefined) return [];
+    return [
+      {
+        type: "usage",
+        usage: {
+          input: totals.uncachedInputTokens,
+          output: totals.outputTokens,
+          cacheRead: totals.cacheReadTokens,
+          cacheWrite: totals.cacheWriteTokens,
+        },
+      },
+    ];
+  };
   const footerSession = () => ({
     sessionManager: {
       getCwd: () => options.cwd,
       getSessionId: () => safeSessionId(runtime),
       getLeafId: () => safeLeafId(runtime),
-      getEntryCount: () => 0,
+      // One entry while totals exist: the footer re-derives its counters
+      // whenever the snapshot changes instead of caching stale zeros.
+      getEntryCount: () => (stats?.totals === undefined ? 0 : 1),
       getSessionName: () => safeSessionName(runtime),
-      getEntries: () => [],
+      getEntries: () => footerUsageEntries(),
     },
     routedModel: safeRead(runtime, () => runtime.routedModel),
     model: safeRead(runtime, () => {
@@ -596,9 +618,7 @@ export async function runUI(
         for (const row of historyRows(await runtime.history(), id)) {
           if (row instanceof ToolRow) transcript.addChild(row);
           else if (row.kind === "thinking")
-            transcript.addChild(
-              new ThinkingView(undefined, { text: row.text, duration: row.duration }),
-            );
+            transcript.addChild(new ThinkingView(undefined, { text: row.text }));
           else if (row.kind === "metrics") transcript.addChild(new Text(dim(row.text), 2, 1));
           else
             add(
@@ -1484,7 +1504,6 @@ export async function runUI(
     void (async () => {
       let lastAssistant: string | undefined;
       let liveAnswer: StreamingMarkdown | undefined;
-      const usage = new Map<string, { input: number; output: number }>();
       try {
         const result = await runtime.run(
           text,
@@ -1497,24 +1516,8 @@ export async function runUI(
               const frame = notification.params;
               if (frame.type === "start") beginThinking(frame.attemptId);
               if (frame.type === "end" && thinkingAttempt === frame.attemptId) settleThinking();
-              if (frame.type === "usage" && thinking) {
-                const tokens = frame.usage;
-                usage.set(frame.attemptId, {
-                  input:
-                    tokens.inputTokens +
-                    (tokens.cacheReadTokens ?? 0) +
-                    (tokens.cacheWriteTokens ?? 0),
-                  output: tokens.outputTokens,
-                });
-                const totals = [...usage.values()].reduce(
-                  (sum, item) => ({
-                    input: sum.input + item.input,
-                    output: sum.output + item.output,
-                  }),
-                  { input: 0, output: 0 },
-                );
-                thinking.setTokens(totals.input, totals.output);
-              }
+              // Usage frames only matter to the footer's cumulative counters,
+              // which refreshStats() reads from the runtime.
               tui.requestRender();
               return;
             }
@@ -1522,6 +1525,14 @@ export async function runUI(
               notification.method === "assistant.delta" &&
               notification.params.sessionId === runtime.session?.id
             ) {
+              // The answer takes the Thinking row's place as soon as it
+              // starts, so the transcript never shows both at once.
+              if (thinking !== undefined) {
+                thinking.finish();
+                transcript.removeChild(thinking);
+                thinking = undefined;
+                thinkingAttempt = undefined;
+              }
               if (!liveAnswer || !transcript.children.includes(liveAnswer)) {
                 liveAnswer = new StreamingMarkdown(markdownTheme);
                 transcript.addChild(liveAnswer);
@@ -1575,10 +1586,11 @@ export async function runUI(
         if (!closing) add("Error", error instanceof Error ? error.message : String(error));
       } finally {
         if (ownsTurn) {
+          // The answer (or tool rows) takes the Thinking row's place: a quiet
+          // transcript keeps one block per turn instead of a spent spinner line.
           if (thinking) {
             thinking.finish();
             transcript.removeChild(thinking);
-            transcript.addChild(thinking);
           }
           thinking = undefined;
           thinkingAttempt = undefined;

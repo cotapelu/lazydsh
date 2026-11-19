@@ -48,7 +48,7 @@ test("saved history restores prompts, replies and collapsed tool results in orde
   assert.ok(rows[1] instanceof ToolRow);
   assert.equal(rows[1].summary, "✓ read file.ts");
   assert.ok(rows[1].callArguments?.includes('"path":"file.ts"'));
-  assert.deepEqual(rows[2], { kind: "thinking", text: "private reasoning", duration: 1 });
+  assert.deepEqual(rows[2], { kind: "thinking", text: "private reasoning" });
   assert.deepEqual(rows[3], { kind: "assistant", text: "answer" });
   assert.deepEqual(rows[4], { kind: "metrics", text: "2s (↑2 ↓13)" });
   // Collapsed rows never dump the tool output; expanding keeps it optional.
