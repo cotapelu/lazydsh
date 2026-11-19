@@ -9,13 +9,13 @@
 import {
   Container,
   fuzzyFilter,
-  getKeybindings,
   getSelectPageIndex,
   Input,
   Spacer,
   Text,
 } from "@earendil-works/pi-tui";
 import { theme } from "./theme/theme.ts";
+import { getAppKeybindings } from "./keybindings.ts";
 import { DynamicBorder } from "./components/dynamic-border.js";
 import { keyDisplayText, keyHint } from "./keybinding-hints.js";
 import { refreshModelCatalogs } from "./model-catalog-refresh.js";
@@ -396,7 +396,7 @@ export class ModelSelectorComponent extends Container {
   }
 
   handleInput(keyData: string): void {
-    const kb = getKeybindings();
+    const kb = getAppKeybindings();
     const pageIndex = getSelectPageIndex(
       kb,
       keyData,

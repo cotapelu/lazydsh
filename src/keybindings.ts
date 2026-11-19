@@ -210,6 +210,18 @@ export function keybindingsConfigPath(configDir?: string): string {
   return join(configDir ?? join(homedir(), ".config", "lazydsh"), "keybindings.json");
 }
 
+let sharedManager: KeybindingsManager | undefined;
+
+/**
+ * The process-wide manager carrying the app-level bindings. pi-tui's own
+ * `getKeybindings()` only knows the TUI bindings, so app actions (Ctrl+C,
+ * Ctrl+T, …) must resolve through this manager instead.
+ */
+export function getAppKeybindings(): KeybindingsManager {
+  sharedManager ??= KeybindingsManager.create();
+  return sharedManager;
+}
+
 export class KeybindingsManager extends TuiKeybindingsManager {
   private readonly configPath: string;
   private watching = false;

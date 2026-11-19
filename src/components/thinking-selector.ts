@@ -6,16 +6,9 @@
  * Ported from pi-coding-agent's ThinkingSelectorComponent.
  */
 
-import {
-  Container,
-  fuzzyFilter,
-  getKeybindings,
-  Input,
-  SelectList,
-  Spacer,
-  Text,
-} from "@earendil-works/pi-tui";
+import { Container, fuzzyFilter, Input, SelectList, Spacer, Text } from "@earendil-works/pi-tui";
 import { getSelectListTheme, theme } from "../theme/theme.ts";
+import { getAppKeybindings } from "../keybindings.ts";
 import { DynamicBorder } from "./dynamic-border.js";
 import { keyDisplayText } from "../keybinding-hints.js";
 
@@ -152,7 +145,7 @@ export class ThinkingSelectorComponent extends Container {
   }
 
   handleInput(keyData: string): void {
-    const kb = getKeybindings();
+    const kb = getAppKeybindings();
     if (kb.matches(keyData, "app.thinking.save" as any) && this.onSelectAsDefaultCallback) {
       const item = this.selectList.getSelectedItem();
       if (item) this.onSelectAsDefaultCallback(item.value);

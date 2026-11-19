@@ -14,7 +14,6 @@
 
 import {
   Container,
-  getKeybindings,
   Input,
   Spacer,
   Text,
@@ -25,6 +24,7 @@ import { theme } from "./theme/theme.ts";
 import { KeybindingsManager } from "./keybindings.ts";
 import { DynamicBorder } from "./components/dynamic-border.ts";
 import { keyHint, keyText } from "./keybinding-hints.ts";
+import { getAppKeybindings } from "./keybindings.ts";
 import type {
   SessionRecord,
   SessionScope,
@@ -392,7 +392,7 @@ export class SessionSelector extends Container {
   }
 
   handleInput(data: string): void {
-    const kb = getKeybindings();
+    const kb = getAppKeybindings();
     if (kb.matches(data, "tui.input.tab")) {
       const next = this.scope === "all" ? "current" : "all";
       this.scope = next;

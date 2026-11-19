@@ -7,9 +7,11 @@ import { ToolLog, ToolRow } from "./tools.ts";
 
 type HistoryRow =
   | {
-      kind: "user" | "assistant" | "metrics" | "notice" | "thinking";
+      kind: "user" | "assistant" | "metrics" | "notice";
       text: string;
       label?: string;
+      /** Reasoning folded into the assistant row, rendered like pi's chat. */
+      reasoning?: string;
     }
   /** Tool rows stay component instances so their expandable details survive. */
   | ToolRow;
@@ -17,6 +19,8 @@ type HistoryRow =
 export function historyRows(events: readonly SessionEvent[], sessionId: string): HistoryRow[] {
   const rows: HistoryRow[] = [];
   const tools = new ToolLog();
+  /** Reasoning of the current attempt, folded into its assistant row. */
+  let pendingReasoning: string | undefined;
   let started: number | undefined;
   let input = 0;
   let output = 0;
@@ -27,6 +31,7 @@ export function historyRows(events: readonly SessionEvent[], sessionId: string):
       started = undefined;
       input = output = 0;
       known = false;
+      pendingReasoning = undefined;
       turnStartRow = rows.length;
     }
     if (event.type === "step/start") started ??= event.time;
@@ -62,14 +67,20 @@ export function historyRows(events: readonly SessionEvent[], sessionId: string):
       }
     }
     if (event.type === "assistant/message") {
-      // Restored sessions show the model's reasoning as a frozen Thinking row
-      // above the answer, mirroring what the live view displayed.
+      // Reasoning rides along with the answer as one assistant row, the way
+      // pi's transcript folds thinking blocks into the message.
       const reasoning = reasoningText(event.data.message.content);
-      if (reasoning.trim()) rows.push({ kind: "thinking", text: reasoning });
+      if (reasoning.trim()) pendingReasoning = reasoning;
     }
     const item = eventText({ method: "session.event", params: { sessionId, event } });
     if (item?.kind === "assistant") {
-      if (item.text) rows.push({ kind: "assistant", text: item.text });
+      if (item.text)
+        rows.push({
+          kind: "assistant",
+          text: item.text,
+          ...(pendingReasoning === undefined ? {} : { reasoning: pendingReasoning }),
+        });
+      pendingReasoning = undefined;
     } else if (item) {
       // One mutable ToolRow per call: the same instance the live transcript
       // would have shown, so history keeps the final status and details.

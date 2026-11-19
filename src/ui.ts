@@ -27,7 +27,7 @@ import { ProgramStatusReporter } from "./program-status.ts";
 import { StatusIndicatorContainer } from "./components/status-container.js";
 import { FooterComponent } from "./footer.js";
 import { createFooterDataProvider } from "./footer-data-provider.js";
-import { getKeybindings } from "@earendil-works/pi-tui";
+import { getAppKeybindings } from "./keybindings.js";
 import type { SessionRecord } from "./components/session-selector-search.js";
 import {
   TuiAltScreen,
@@ -46,7 +46,6 @@ import {
   resumeDirectoryTarget,
   sameDirectory,
 } from "./resume-directory.ts";
-import { StreamingMarkdown } from "./streaming.ts";
 import { captureConsole } from "./tui-console.ts";
 import { ctrlCAction } from "./interrupt.ts";
 import { dshCachePath } from "@deepseek-ai/dsh-home-paths";
@@ -284,6 +283,10 @@ export async function runUI(
   let pendingFiles: AdmittedPromptContentPart[] = [];
   let thinking: ThinkingView | undefined;
   let thinkingAttempt: string | undefined;
+  /** The streaming answer of the active turn (folded with reasoning at the end). */
+  let liveAssistant: AssistantMessageComponent | undefined;
+  /** Pi-style: reasoning blocks stay hidden until Ctrl+T expands them. */
+  let hideThinkingBlock = true;
   let busy = false;
   let starting = false;
   let startupFailed = false;
@@ -384,7 +387,12 @@ export async function runUI(
     }
   }
 
-  function add(label: string, text: unknown = "", stop?: "aborted" | "length" | "error") {
+  function add(
+    label: string,
+    text: unknown = "",
+    stop?: "aborted" | "length" | "error",
+    reasoning?: string,
+  ) {
     if (label === "You") {
       transcript.addChild(new UserMessageComponent(String(text)));
       tui.requestRender();
@@ -392,12 +400,21 @@ export async function runUI(
     }
     if (label === "assistant") {
       // Final answers render as one assistant message: markdown text, OSC133
-      // zone markers, and the stop reason (length/aborted/error).
+      // zone markers, the model's reasoning folded in above (hidden by
+      // default, expanded with Ctrl+T), and the stop reason.
       transcript.addChild(
-        new AssistantMessageComponent({
-          content: [{ type: "text", text: safeText(text) }],
-          ...(stop === undefined ? {} : { stopReason: stop }),
-        }),
+        new AssistantMessageComponent(
+          {
+            content: [
+              ...(reasoning?.trim() ? [{ type: "thinking" as const, thinking: reasoning }] : []),
+              { type: "text" as const, text: safeText(text) },
+            ],
+            ...(stop === undefined ? {} : { stopReason: stop }),
+          },
+          hideThinkingBlock,
+          markdownTheme,
+          "Thinking…",
+        ),
       );
       tui.requestRender();
       return;
@@ -617,18 +634,9 @@ export async function runUI(
       if (sessionId) {
         for (const row of historyRows(await runtime.history(), id)) {
           if (row instanceof ToolRow) transcript.addChild(row);
-          else if (row.kind === "thinking")
-            transcript.addChild(new ThinkingView(undefined, { text: row.text }));
           else if (row.kind === "metrics") transcript.addChild(new Text(dim(row.text), 2, 1));
-          else
-            add(
-              row.kind === "user"
-                ? "You"
-                : row.kind === "assistant"
-                  ? "assistant"
-                  : (row.label ?? "dsh"),
-              row.text,
-            );
+          else if (row.kind === "assistant") add("assistant", row.text, undefined, row.reasoning);
+          else add(row.kind === "user" ? "You" : (row.label ?? "dsh"), row.text);
         }
         scroll.scrollToEnd();
       }
@@ -1503,7 +1511,11 @@ export async function runUI(
     update();
     void (async () => {
       let lastAssistant: string | undefined;
-      let liveAnswer: StreamingMarkdown | undefined;
+      // The live answer is one assistant message: text streams in, and the
+      // finished message folds the model's reasoning in above it (hidden until
+      // Ctrl+T), exactly like pi's transcript. (The previous turn's component
+      // is cleared in the finally block below.)
+      let liveText = "";
       try {
         const result = await runtime.run(
           text,
@@ -1533,11 +1545,18 @@ export async function runUI(
                 thinking = undefined;
                 thinkingAttempt = undefined;
               }
-              if (!liveAnswer || !transcript.children.includes(liveAnswer)) {
-                liveAnswer = new StreamingMarkdown(markdownTheme);
-                transcript.addChild(liveAnswer);
+              if (!liveAssistant || !transcript.children.includes(liveAssistant)) {
+                liveAssistant = new AssistantMessageComponent(
+                  undefined,
+                  hideThinkingBlock,
+                  markdownTheme,
+                  "Thinking…",
+                );
+                liveText = "";
+                transcript.addChild(liveAssistant);
               }
-              liveAnswer.append(notification.params.index, notification.params.text);
+              liveText += notification.params.text;
+              liveAssistant.updateContent({ content: [{ type: "text", text: liveText }] }, true);
               tui.requestRender();
               return;
             }
@@ -1547,9 +1566,11 @@ export async function runUI(
               notification.method === "session.event"
             ) {
               const event = notification.params.event;
-              if (event.type === "assistant/attempt" && liveAnswer) {
-                transcript.removeChild(liveAnswer);
-                liveAnswer = undefined;
+              // A retry restarts the answer from scratch.
+              if (event.type === "assistant/attempt" && liveAssistant) {
+                transcript.removeChild(liveAssistant);
+                liveAssistant = undefined;
+                liveText = "";
               }
             }
             const output = eventText(notification);
@@ -1563,13 +1584,12 @@ export async function runUI(
             if (!output.text) return;
             lastAssistant = output.text;
             if (
-              liveAnswer &&
+              liveAssistant &&
               "sessionId" in notification.params &&
               notification.params.sessionId === runtime.session?.id
             ) {
-              liveAnswer.setFinal(output.text);
-              if (!transcript.children.includes(liveAnswer)) transcript.addChild(liveAnswer);
-              liveAnswer = undefined;
+              liveText = output.text;
+              liveAssistant.updateContent({ content: [{ type: "text", text: liveText }] }, false);
               tui.requestRender();
             } else add("assistant", output.text);
           },
@@ -1582,6 +1602,25 @@ export async function runUI(
         if (result.finalResponse && result.finalResponse !== lastAssistant)
           add(result.finishReason === "error" ? "Error" : "dsh", result.finalResponse);
         else if (result.finishReason === "error") add("Error", "dsh reported an error.");
+        // Fold the finished message (reasoning + text + stop reason) into the
+        // streaming block, so the turn ends as one assistant message.
+        if (liveAssistant !== undefined) {
+          const events = await runtime.history().catch(() => []);
+          const final = events.findLast((item) => item.type === "assistant/message");
+          if (final?.type === "assistant/message") {
+            // DSH speaks "reasoning" blocks; the assistant component renders
+            // "thinking" blocks — translate so the finished turn folds the
+            // reasoning in above the answer.
+            const content: { type: "text" | "thinking"; text?: string; thinking?: string }[] = [];
+            for (const block of final.data.message.content) {
+              if (block.type === "reasoning")
+                content.push({ type: "thinking", thinking: block.text });
+              else if (block.type === "text") content.push({ type: "text", text: block.text });
+            }
+            liveAssistant.updateContent({ content }, false);
+          }
+          liveAssistant = undefined;
+        }
       } catch (error) {
         if (!closing) add("Error", error instanceof Error ? error.message : String(error));
       } finally {
@@ -1594,6 +1633,7 @@ export async function runUI(
           }
           thinking = undefined;
           thinkingAttempt = undefined;
+          liveAssistant = undefined;
           running = false;
           statusContainer.show("idle", { message: "Ready" });
           programStatus.done();
@@ -1605,7 +1645,9 @@ export async function runUI(
     })();
   };
 
-  const keybindings = getKeybindings();
+  const keybindings = getAppKeybindings();
+  // Config edits land without a restart (AGENTS.md: configurable + hot-reload).
+  keybindings.startWatching();
 
   /** Ctrl+G: hand the draft to $EDITOR and read it back. */
   async function openExternalEditor() {
@@ -1696,6 +1738,16 @@ export async function runUI(
     }
   }
 
+  /** Ctrl+T: show or hide every reasoning block in the transcript (pi-style). */
+  function toggleThinkingBlockVisibility() {
+    hideThinkingBlock = !hideThinkingBlock;
+    for (const child of transcript.children)
+      if (child instanceof AssistantMessageComponent) child.setHideThinkingBlock(hideThinkingBlock);
+    liveAssistant?.setHideThinkingBlock(hideThinkingBlock);
+    add("Preferences", `Thinking blocks: ${hideThinkingBlock ? "hidden" : "visible"}`);
+    update();
+  }
+
   tui.addInputListener((data) => {
     const kb = keybindings;
     if (kb.matches(data, "app.clear")) {
@@ -1729,6 +1781,10 @@ export async function runUI(
       return { consume: true };
     }
     if (kb.matches(data, "app.thinking.toggle")) {
+      toggleThinkingBlockVisibility();
+      return { consume: true };
+    }
+    if (kb.matches(data, "app.thinking.cycle")) {
       void cycleThinking();
       return { consume: true };
     }

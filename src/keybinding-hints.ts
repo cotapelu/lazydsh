@@ -6,7 +6,7 @@
  * Ported from pi-coding-agent's keybinding-hints.js.
  */
 
-import { getKeybindings } from "@earendil-works/pi-tui";
+import { getAppKeybindings } from "./keybindings.ts";
 import { theme } from "./theme/theme.ts";
 
 function formatKeyPart(part: string, options: { capitalize?: boolean } = {}): string {
@@ -36,12 +36,12 @@ function formatKeys(keys: string[], options: { capitalize?: boolean } = {}): str
 
 /** The key text for a keybinding, reading from the user's configured keys */
 export function keyText(keybinding: string): string {
-  return formatKeys(getKeybindings().getKeys(keybinding as any));
+  return formatKeys(getAppKeybindings().getKeys(keybinding as any));
 }
 
 /** The key display text (capitalized) for a keybinding */
 export function keyDisplayText(keybinding: string): string {
-  return formatKeys(getKeybindings().getKeys(keybinding as any), { capitalize: true });
+  return formatKeys(getAppKeybindings().getKeys(keybinding as any), { capitalize: true });
 }
 
 /** Themed key hint: key in dim, description in muted */
