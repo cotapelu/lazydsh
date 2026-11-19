@@ -1,17 +1,15 @@
 import { extractAnsiCode } from "@earendil-works/pi-tui/dist/utils.js";
 import { stripVTControlCharacters } from "node:util";
-import { accent, dim, gray, italic, safeText, theme, formatNotification } from "./theme.ts";
+import { accent, dim, gray, safeText, formatNotification } from "./theme.ts";
 import { formatStats, type SessionStats } from "./stats.ts";
 import {
   Editor,
   Input,
   Text,
   Container,
-  Loader,
   truncateToWidth,
   visibleWidth,
   type Component,
-  type TUI,
 } from "@earendil-works/pi-tui";
 
 export function activityLine(summary: string) {
@@ -79,12 +77,6 @@ export class StatusPanel extends Text {
 }
 
 export class Transcript extends Container {
-  override addChild(child: Component) {
-    const active = this.children.findIndex((item) => item instanceof ThinkingView && item.running);
-    if (active >= 0) this.children.splice(active, 0, child);
-    else super.addChild(child);
-  }
-
   override render(width: number): string[] {
     const lines = renderStack(this.children, width);
     const blank = (line: string) => !stripVTControlCharacters(line).trim();
@@ -99,7 +91,7 @@ function renderStack(children: readonly Component[], width: number): string[] {
   for (const child of children) {
     const next = child.render(width);
     if (!next.length) continue;
-    if (child instanceof ThinkingView && lines.length && !blank(lines.at(-1)!)) lines.push("");
+
     // Drop only this child's leading blank rows when the previous child already
     // ended with one. Never mutate `next`: cached components reuse that array.
     let start = 0;
@@ -215,88 +207,6 @@ export class SentMessage implements Component {
 export class QueuedMessage extends SentMessage {
   constructor(text: string) {
     super(text, { queued: true });
-  }
-}
-
-export class ThinkingView extends Container {
-  /**
-   * One quiet "Thinking…" row while the model reasons, and — for restored
-   * sessions — one frozen label standing in for the reasoning block. No
-   * seconds or token counters tick here: per-turn noise stays out of the
-   * transcript, and cumulative usage lives in the footer. Clicking a row with
-   * reasoning expands it in place.
-   */
-  private readonly loader?: Loader;
-  private ended?: number;
-  private readonly staticView: boolean;
-  private reasoning = "";
-  private expanded = false;
-  private readonly label = new Text("", 2, 0);
-  private readonly body = new Text("", 2, 0);
-
-  constructor(tui?: TUI, options: { text?: string } = {}) {
-    super();
-    this.staticView = tui === undefined;
-    this.reasoning = options.text ?? "";
-    if (tui !== undefined) {
-      this.loader = new Loader(tui, accent, dim, "Thinking…");
-      this.loader.setPaddingX(2);
-      this.addChild(this.loader);
-    } else {
-      this.label.setText(this.thinkingLabel());
-      this.addChild(this.label);
-      if (this.expanded && this.hasReasoning) this.addChild(this.body);
-    }
-  }
-  get running() {
-    return this.ended === undefined && !this.staticView;
-  }
-  get hasReasoning() {
-    return this.reasoning.trim().length > 0;
-  }
-  get isExpanded() {
-    return this.expanded;
-  }
-  /** The frozen label shown for restored reasoning rows. */
-  private thinkingLabel(): string {
-    return italic(theme.fg("thinkingText", "Thinking…"));
-  }
-  setReasoning(text: string) {
-    if (text === this.reasoning) return;
-    this.reasoning = text;
-    this.syncBody();
-  }
-  appendReasoning(text: string) {
-    if (!text) return;
-    this.reasoning += text;
-    this.syncBody();
-  }
-  toggle() {
-    if (!this.hasReasoning) return false;
-    this.expanded = !this.expanded;
-    this.syncBody();
-    return true;
-  }
-  /** Show or hide the reasoning body child to match `expanded`. */
-  private syncBody() {
-    const show = this.expanded && this.hasReasoning;
-    if (show && !this.children.includes(this.body)) {
-      this.body.setText(this.reasoning);
-      this.addChild(this.body);
-    } else if (!show && this.children.includes(this.body)) {
-      this.removeChild(this.body);
-    }
-  }
-  invalidate() {
-    this.loader?.invalidate();
-    this.label.invalidate();
-    this.body.invalidate();
-  }
-  /** Stop the spinner. The transcript drops the row once the answer renders. */
-  finish() {
-    if (this.staticView) return;
-    this.ended ??= performance.now();
-    this.loader?.stop();
   }
 }
 

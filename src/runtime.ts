@@ -1048,20 +1048,14 @@ export class Runtime {
             if (event.agent === agent) failure = event.error;
           }),
           ctx.on("agent/assistant-stream", ({ agent: subject, frame }) => {
-            if (!this.owns(subject)) return;
+            if (!this.owns(subject) || frame.type !== "chunk") return;
             const params = { sessionId: subject.session.id, attemptId: frame.attemptId };
-            if (frame.type === "start" || frame.type === "end")
+            // The model's own reasoning streams as its own deltas, exactly like
+            // the answer text, so the UI can render it live (pi-style).
+            if (frame.chunk.type === "reasoning-delta")
               onEvent?.({
-                method: "lazydsh.thinking",
-                params: {
-                  ...params,
-                  type: frame.type,
-                },
-              });
-            else if (frame.chunk.type === "usage")
-              onEvent?.({
-                method: "lazydsh.thinking",
-                params: { ...params, type: "usage", usage: frame.chunk.usage },
+                method: "assistant.reasoning",
+                params: { ...params, text: frame.chunk.text, index: frame.chunk.index },
               });
             else if (frame.chunk.type === "text-delta")
               onEvent?.({

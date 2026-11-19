@@ -189,7 +189,15 @@ test("streaming, authentication and history", async () => {
     const final=order.findIndex(event=>event.method==="session.event" && event.params.event.type==="assistant/message");
     assert.ok(delta>=0 && final>delta);
     assert.equal(order.filter(event=>event.method==="assistant.delta").map(event=>event.params.text).join(""),"Hello from dsh.");
-    assert.ok(order.some(event=>event.method==="lazydsh.thinking" && event.params.type==="usage"));
+    // The model's own reasoning streams as reasoning deltas (pi-style UI feed).
+    assert.ok(order.some(event=>event.method==="assistant.reasoning"));
+    assert.ok(
+      order
+        .filter(event=>event.method==="assistant.reasoning")
+        .map(event=>event.params.text)
+        .join("")
+        .includes("Brief reasoning"),
+    );
     assert.equal((await runtime.stats()).latest.outputTokens,4);
     await runtime.open(route);
     assert.ok((await runtime.choices("sessions")).options.some(item=>item.value===id));

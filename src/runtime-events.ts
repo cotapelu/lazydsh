@@ -1,4 +1,4 @@
-import type { ContentBlock, TokenUsage } from "@deepseek-ai/dsh-llm";
+import type { ContentBlock } from "@deepseek-ai/dsh-llm";
 import type { SessionEvent } from "@deepseek-ai/dsh-session";
 
 export type RuntimeEvent =
@@ -8,11 +8,9 @@ export type RuntimeEvent =
       params: { sessionId: string; attemptId: string; text: string; index: number };
     }
   | {
-      method: "lazydsh.thinking";
-      params: { sessionId: string; attemptId: string } & (
-        | { type: "start" | "end" }
-        | { type: "usage"; usage: TokenUsage }
-      );
+      /** The model's reasoning delta, streamed alongside the answer text. */
+      method: "assistant.reasoning";
+      params: { sessionId: string; attemptId: string; text: string; index: number };
     }
   | {
       method: "tool_execution_start";

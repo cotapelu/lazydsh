@@ -57,7 +57,6 @@ import {
   QueueView,
   Notification,
   Transcript,
-  ThinkingView,
   editorBorder,
 } from "./presentation.ts";
 import { HeaderComponent } from "./components/header.js";
@@ -281,8 +280,6 @@ export async function runUI(
   let commands = commandMenu();
   let stats: SessionStats | undefined;
   let pendingFiles: AdmittedPromptContentPart[] = [];
-  let thinking: ThinkingView | undefined;
-  let thinkingAttempt: string | undefined;
   /** The streaming answer of the active turn (folded with reasoning at the end). */
   let liveAssistant: AssistantMessageComponent | undefined;
   /** Pi-style: reasoning blocks stay hidden until Ctrl+T expands them. */
@@ -1016,26 +1013,6 @@ export async function runUI(
     }
   }
 
-  /**
-   * Start (or reuse) the Thinking row for an attempt. A retry begins a new
-   * attempt, so the previous row is settled instead of leaking into it.
-   */
-  function beginThinking(attemptId: string) {
-    if (thinking && thinkingAttempt === attemptId) return thinking;
-    settleThinking();
-    thinking = new ThinkingView(tui);
-    thinkingAttempt = attemptId;
-    transcript.addChild(thinking);
-    return thinking;
-  }
-
-  function settleThinking() {
-    if (!thinking) return;
-    thinking.finish();
-    thinking = undefined;
-    thinkingAttempt = undefined;
-  }
-
   /** Stop the live turn but keep the chat open (Esc / Ctrl+C). */
   function cancelTurn() {
     if (stopping) return;
@@ -1511,25 +1488,51 @@ export async function runUI(
     update();
     void (async () => {
       let lastAssistant: string | undefined;
-      // The live answer is one assistant message: text streams in, and the
-      // finished message folds the model's reasoning in above it (hidden until
-      // Ctrl+T), exactly like pi's transcript. (The previous turn's component
-      // is cleared in the finally block below.)
+      // The live answer is one assistant message: the model's reasoning and the
+      // answer text stream into the same component (reasoning above the answer,
+      // hidden until Ctrl+T), exactly like pi's transcript. The previous turn's
+      // component is cleared in the finally block below.
       let liveText = "";
+      let liveReasoning = "";
+      const ensureLiveAssistant = () => {
+        if (liveAssistant === undefined || !transcript.children.includes(liveAssistant)) {
+          liveAssistant = new AssistantMessageComponent(
+            undefined,
+            hideThinkingBlock,
+            markdownTheme,
+            "Thinking…",
+          );
+          liveText = "";
+          liveReasoning = "";
+          transcript.addChild(liveAssistant);
+        }
+        return liveAssistant;
+      };
+      const renderLive = (streaming: boolean) =>
+        ensureLiveAssistant().updateContent(
+          {
+            content: [
+              ...(liveReasoning.trim()
+                ? [{ type: "thinking" as const, thinking: liveReasoning }]
+                : []),
+              ...(liveText.trim() ? [{ type: "text" as const, text: liveText }] : []),
+            ],
+          },
+          streaming,
+        );
       try {
         const result = await runtime.run(
           text,
           (notification) => {
             if (
               ownsTurn &&
-              notification.method === "lazydsh.thinking" &&
+              notification.method === "assistant.reasoning" &&
               notification.params.sessionId === runtime.session?.id
             ) {
-              const frame = notification.params;
-              if (frame.type === "start") beginThinking(frame.attemptId);
-              if (frame.type === "end" && thinkingAttempt === frame.attemptId) settleThinking();
-              // Usage frames only matter to the footer's cumulative counters,
-              // which refreshStats() reads from the runtime.
+              // The model is reasoning: the component shows its quiet label
+              // (or the live reasoning text when thinking blocks are visible).
+              liveReasoning += notification.params.text;
+              renderLive(true);
               tui.requestRender();
               return;
             }
@@ -1537,26 +1540,8 @@ export async function runUI(
               notification.method === "assistant.delta" &&
               notification.params.sessionId === runtime.session?.id
             ) {
-              // The answer takes the Thinking row's place as soon as it
-              // starts, so the transcript never shows both at once.
-              if (thinking !== undefined) {
-                thinking.finish();
-                transcript.removeChild(thinking);
-                thinking = undefined;
-                thinkingAttempt = undefined;
-              }
-              if (!liveAssistant || !transcript.children.includes(liveAssistant)) {
-                liveAssistant = new AssistantMessageComponent(
-                  undefined,
-                  hideThinkingBlock,
-                  markdownTheme,
-                  "Thinking…",
-                );
-                liveText = "";
-                transcript.addChild(liveAssistant);
-              }
               liveText += notification.params.text;
-              liveAssistant.updateContent({ content: [{ type: "text", text: liveText }] }, true);
+              renderLive(true);
               tui.requestRender();
               return;
             }
@@ -1588,8 +1573,7 @@ export async function runUI(
               "sessionId" in notification.params &&
               notification.params.sessionId === runtime.session?.id
             ) {
-              liveText = output.text;
-              liveAssistant.updateContent({ content: [{ type: "text", text: liveText }] }, false);
+              renderLive(false);
               tui.requestRender();
             } else add("assistant", output.text);
           },
@@ -1625,14 +1609,6 @@ export async function runUI(
         if (!closing) add("Error", error instanceof Error ? error.message : String(error));
       } finally {
         if (ownsTurn) {
-          // The answer (or tool rows) takes the Thinking row's place: a quiet
-          // transcript keeps one block per turn instead of a spent spinner line.
-          if (thinking) {
-            thinking.finish();
-            transcript.removeChild(thinking);
-          }
-          thinking = undefined;
-          thinkingAttempt = undefined;
           liveAssistant = undefined;
           running = false;
           statusContainer.show("idle", { message: "Ready" });
@@ -1842,7 +1818,6 @@ export async function runUI(
     process.off("SIGINT", signalHandler);
     process.off("SIGTERM", signalHandler);
     decision?.(null);
-    thinking?.finish();
     themeController.disableAutoSync();
     tui.stop({ preserveScreen: true });
     try {

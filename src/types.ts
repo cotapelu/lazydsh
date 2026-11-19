@@ -6,7 +6,6 @@
 
 import type { ToolResult } from "@deepseek-ai/dsh-tools";
 import type { SessionEvent } from "@deepseek-ai/dsh-session";
-import type { TokenUsage } from "@deepseek-ai/dsh-llm";
 
 /** Where the credential for a route currently comes from. */
 export type CredentialSource = {
@@ -52,11 +51,8 @@ export type RuntimeEvent =
       params: { sessionId: string; attemptId: string; text: string; index: number };
     }
   | {
-      method: "lazydsh.thinking";
-      params: { sessionId: string; attemptId: string } & (
-        | { type: "start" | "end" }
-        | { type: "usage"; usage: TokenUsage }
-      );
+      method: "assistant.reasoning";
+      params: { sessionId: string; attemptId: string; text: string; index: number };
     }
   | {
       method: "tool_execution_start";

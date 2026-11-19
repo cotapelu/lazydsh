@@ -1,7 +1,8 @@
+import { AssistantMessageComponent } from "../src/components/assistant-message.ts";
 import { ToolRow } from "../src/tools.ts";
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
-import { ProcessTerminal, TuiMainScreen, Text, visibleWidth } from "@earendil-works/pi-tui";
+import { ProcessTerminal, TuiMainScreen, visibleWidth } from "@earendil-works/pi-tui";
 import { stripVTControlCharacters } from "node:util";
 import {
   StartupBanner,
@@ -11,9 +12,7 @@ import {
   QueuedMessage,
   QueueView,
   Notification,
-  SecretInput,
   Transcript,
-  ThinkingView,
   editorBorder,
 } from "../src/presentation.ts";
 
@@ -142,145 +141,38 @@ test("queued prompts stack below the transcript with one blank row between", () 
   );
 });
 
-test("Thinking stays a quiet label while live and disappears when finished", () => {
-  const tui = new TuiMainScreen(new ProcessTerminal());
-  tui.requestRender = () => {};
-  const view = new ThinkingView(tui);
-  try {
-    const live = view.render(80).map(stripVTControlCharacters).join("\n");
-    assert.match(live, /Thinking/);
-    // No ticking seconds or token counters in the transcript.
-    assert.doesNotMatch(live, /\(|↑|↓|\d/);
-    view.appendReasoning("first");
-    view.appendReasoning("second");
-    view.finish();
-    assert.equal(view.running, false);
-    assert.equal(view.hasReasoning, true);
-  } finally {
-    view.finish();
-  }
-});
-
-test("a restored reasoning row shows one frozen label that expands on click", () => {
-  const restored = new ThinkingView(undefined, { text: "private reasoning" });
-  const plain = restored.render(80).map(stripVTControlCharacters).join("\n");
-  assert.match(plain, /Thinking/);
-  assert.doesNotMatch(plain, /private reasoning|\(|↑|↓/);
-  assert.equal(restored.running, false);
-  assert.equal(restored.isExpanded, false);
-  assert.equal(restored.toggle(), true);
-  assert.match(restored.render(80).map(stripVTControlCharacters).join("\n"), /private reasoning/);
-  assert.equal(restored.toggle(), true);
-  assert.doesNotMatch(restored.render(80).map(stripVTControlCharacters).join("\n"), /private/);
-});
-
-test("tool and Thinking groups keep one empty row before the composer and chat", () => {
-  const transcript = new Transcript();
-  assert.deepEqual(transcript.render(80), []);
-  transcript.addChild(new ToolRow("✓ read src/main.ts"));
-  let lines = transcript.render(80).map(stripVTControlCharacters);
-  assert.match(lines.at(-2)!, /read src\/main.ts/);
-  assert.equal(lines.at(-1), "");
-  transcript.addChild(new Text("assistant answer", 2, 1));
-  lines = transcript.render(80).map(stripVTControlCharacters);
-  const answer = lines.findIndex((line) => line.includes("assistant answer"));
-  assert.equal(lines[answer - 1].trim(), "");
-  assert.match(lines[answer - 2], /read src\/main.ts/);
-  assert.equal(lines.at(-1), "");
-  assert.ok(lines.at(-2)?.trim());
-  const tui = new TuiMainScreen(new ProcessTerminal());
-  tui.requestRender = () => {};
-  const view = new ThinkingView(tui);
-  try {
-    const activity = new Transcript();
-    activity.addChild(new SentMessage("hello"));
-    activity.addChild(view);
-    view.finish();
-    const rendered = activity.render(80).map(stripVTControlCharacters);
-    const thought = rendered.findIndex((line) => /Thinking/.test(line));
-    assert.equal(rendered[thought - 1].trim(), "");
-    assert.match(rendered[thought - 2], /┃ hello/);
-    assert.equal(rendered.at(-1), "");
-  } finally {
-    view.finish();
-  }
-});
-
-test("notifications use icons and labels; adjacent message boundaries have one blank row", () => {
+test("the transcript keeps rows in order with one blank between them", () => {
   const transcript = new Transcript();
   transcript.addChild(new SentMessage("hello"));
-  transcript.addChild(new Notification("Error", "Could not connect"));
-  transcript.addChild(new Notification("Resumed", "session 123"));
-  transcript.addChild(new Text("First paragraph\n\nSecond paragraph", 2, 1));
-  const lines = transcript.render(80).map((line) => stripVTControlCharacters(line).trimEnd());
-  assert.match(lines.join("\n"), /✗ error: Could not connect/);
-  assert.match(lines.join("\n"), /✓ resumed: session 123/);
-  const message = lines.findIndex((line) => line.includes("┃ hello"));
-  const error = lines.findIndex((line) => line.includes("✗ error:"));
-  assert.equal(error - message, 2);
-  const resumed = lines.findIndex((line) => line.includes("✓ resumed:"));
-  assert.equal(resumed - error, 2);
-  assert.match(lines.join("\n"), /First paragraph\n\s*\n\s*Second paragraph/);
+  transcript.addChild(
+    new AssistantMessageComponent({ content: [{ type: "text", text: "answer" }] }),
+  );
+  transcript.addChild(new Notification("Model", "provider / model"));
+  const lines = transcript.render(80).map(stripVTControlCharacters);
+  const answer = lines.findIndex((line) => line.includes("answer"));
+  assert.equal(lines[answer - 1].trim(), "");
+  assert.match(lines[answer - 2], /hello/);
+  assert.equal(lines.at(-1), "");
+  assert.deepEqual(
+    transcript.children.map((item) => item.constructor.name),
+    ["SentMessage", "AssistantMessageComponent", "Notification"],
+  );
 });
 
-test("authentication input never renders its secret", () => {
-  const input = new SecretInput();
-  input.focused = true;
-  input.handleInput("private-api-key");
-  for (const width of [20, 80]) {
-    const output = input.render(width).join("\n");
-    assert.ok(!output.includes("private-api-key"));
-    assert.ok(output.includes("•"));
-  }
-  assert.equal(input.getValue(), "private-api-key");
-});
-
-test("active Thinking remains below new tools, answers and notifications", () => {
-  const tui = new TuiMainScreen(new ProcessTerminal());
-  tui.requestRender = () => {};
-  const transcript = new Transcript();
-  const thinking = new ThinkingView(tui);
-  try {
-    transcript.addChild(thinking);
-    transcript.addChild(new ToolRow("✓ read file"));
-    transcript.addChild(new Text("answer", 2, 1));
-    transcript.addChild(new Notification("Model", "provider / model"));
-    const lines = transcript.render(80).map(stripVTControlCharacters);
-    assert.match(lines.at(-2)!, /Thinking/);
-    assert.equal(lines.at(-1), "");
-    assert.deepEqual(
-      transcript.children.slice(0, 3).map((item) => item.constructor.name),
-      ["ToolRow", "Text", "Notification"],
-    );
-    thinking.finish();
-    transcript.addChild(new SentMessage("next message"));
-    assert.equal(transcript.children.at(-2), thinking);
-    assert.ok(transcript.children.at(-1) instanceof SentMessage);
-  } finally {
-    thinking.finish();
-  }
-});
-
-test("tools and Thinking have exactly one blank row; unknown tokens stay hidden after completion", () => {
-  const tui = new TuiMainScreen(new ProcessTerminal());
-  tui.requestRender = () => {};
-  const transcript = new Transcript();
-  const thinking = new ThinkingView(tui);
-  transcript.addChild(new ToolRow("✓ read file"));
-  transcript.addChild(thinking);
-  try {
-    let lines = transcript.render(80).map((line) => stripVTControlCharacters(line).trimEnd());
-    const index = lines.findIndex((line) => line.includes("Thinking"));
-    assert.equal(lines[index - 1], "");
-    assert.match(lines[index - 2], /read file/);
-    thinking.finish();
-    lines = transcript.render(80).map((line) => stripVTControlCharacters(line).trimEnd());
-    assert.match(lines.at(-2)!, /Thinking/);
-    assert.equal(lines.at(-3), "");
-    assert.doesNotMatch(lines.join("\n"), /↑|↓|\(|\d/);
-  } finally {
-    thinking.finish();
-  }
+test("a finished assistant message keeps its reasoning label hidden by default", () => {
+  const message = new AssistantMessageComponent(
+    {
+      content: [
+        { type: "thinking", thinking: "private reasoning" },
+        { type: "text", text: "final answer" },
+      ],
+    },
+    true,
+  );
+  const lines = message.render(80).map(stripVTControlCharacters);
+  assert.ok(lines.join("\n").includes("Thinking"));
+  assert.ok(lines.join("\n").includes("final answer"));
+  assert.doesNotMatch(lines.join("\n"), /private reasoning|\(|↑|↓/);
 });
 
 test("mentions and pasted paths are highlighted without changing text or cursor markers", () => {

@@ -64,14 +64,6 @@ export class SettingsSelectorComponent extends Container {
         value: true,
       },
       {
-        key: "showThinking",
-        label: "Show thinking blocks",
-        description: "Display model reasoning in the transcript",
-        category: "general",
-        type: "toggle",
-        value: true,
-      },
-      {
         key: "confirmExit",
         label: "Confirm on exit",
         description: "Ask for confirmation when pressing Ctrl+D",
