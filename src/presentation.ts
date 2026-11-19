@@ -220,28 +220,83 @@ export class QueuedMessage extends SentMessage {
 }
 
 export class ThinkingView extends Container {
-  private readonly loader: Loader;
+  private readonly loader?: Loader;
   private readonly started = performance.now();
   private ended?: number;
+  /**
+   * A row restored from history has no live loader: it renders one frozen
+   * line whose duration comes from the recorded event time, and can still hold
+   * the model's reasoning text for expansion.
+   */
+  private readonly staticView: boolean;
+  private readonly fixedDuration?: number;
   private input?: number;
   private output?: number;
   private message = "";
+  private reasoning = "";
+  private expanded = false;
   private readonly preview = new Text("", 2, 0);
-  constructor(tui: TUI) {
+  private readonly body = new Text("", 2, 0);
+  constructor(tui?: TUI, options: { text?: string; duration?: number } = {}) {
     super();
-    this.loader = new Loader(tui, accent, dim, "Thinking…");
-    this.loader.setPaddingX(2);
-    this.addChild(this.loader);
+    this.staticView = tui === undefined;
+    this.fixedDuration = options.duration;
+    this.reasoning = options.text ?? "";
+    if (tui !== undefined) {
+      this.loader = new Loader(tui, accent, dim, "Thinking…");
+      this.loader.setPaddingX(2);
+      this.addChild(this.loader);
+    } else {
+      // Frozen rows are already finished; the loader never starts.
+      this.ended = performance.now();
+      this.preview.setText(dim(this.metrics()));
+      this.addChild(this.preview);
+    }
   }
   get running() {
     return this.ended === undefined;
+  }
+  get hasReasoning() {
+    return this.reasoning.trim().length > 0;
+  }
+  get isExpanded() {
+    return this.expanded;
   }
   setTokens(input: number, output: number) {
     this.input = input;
     this.output = output;
   }
+  setReasoning(text: string) {
+    if (text === this.reasoning) return;
+    this.reasoning = text;
+    this.syncBody();
+  }
+  appendReasoning(text: string) {
+    if (!text) return;
+    this.reasoning += text;
+    this.syncBody();
+  }
+  toggle() {
+    if (!this.hasReasoning) return false;
+    this.expanded = !this.expanded;
+    this.syncBody();
+    return true;
+  }
+  /** Show or hide the reasoning body child to match `expanded`. */
+  private syncBody() {
+    const show = this.expanded && this.hasReasoning;
+    if (show && !this.children.includes(this.body)) {
+      this.body.setText(dim(this.reasoning));
+      this.addChild(this.body);
+    } else if (!show && this.children.includes(this.body)) {
+      this.removeChild(this.body);
+    }
+  }
   private metrics() {
-    const seconds = Math.floor(((this.ended ?? performance.now()) - this.started) / 1000);
+    const seconds =
+      this.fixedDuration !== undefined
+        ? Math.floor(this.fixedDuration)
+        : Math.floor(((this.ended ?? performance.now()) - this.started) / 1000);
     const tokens =
       this.input === undefined || this.output === undefined
         ? ""
@@ -253,19 +308,21 @@ export class ThinkingView extends Container {
       const message = this.metrics().replace(/^([^(]+?)(?= \(↑|$)/, "Thinking ($1)");
       if (message !== this.message) {
         this.message = message;
-        this.loader.setMessage(message);
+        this.loader?.setMessage(message);
       }
-    } else this.preview.setText(dim(this.metrics()));
+    } else if (this.loader !== undefined) this.preview.setText(dim(this.metrics()));
     const lines = super.render(width);
     return lines[0] === "" ? lines.slice(1) : lines;
   }
   finish() {
     this.ended ??= performance.now();
-    this.loader.stop();
-    this.removeChild(this.loader);
-    this.removeChild(this.preview);
-    this.preview.setText(dim(this.metrics()));
-    this.addChild(this.preview);
+    this.loader?.stop();
+    if (this.loader !== undefined) {
+      this.removeChild(this.loader);
+      this.removeChild(this.preview);
+      this.preview.setText(dim(this.metrics()));
+      this.addChild(this.preview);
+    }
   }
 }
 

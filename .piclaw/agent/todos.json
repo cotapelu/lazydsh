@@ -3,43 +3,27 @@
   "phases": [
     {
       "id": "phase-1",
-      "name": "Phase 6 Remaining - Low Priority Items",
+      "name": "8.7 detail.ts engine",
       "tasks": [
         {
           "id": "task-1",
-          "content": "Bug Report (/bug command) - collect crash details",
-          "status": "in_progress",
-          "notes": "Create /bug command that gathers session info, error details, and opens GitHub issue"
+          "content": "Tạo src/detail.ts (prettyArguments, readFileDiffs, detailDiff, detailText, toolDetails)",
+          "status": "in_progress"
         },
         {
           "id": "task-2",
-          "content": "Session Share - share session via link",
+          "content": "Approval panel hiển thị tool details + labels mới",
           "status": "pending"
         },
         {
           "id": "task-3",
-          "content": "Model Catalog Refresh - background refresh with progress",
-          "status": "pending"
-        },
-        {
-          "id": "task-4",
-          "content": "Changelog Display - startup changelog with collapse toggle",
-          "status": "pending"
-        },
-        {
-          "id": "task-5",
-          "content": "Extension Widgets - widgets above/below editor",
-          "status": "pending"
-        },
-        {
-          "id": "task-6",
-          "content": "Settings Selector - full settings UI",
+          "content": "ToolRow history expandable (setCall/finish/isExpanded)",
           "status": "pending"
         }
       ]
     }
   ],
-  "nextTaskId": 7,
+  "nextTaskId": 4,
   "nextPhaseId": 2,
-  "updatedAt": "2026-11-17T06:39:19.783Z"
+  "updatedAt": "2026-11-19T04:15:47.174Z"
 }

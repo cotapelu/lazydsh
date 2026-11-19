@@ -47,9 +47,16 @@ test("saved history restores prompts, replies and collapsed tool results in orde
   assert.deepEqual(rows[0], { kind: "user", text: "read file" });
   assert.ok(rows[1] instanceof ToolRow);
   assert.equal(rows[1].summary, "✓ read file.ts");
-  assert.deepEqual(rows[2], { kind: "assistant", text: "answer" });
-  assert.deepEqual(rows[3], { kind: "metrics", text: "2s (↑2 ↓13)" });
-  assert.ok(!JSON.stringify(rows).includes("private file contents"));
+  assert.ok(rows[1].callArguments?.includes('"path":"file.ts"'));
+  assert.deepEqual(rows[2], { kind: "thinking", text: "private reasoning", duration: 1 });
+  assert.deepEqual(rows[3], { kind: "assistant", text: "answer" });
+  assert.deepEqual(rows[4], { kind: "metrics", text: "2s (↑2 ↓13)" });
+  // Collapsed rows never dump the tool output; expanding keeps it optional.
+  const collapsed = rows
+    .flatMap((row) => (row instanceof ToolRow ? row.render(80) : []))
+    .map(stripVTControlCharacters)
+    .join("\n");
+  assert.ok(!collapsed.includes("private file contents"));
   const large = structuredClone(events);
   const reply = large.find((event) => event.type === "assistant/message")!;
   if (reply.type === "assistant/message")
@@ -58,6 +65,13 @@ test("saved history restores prompts, replies and collapsed tool results in orde
     kind: "metrics",
     text: "2s (↑1.5K ↓3.2M)",
   });
+  // Expanding a restored row reveals the call it kept without dumping the log.
+  const restored = rows[1];
+  if (restored instanceof ToolRow) {
+    assert.equal(restored.isExpanded, false);
+    assert.equal(restored.toggle(), true);
+    assert.ok(restored.isExpanded);
+  }
 });
 
 test("continuation indents the command and highlights its quoted session ID", () => {

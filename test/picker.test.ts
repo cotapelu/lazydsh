@@ -26,11 +26,12 @@ test("picker filters model IDs and labels and selects the filtered item", () => 
   picker.focused = true;
   assert.equal(picker.focused, true);
   assert.match(plain(picker), /Models/);
-  assert.doesNotMatch(plain(picker), /Models \d|type to filter/);
+  assert.doesNotMatch(plain(picker), /Models \d/);
   assert.match(plain(picker), /┃ Search…/);
+  assert.match(plain(picker), /type to filter/);
   assert.match(plain(picker), /› DeepSeek Flash/);
   picker.handleInput("codex");
-  assert.doesNotMatch(plain(picker), /Models \d|type to filter/);
+  assert.doesNotMatch(plain(picker), /Models \d/);
   assert.doesNotMatch(plain(picker), /DeepSeek Flash/);
   let selected = "";
   picker.onSelect = (value) => {
@@ -53,7 +54,7 @@ test("picker preserves initial selection, limits rows, and fits narrow terminals
   for (const width of [20, 48, 80])
     assert.ok(picker.render(width).every((line) => visibleWidth(line) <= width));
   picker.handleInput("zzzzz");
-  assert.doesNotMatch(plain(picker), /Models \d|type to filter/);
+  assert.doesNotMatch(plain(picker), /Models \d/);
   assert.match(plain(picker), /No matches/);
 });
 
@@ -109,9 +110,9 @@ test("search mode stays tied to the operation when async catalogs change size", 
   picker.setItems(many);
   assert.match(plain(picker), /Search/);
   assert.match(plain(picker), /\(1\/9\)/);
-  assert.doesNotMatch(plain(picker), /Sessions \d|type to filter/);
+  assert.doesNotMatch(plain(picker), /Sessions \d/);
   picker.handleInput("Session 8");
-  assert.doesNotMatch(plain(picker), /Sessions \d|type to filter/);
+  assert.doesNotMatch(plain(picker), /Sessions \d/);
   let selected = "";
   picker.onSelect = (value) => {
     selected = value;

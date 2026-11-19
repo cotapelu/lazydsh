@@ -62,6 +62,9 @@ async function nativeTest(
         DSH_HOME: join(directory, "home"),
         TEST_WORKSPACE: directory,
         DSH_TELEMETRY_DISABLED: "1",
+        // Source-mode driver: map the NodeNext ".js" specifiers to their
+        // ".ts" siblings, which Node strips types for natively.
+        NODE_OPTIONS: `--import=${pathToFileURL(resolve("test/ts-resolve-preload.mjs")).href}`,
       },
     });
     assert.match(result.stdout, /native-ok/);

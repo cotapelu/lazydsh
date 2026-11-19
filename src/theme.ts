@@ -43,6 +43,8 @@ export const bg = {
 export const accent = (text: string) => fgColors.accent(text);
 export const gray = (text: string) => fgColors.muted(text);
 export const dim = (text: string) => fgColors.dim(text);
+export const success = (text: string) => fgColors.success(text);
+export const error = (text: string) => fgColors.error(text);
 export const bold = (text: string) => activeTheme.bold(text);
 export const italic = (text: string) => activeTheme.italic(text);
 export const inverse = (text: string) => activeTheme.inverse(text);

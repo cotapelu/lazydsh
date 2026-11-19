@@ -917,3 +917,136 @@ The lazydsh project has achieved ~85% feature parity with pi-coding-agent's inte
 3. **Polish components** (provider-brand, auth-url, thinking-selector, theme-selector, auth-url)
 
 Total estimated remaining effort: ~20-25 days for true parity.
+
+---
+
+## PHASE 8: UPSTREAM PARITY (learned from `vendor/upstream-lazydsh`)
+
+**Fork point**: `3831e98` (PR #25). Upstream (nuskey8) diverged with a flat
+layout; this repo diverged with a component/theme subsystem. Cherry-picking is
+impossible — each upstream change must be re-implemented in this repo's shape.
+
+**Not needed** (already have, verified during audit): blank row after Thinking
+(`presentation.ts:103`), per-component render caching (equivalent to upstream's
+`stackRows`), theme system (stronger), keybindings config + hot-reload,
+session/model selectors, login dialog, expandable tool cards for the live
+transcript (`tool-execution.ts`), 23 byte-identical core files.
+
+### 8.0 Housekeeping
+
+- [x] Remove debug `appendFileSync("/tmp/afp.log", ...)` from `src/dsh-boot.ts` (leftover)
+
+### 8.1 Quick wins
+
+- [x] **`-v, --version` flag** (`src/cli.ts`)
+  - Read version from `package.json` via `new URL("../package.json", import.meta.url)`, fallback `"unknown"`
+  - Add to `flagHelp` + parse `version` option; print before help/command dispatch
+  - Test: `node dist/cli.mjs --version` prints the package version
+- [x] **`runtime.cancel()` completeness** (`src/runtime.ts:1175`)
+  - Match upstream: `this.activity?.abort(); this.agent.cancel({kind:"user"}); await this.wait();`
+  - Needed before Ctrl+C interrupt can settle the queue correctly
+
+### 8.2 Ctrl+C interrupts the turn (upstream `71b5e51` + `interrupt.ts`)
+
+- [x] **Create `src/interrupt.ts`** — `ctrlCAction(state)` pure state machine:
+  - draft → `clear` (drop input), active & !cancelling → `interrupt`, active & cancelling → `force-exit`, idle → `exit`
+- [x] **Wire in `src/ui.ts`**
+  - Track `stopping` state + `cancelling` flag; first press during a turn calls `runtime.cancel()` and shows `Interrupted` notice (skip notice when a queued prompt will drain)
+  - Second press while cancelling → force exit; idle press → exit; press with unsaved draft → clear input only
+  - Replace the current SIGINT → `stop()` (which closes the whole session) in the signal handler
+- [x] **Tests** — port `test/interrupt.test.ts` (15 lines, covers all 4 transitions)
+
+### 8.3 `/new` keeps transcript, `/clear` wipes (upstream `99d2baf`)
+
+- [x] `startNewConversation(clearScreen)` in `src/ui.ts`:
+  - `/clear` → `transcript.clear()` + scrollToEnd + reset text selection, then new session
+  - `/new` → new session, keep transcript visible
+  - Either opens the model picker when `route.model` is unset
+- [x] Update descriptions in `src/commands.ts` ("Clear the terminal and start a new chat" / "Start a new chat during a conversation")
+
+### 8.4 QuestionPanel fits short terminals (upstream `ed91edc`)
+
+- [x] Rewrite `src/question.ts` render budget:
+  - Constructor takes `height?: number | (() => number)` (callback keeps it correct across resizes) instead of `maxOptions`
+  - `MAX_VISIBLE_OPTIONS`, `budget()`, `optionRows(total, fixed)`: long question/detail text shrinks the option list instead of pushing choices off screen; clipped list leaves one row for the scroll indicator
+  - "Other" free-text input mode ("editing") + adaptive help line (`1–N choose now`, `Space toggle`, `↑↓ move`, Tab only when multi-question)
+- [x] Add `panelHeight()` to `src/ui.ts`: `tui.terminal.rows - status.render(...).length`
+- [x] Port upstream `test/question.test.ts` additions (108 lines)
+
+### 8.5 History shows reasoning (upstream `2eba980` subset)
+
+- [x] `reasoningText(content)` in `src/runtime-events.ts`: join blocks where `type === "reasoning"`
+- [x] Extend `ThinkingView` to accept a frozen `{ text, duration }` (keep existing live `setTokens` path)
+- [x] `historyRows()` pushes a `ThinkingView` row for `assistant/message` events with reasoning, duration from event time
+- [x] thinking lifecycle by `attemptId` (`beginThinking` / `settleThinking`) so a retry never mixes old thinking rows
+- [x] Tests: history restores reasoning rows in order
+
+### 8.6 Meta plumbing end-to-end (prerequisite for 8.7)
+
+- [x] `eventText()` returns `meta` from `tool/*` events (`src/runtime-events.ts`)
+- [x] `ToolLog.record()` passes meta into the row; rows keep the raw call arguments for expansion
+- [x] Runtime event types for tool meta (`src/runtime.ts` side already has `tool_execution_*` emitter)
+
+### 8.7 `detail.ts` — one detail engine for approval + history (upstream `2eba980` + `6761f86`)
+
+Decide the shape first: adopt upstream's single `detail.ts` (functions) or extend
+this repo's `tool-execution.ts`/`diff.ts` into a shared module. Recommended:
+create `src/detail.ts` as pure functions reusing `src/diff.ts` word-diff, then
+have both `tool-execution.ts` and the approval panel consume it.
+
+- [x] `prettyArguments(raw)` — JSON args → compact `key: value` lines
+- [x] `readFileDiffs(meta)` — extract `{path, oldText, newText}` from tool meta
+- [x] `detailDiff(diffs, width)` — word-level `+/-/space` lines reusing `src/diff.ts`, capped
+- [x] `detailLabel/detailText` — label box + width-aware wrap
+- [x] `toolDetails(...)` — one entry point returning renderable lines (args, diff, output preview)
+- [x] **Approval panel** (`src/approval.ts`): show tool title (`TOOL_TITLES` map), arguments summary, expandable diff; labels "Yes, allow once" / "No, reject"
+- [x] **History rows** (`src/tools.ts`): expandable `ToolRow` (`setCall`, `finish(status, text, reason, meta)`, `isExpanded`, revision cache) with mouse support
+- [x] Tests: port `test/detail.test.ts` (52 lines) + extend approval/history assertions
+
+### 8.8 Deps `0.2.2-rc.4` (last, highest risk)
+
+- [x] Read DSH changelog for rc.3/rc.4 before bumping
+- [x] Bump all 36 `@deepseek-ai/dsh-*` packages
+- [x] Verify old sessions still resume (session format compatibility), `pnpm run check && pnpm run test`
+
+### Done criteria
+
+- Ctrl+C during a turn interrupts (not exits); second press force-exits; idle exits; draft clears
+- `--version` prints the package version
+- `/new` keeps the transcript, `/clear` wipes it
+- Question panel never pushes choices off screen at 80x24 and below
+- Resumed sessions show reasoning rows and expandable tool details with diffs
+- Approval prompts show tool name, arguments, and diff before allowing
+
+### Phase 8 outcome (2026-11-18)
+
+All eight upstream-parity items are implemented and verified:
+
+- Housekeeping: the `/tmp/afp.log` debug writer is gone.
+- `-v, --version` reads `package.json`.
+- Ctrl+C uses the `ctrlCAction()` state machine (`src/interrupt.ts`): drafts
+  clear, live turns interrupt, a second press while cancelling force-exits, an
+  idle press exits. `runtime.cancel()` was already complete.
+- `/new` keeps the transcript, `/clear` wipes it first (`startNewConversation`).
+- `QuestionPanel` gained the height budget (`panelHeight()`, `optionRows()`,
+  editing mode); upstream's 10-test suite passes against the port.
+- History restores reasoning rows (`reasoningText`, static `ThinkingView`),
+  with the thinking lifecycle keyed by `attemptId`. A latent bug where
+  restored tool rows kept the pending `·` summary is fixed by keeping the
+  mutable `ToolRow` instances.
+- Meta plumbing: `eventText()` carries tool `meta`.
+- `src/detail.ts` (arguments/diff/result rendering) feeds the rewritten
+  approval panel (tool titles, operation preview, expandable details, d/PgUp
+  keys) and expandable history `ToolRow`s.
+- Deps bumped to `0.2.2-rc.4` (fresh resolution after removing the stale lock;
+  an rc.2-era session still resumes).
+
+Also fixed to reach a green suite:
+
+- `runtime.test.ts` driver now registers a `.js -> .ts` resolve hook
+  (`test/ts-resolve-hook.mjs`), so source-mode Node runs resolve the
+  NodeNext specifiers; all 6 runtime tests pass.
+- `safeText` strips `\r` like upstream (the lone control char it kept).
+- Picker tests updated for the hint line the fork added ("type to filter").
+
+**Suite: 111/111 passing** (was 51/95 at the start of this phase).

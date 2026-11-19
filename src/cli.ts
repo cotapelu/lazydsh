@@ -9,7 +9,7 @@ import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { enableCompileCache } from "node:module";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 
 // Keep V8's compile cache out of the OS temp directory so a reboot does not
 // make the next launch recompile every plugin module.
@@ -53,8 +53,19 @@ const flagHelp: Record<string, string> = {
   resume: row("--resume <id>", "Continue a saved conversation"),
   patch: row("--patch <path>", "Additional dsh Cordis patch (repeatable)"),
   list: row("--list", "List providers and model IDs"),
+  version: row("-v, --version", "Show version"),
   help: row("-h, --help", "Show help"),
 };
+
+function packageVersion(): string {
+  try {
+    const manifest = JSON.parse(
+      readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+    ) as { version?: unknown };
+    if (typeof manifest.version === "string") return manifest.version;
+  } catch {}
+  return "unknown";
+}
 const help = `${bold("lazydsh")} — A lazier terminal UI for DeepSeek Harness.
 
 ${heading("Usage:")}
@@ -141,6 +152,7 @@ async function main() {
       resume: { type: "string" },
       patch: { type: "string", multiple: true, default: [] },
       list: { type: "boolean" },
+      version: { type: "boolean", short: "v" },
       help: { type: "boolean", short: "h" },
     },
     allowPositionals: true,
@@ -150,6 +162,7 @@ async function main() {
   if (command !== undefined && !["ask", "resume", "login", "logout", "upgrade"].includes(command))
     throw new Error(`Unknown command: ${command}. Run lazydsh --help for available commands.`);
   if (values.help) return console.log(command ? commandHelp(command) : help);
+  if (values.version) return console.log(`lazydsh ${packageVersion()}`);
   if (command === "resume" && args.length > 1)
     throw new Error("resume accepts at most one session ID. Run lazydsh resume --help.");
   if (command === "resume" && args.length === 1 && !args[0].trim())

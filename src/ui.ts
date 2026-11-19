@@ -48,6 +48,7 @@ import {
 } from "./resume-directory.ts";
 import { StreamingMarkdown } from "./streaming.ts";
 import { captureConsole } from "./tui-console.ts";
+import { ctrlCAction } from "./interrupt.ts";
 import { dshCachePath } from "@deepseek-ai/dsh-home-paths";
 
 import {
@@ -87,7 +88,7 @@ export const markdownTheme = {
 export function canRunDuringTurn(text: string) {
   return (
     /^\/plan(?:\s+off)?$/.test(text.trim()) ||
-    /^\/(?:status|session|ps|stop|effort|permission|cd|file|clear|quit)(?:\s|$)/.test(text.trim())
+    /^\/(?:status|session|ps|stop|effort|permission|cd|file|quit)(?:\s|$)/.test(text.trim())
   );
 }
 
@@ -260,6 +261,7 @@ export async function runUI(
   let stats: SessionStats | undefined;
   let pendingFiles: AdmittedPromptContentPart[] = [];
   let thinking: ThinkingView | undefined;
+  let thinkingAttempt: string | undefined;
   let busy = false;
   let starting = false;
   let startupFailed = false;
@@ -479,10 +481,17 @@ export async function runUI(
       if (closing || params.signal?.aborted) return { outcome: "cancelled" };
       if (decision) throw new Error("Another question is already awaiting an answer.");
       return new Promise<{ outcome: "allowed-once" | "rejected" | "cancelled" }>((resolve) => {
-        const panel = new ApprovalPanel({
-          toolName: params.toolName,
-          reason: params.displayReason?.en ?? params.reason,
-        });
+        // The pending tool-call row already holds the exact arguments; approval
+        // requests only carry the call ID, so show them while deciding.
+        const callArguments = toolLog.find(params.callId)?.callArguments;
+        const panel = new ApprovalPanel(
+          {
+            toolName: params.toolName,
+            reason: params.displayReason?.en ?? params.reason,
+            ...(callArguments === undefined ? {} : { arguments: callArguments }),
+          },
+          panelHeight,
+        );
         let settled = false;
         const settle = (outcome: "allowed-once" | "rejected" | "cancelled") => {
           if (settled) return;
@@ -511,10 +520,7 @@ export async function runUI(
       if (closing || signal.aborted) return { cancelled: true };
       if (decision) throw new Error("Another question is already awaiting an answer.");
       return new Promise((resolve) => {
-        const panel = new QuestionPanel(
-          request.questions,
-          Math.max(1, Math.min(6, tui.terminal.rows - 12)),
-        );
+        const panel = new QuestionPanel(request.questions, panelHeight);
         let settled = false;
         const settle = (answer: QuestionResult) => {
           if (settled) return;
@@ -553,6 +559,7 @@ export async function runUI(
     notifyModel = false,
     startup = false,
     directory?: string,
+    connectionOptions: { keepTranscript?: boolean } = {},
   ) {
     pendingStartupConnection = undefined;
     busy = true;
@@ -584,10 +591,14 @@ export async function runUI(
       pendingFiles = [];
       toolLog.entries.clear();
       clearQueue();
-      transcript.clear();
+      if (!connectionOptions.keepTranscript) transcript.clear();
       if (sessionId) {
         for (const row of historyRows(await runtime.history(), id)) {
           if (row instanceof ToolRow) transcript.addChild(row);
+          else if (row.kind === "thinking")
+            transcript.addChild(
+              new ThinkingView(undefined, { text: row.text, duration: row.duration }),
+            );
           else if (row.kind === "metrics") transcript.addChild(new Text(dim(row.text), 2, 1));
           else
             add(
@@ -641,6 +652,18 @@ export async function runUI(
     programStatus.blocked("question", "Waiting for input");
     tui.setFocus(panel);
     tui.requestRender();
+  }
+
+  /**
+   * Rows a question/approval panel may use above the always-visible status row.
+   * A function (not a number) so a terminal resized while the panel is open
+   * keeps the panel on screen.
+   */
+  function panelHeight() {
+    return Math.max(
+      1,
+      tui.terminal.rows - statusContainer.render(Math.max(1, tui.terminal.columns)).length,
+    );
   }
 
   function select(
@@ -717,6 +740,33 @@ export async function runUI(
       if (parent) showPanel(parent);
       else void pickModel(sessionId);
     };
+  }
+
+  // Codex-compatible chat lifecycle: both commands start a new session, but
+  // /new keeps the previous transcript visible while /clear wipes it first.
+  async function startNewConversation(clearScreen: boolean) {
+    if (clearScreen) {
+      transcript.clear();
+      scroll.scrollToEnd();
+      tui.resetTextSelection();
+      update();
+    }
+    if (!route.model) {
+      void pickModel();
+      return;
+    }
+    await connect(
+      { provider: route.provider, model: route.model },
+      undefined,
+      false,
+      false,
+      undefined,
+      { keepTranscript: true },
+    );
+    if (closing || !runtime.session) return;
+    add("New conversation", runtime.session.id);
+    scroll.scrollToEnd();
+    update();
   }
 
   function announceCredentialSource(provider: string, source: CredentialSource) {
@@ -938,6 +988,53 @@ export async function runUI(
     }
   }
 
+  /**
+   * Start (or reuse) the Thinking row for an attempt. A retry begins a new
+   * attempt, so the previous row is settled instead of leaking into it.
+   */
+  function beginThinking(attemptId: string) {
+    if (thinking && thinkingAttempt === attemptId) return thinking;
+    settleThinking();
+    thinking = new ThinkingView(tui);
+    thinkingAttempt = attemptId;
+    transcript.addChild(thinking);
+    return thinking;
+  }
+
+  function settleThinking() {
+    if (!thinking) return;
+    thinking.finish();
+    thinking = undefined;
+    thinkingAttempt = undefined;
+  }
+
+  /** Stop the live turn but keep the chat open (Esc / Ctrl+C). */
+  function cancelTurn() {
+    if (stopping) return;
+    const queued = queue.length;
+    stopping = true;
+    statusContainer.show("retry", { message: "Stopping" });
+    programStatus.working("Stopping");
+    update();
+    void runtime
+      .cancel()
+      .then(() => {
+        // A queued prompt starts as soon as the turn stops, so a notice saying
+        // the turn was cancelled would only be noise there.
+        if (queued === 0) add("Interrupted");
+      })
+      .catch((error) => add("Error", error instanceof Error ? error.message : String(error)))
+      .finally(() => {
+        stopping = false;
+        statusContainer.show(running ? "working" : "idle", {
+          message: running ? "Working" : "Ready",
+        });
+        programStatus.idle();
+        drainQueue();
+        update();
+      });
+  }
+
   editor.onSubmit = async (text: string) => {
     const fromQueue = submittingQueued;
     if (closing) return;
@@ -951,7 +1048,7 @@ export async function runUI(
         enqueue(text);
         return;
       }
-      add("Error", "A response is running. Press Esc to stop it.");
+      add("Error", "A response is running. Press Esc or Ctrl+C to stop it.");
       return;
     }
     if (
@@ -1001,11 +1098,7 @@ export async function runUI(
     }
     add("You", text);
     if (text === "/clear") {
-      transcript.clear();
-      if (thinking?.running) transcript.addChild(thinking);
-      scroll.scrollToEnd();
-      tui.resetTextSelection();
-      update();
+      void startNewConversation(true);
       return;
     }
     if (text === "/quit") {
@@ -1043,8 +1136,7 @@ export async function runUI(
       return;
     }
     if (text === "/new") {
-      if (route.model) void connect({ provider: route.provider, model: route.model });
-      else void pickModel();
+      void startNewConversation(false);
       return;
     }
     const authCommand = /^\/(login|logout)(?:\s+(.*))?$/.exec(text);
@@ -1403,10 +1495,8 @@ export async function runUI(
               notification.params.sessionId === runtime.session?.id
             ) {
               const frame = notification.params;
-              if (frame.type === "start" && !thinking) {
-                thinking = new ThinkingView(tui);
-                transcript.addChild(thinking);
-              }
+              if (frame.type === "start") beginThinking(frame.attemptId);
+              if (frame.type === "end" && thinkingAttempt === frame.attemptId) settleThinking();
               if (frame.type === "usage" && thinking) {
                 const tokens = frame.usage;
                 usage.set(frame.attemptId, {
@@ -1491,6 +1581,7 @@ export async function runUI(
             transcript.addChild(thinking);
           }
           thinking = undefined;
+          thinkingAttempt = undefined;
           running = false;
           statusContainer.show("idle", { message: "Ready" });
           programStatus.done();
@@ -1596,62 +1687,25 @@ export async function runUI(
   tui.addInputListener((data) => {
     const kb = keybindings;
     if (kb.matches(data, "app.clear")) {
-      if (running || busy) {
-        const queued = queue.length;
-        stopping = true;
-        statusContainer.show("retry", { message: "Stopping" });
-        programStatus.working("Stopping");
-        update();
-        void runtime
-          .cancel()
-          .then(() => {
-            if (queued === 0) add("Interrupted");
-          })
-          .catch((error) => add("Error", error instanceof Error ? error.message : String(error)))
-          .finally(() => {
-            stopping = false;
-            statusContainer.show(running ? "working" : "idle", {
-              message: running ? "Working" : "Ready",
-            });
-            programStatus.idle();
-            drainQueue();
-            update();
-          });
-      } else if (editor.getText().length > 0 || pendingFiles.length > 0) {
+      // Ctrl+C follows the agent-CLI convention: a draft is discarded first, a
+      // live turn is interrupted (never exits mid-answer), a second press while
+      // cancelling forces the exit, and an idle press exits.
+      const action = ctrlCAction({
+        draft: editor.getText().length > 0 || pendingFiles.length > 0,
+        active: running || busy,
+        cancelling: stopping,
+      });
+      if (action === "clear") {
         editor.setText("");
         pendingFiles = [];
         update();
-      } else {
-        void stop();
-      }
+      } else if (action === "interrupt") cancelTurn();
+      else void stop(); // force-exit or exit
       return { consume: true };
     }
     if (kb.matches(data, "app.interrupt") && !selecting) {
       if (decision) decision(null);
-      else if (busy || running) {
-        const queued = queue.length;
-        stopping = true;
-        statusContainer.show("retry", { message: "Stopping" });
-        programStatus.working("Stopping");
-        update();
-        void runtime
-          .cancel()
-          .then(() => {
-            // A queued prompt starts as soon as the turn stops, so a notice
-            // saying the turn was cancelled would only be noise there.
-            if (queued === 0) add("Interrupted");
-          })
-          .catch((error) => add("Error", error instanceof Error ? error.message : String(error)))
-          .finally(() => {
-            stopping = false;
-            statusContainer.show(running ? "working" : "idle", {
-              message: running ? "Working" : "Ready",
-            });
-            programStatus.idle();
-            drainQueue();
-            update();
-          });
-      }
+      else if (busy || running) cancelTurn();
       return { consume: true };
     }
     if (kb.matches(data, "app.editor.external")) {

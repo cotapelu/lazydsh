@@ -65,6 +65,8 @@ export function eventText(notification: RuntimeEvent) {
       callId: event.data.message.toolCallId,
       text: contentText(event.data.message.content),
       reason: event.data.error?.reason,
+      // Tool metadata carries contextual diffs the detail renderer can show.
+      meta: event.data.meta,
     } as const;
   }
 }
@@ -74,4 +76,12 @@ export function contentText(content: readonly ContentBlock[]) {
     .filter((block) => block.type === "text")
     .map((block) => block.text)
     .join("\n");
+}
+
+/** The model's visible reasoning blocks, joined for a collapsed thinking row. */
+export function reasoningText(content: readonly ContentBlock[]) {
+  return content
+    .filter((block) => block.type === "reasoning")
+    .map((block) => block.text)
+    .join("\n\n");
 }

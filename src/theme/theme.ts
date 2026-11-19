@@ -434,10 +434,11 @@ export const fg: FgColors = new Proxy({} as FgColors, {
 
 /** Dark or light from what the terminal has reported so far. */
 export function safeText(value: unknown): string {
-  // Preserve newlines (\n), carriage returns (\r), and tabs (\t)
+  // Preserve newlines (\n) and tabs (\t); other control characters would move
+  // the cursor when the string is rendered.
   return stripVTControlCharacters(String(value)).replace(
     // eslint-disable-next-line no-control-regex
-    /[\u0000-\b\u000b-\f\u000e-\u001f\u007f]/gu,
+    /[\u0000-\b\u000b-\u001f\u007f]/gu,
     "",
   );
 }

@@ -45,7 +45,6 @@ test("running turns allow inspection and settings while rejecting concurrent mes
     "/ps",
     "/stop",
     "/stop bash-test",
-    "/clear",
     "/session",
     "/plan",
     "/plan off",

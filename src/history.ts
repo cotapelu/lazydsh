@@ -1,15 +1,20 @@
 import { formatDuration, formatTokens } from "./format.ts";
 import { accent, dim } from "./theme.ts";
 import type { SessionEvent } from "@deepseek-ai/dsh-session";
-import { eventText } from "./runtime-events.ts";
+import { eventText, reasoningText } from "./runtime-events.ts";
 import { latestRequestStats } from "./stats.ts";
-import { ToolLog } from "./tools.ts";
+import { ToolLog, ToolRow } from "./tools.ts";
 
-type HistoryRow = {
-  kind: "user" | "assistant" | "metrics" | "notice" | "tool";
-  text: string;
-  label?: string;
-};
+type HistoryRow =
+  | {
+      kind: "user" | "assistant" | "metrics" | "notice" | "thinking";
+      text: string;
+      label?: string;
+      /** Seconds a restored reasoning row took, frozen for the history view. */
+      duration?: number;
+    }
+  /** Tool rows stay component instances so their expandable details survive. */
+  | ToolRow;
 
 export function historyRows(events: readonly SessionEvent[], sessionId: string): HistoryRow[] {
   const rows: HistoryRow[] = [];
@@ -58,12 +63,25 @@ export function historyRows(events: readonly SessionEvent[], sessionId: string):
         output += usage.outputTokens;
       }
     }
+    if (event.type === "assistant/message") {
+      // Restored sessions show the model's reasoning as a frozen Thinking row
+      // above the answer, mirroring what the live view displayed.
+      const reasoning = reasoningText(event.data.message.content);
+      if (reasoning.trim())
+        rows.push({
+          kind: "thinking",
+          text: reasoning,
+          duration: started === undefined ? undefined : Math.max(0, (event.time - started) / 1000),
+        });
+    }
     const item = eventText({ method: "session.event", params: { sessionId, event } });
     if (item?.kind === "assistant") {
       if (item.text) rows.push({ kind: "assistant", text: item.text });
     } else if (item) {
+      // One mutable ToolRow per call: the same instance the live transcript
+      // would have shown, so history keeps the final status and details.
       const row = tools.record(item);
-      if (row) rows.push({ kind: "tool", text: row.summary, label: "tool" });
+      if (row) rows.push(row);
     }
     if (event.type === "turn/end" && started !== undefined && rows.length > turnStartRow)
       rows.push({
