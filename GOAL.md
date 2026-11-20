@@ -42,7 +42,7 @@
 
 ## Current State
 
-**Completed (Phases 1-5)**: Core structure implemented - all basic functionality works.
+**Completed (Phases 1-8)**: All planned phases are done — core layout, tool cards, selectors, keybindings, theme, message components, status/header polish, auth flows, external editor, copy, thinking selector, bug report, program status, session share, model catalog refresh, changelog, settings, extension widgets, plus the Phase 8 upstream-parity port (Ctrl+C interrupt state machine, `/new` vs `/clear`, question panel height budget, reasoning history, tool detail engine, rc.4 bump) and the overlay panel follow-ups (§8.9 in TODO.md).
 
 | Feature                              | Status   |
 | ------------------------------------ | -------- |
@@ -85,9 +85,13 @@ npm run test       # Unit tests
 
 1. **No reimplementation of DSH internals** — Tools, auth, sessions, LLM abstraction all come from `@deepseek-ai/dsh-*` packages
 2. **Provider-neutral tool UI** — Tools declare render intent via `presentCall`/`presentResult`; UI maps to pi-tui components
-3. **Deferred plugin loading** — 50+ tool plugins activated after first paint (< 500ms cold start)
+3. **Deferred plugin loading** — 50+ tool plugins activated after first paint (< 500ms cold start). Every enabled row of the 101-row dsh-base bundle eventually mounts (eager for boot-critical rows, deferred for tool rows); the app injects only the ~19 services the TUI actually uses (see `src/deferred.ts` `RUNTIME_SERVICE_NAMES`)
 4. **Token-based theming** — No hardcoded colors; DA1 terminal query + semantic tokens
 5. **Replay-safe** — Session log events drive identical UI on live and replay paths
+
+## Current Layer Layout
+
+The `src/` tree is **flat** today; the 3-layer target (`interactive-mode/`, `runtime/`, `utils/` + `interfaces.ts`/`runtime-events.ts` contracts) is designed but **not applied** — see CAUTRUC.md for the plan and its remaining checklist.
 
 ## Critical Files for Onboarding
 

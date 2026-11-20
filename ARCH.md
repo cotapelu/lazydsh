@@ -37,6 +37,14 @@
 | DSH Core Integration | ✅ Complete       | Cordis context, 80+ plugins         |
 | Boot Process         | ✅ Complete       | Two-phase (< 500ms)                 |
 
+### ✅ Phase 7-8 Complete (2026-11-20)
+
+| Milestone | Status | Notes |
+| --------- | ------ | ----- |
+| Phase 7 (docs, performance audit, integration testing) | ✅ | ~122ms cold start; README covers keybindings, themes, tool cards |
+| Phase 8 upstream parity (Ctrl+C interrupt, /new vs /clear, question budget, reasoning history, detail.ts, rc.4) | ✅ | Suite 112/112 |
+| §8.9 Overlay panel follow-ups | ✅ | `/model` two-level picker; async pickers fill items; login dialogs dismiss; real package version in header |
+
 ### ⚠️ Components Implemented (Basic vs Polished)
 
 | Component                        | Status      | Missing Polish                        |
@@ -469,4 +477,4 @@ interface ThemeTokens {
 
 ---
 
-_Gap Analysis: Core structure + all Phase 6 polish complete (Phases 1-6). Remaining: Phase 7 (Documentation, Performance Audit, Final Testing) ~20h. See TODO.md for remaining work._
+_Status: Phases 1-8 complete (see TODO.md). Remaining structure plan: the 3-layer restructure in CAUTRUC.md._

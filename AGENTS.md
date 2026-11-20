@@ -57,13 +57,9 @@ This document describes the agent architecture, development patterns, and guidel
 | Changelog Display (/changelog)   | ✅ Complete | Expand/collapse toggle                              |
 | Settings Selector (/settings)    | ✅ Complete | 5 categories, toggle/select/info                    |
 
-### ⏳ Remaining (Phase 7)
+### ✅ Phase 7 Complete
 
-| Missing Feature              | Priority |
-| ---------------------------- | -------- |
-| Documentation (README, etc.) | Medium   |
-| Performance Audit            | Medium   |
-| Final Integration Testing    | Medium   |
+Documentation (README/keybindings/theme/tool-card guides), performance audit (~122ms cold start, streaming frame-rate check), and final integration testing are done — see TODO.md for the phase history.
 
 ## Development Patterns
 
@@ -314,4 +310,4 @@ PI_STARTUP_BENCHMARK=1 npm run start
 
 ---
 
-_Current state: Core structure + all Phase 6 polish complete (Phases 1-6). Remaining: Phase 7 (Documentation, Performance Audit, Final Testing) ~20h. See TODO.md for remaining work._
+_Current state: Phases 1-7 complete; Phase 8 (upstream parity) complete including the overlay panel follow-ups (§8.9). Next structured plan: the 3-layer restructure in CAUTRUC.md. Suite: 112/112 passing._
