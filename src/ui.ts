@@ -37,6 +37,7 @@ import {
   Text,
   Container,
   type Component,
+  type OverlayHandle,
 } from "@earendil-works/pi-tui";
 import { eventText, isAuthFailure } from "./runtime-events.ts";
 import { AuthorizationDeclinedError } from "@deepseek-ai/dsh-authorization";
@@ -300,6 +301,8 @@ export async function runUI(
   let pendingStartupConnection: { route: Route; sessionId?: string } | undefined;
   let decision: ((value: string | null) => void) | undefined;
   let selecting = false;
+  /** Stack of overlay handles for nested panels (e.g., provider -> model picker). */
+  const overlayHandles: OverlayHandle[] = [];
   const { promise: done, resolve: finish } = Promise.withResolvers<void>();
 
   const history = new Container();
@@ -665,16 +668,36 @@ export async function runUI(
     }
   }
 
-  function dismissPanel() {
-    selecting = false;
-    tui.setFocus(editor);
+  function dismissPanel(clearAll = false) {
+    if (clearAll) {
+      // Close all nested overlays (e.g., provider -> model picker)
+      while (overlayHandles.length > 0) {
+        const handle = overlayHandles.pop();
+        handle?.hide();
+      }
+    } else if (overlayHandles.length > 0) {
+      // Close only the topmost overlay
+      const handle = overlayHandles.pop();
+      handle?.hide();
+    }
+    selecting = overlayHandles.length > 0;
+    if (!selecting) {
+      tui.setFocus(editor);
+    }
     tui.requestRender();
   }
 
-  /** Show a panel (picker, dialog) above the editor while keeping focus. */
+  /** Show a panel (picker, dialog) as an overlay above the editor. */
   function showPanel(panel: Component) {
     selecting = true;
     programStatus.blocked("question", "Waiting for input");
+    const handle = tui.showOverlay(panel, {
+      anchor: "center",
+      margin: 2,
+      minWidth: 50,
+      maxHeight: tui.terminal.rows - 8,
+    });
+    overlayHandles.push(handle);
     tui.setFocus(panel);
     tui.requestRender();
   }
@@ -735,18 +758,20 @@ export async function runUI(
 
   async function pickModel(sessionId = runtime.session?.id ?? resume) {
     const { providers } = await import("./catalog.ts");
-    const providerPicker = select(
+    select(
       providers.map((id) => ({ value: id, label: id })),
       "Providers",
       (provider) => {
-        void pickProviderModel(provider, sessionId, providerPicker);
+        // Close provider picker before opening model picker
+        dismissPanel();
+        void pickProviderModel(provider, sessionId);
       },
       undefined,
       true,
     );
   }
 
-  async function pickProviderModel(provider: string, sessionId?: string, parent?: SearchPicker) {
+  async function pickProviderModel(provider: string, sessionId?: string, _parent?: SearchPicker) {
     const { models } = await import("./catalog.ts");
     const picker: SearchPicker = select(
       models(provider).map((model) => ({
@@ -756,14 +781,20 @@ export async function runUI(
       })),
       "Models",
       (model) => {
+        // Close all overlays (provider + model picker) before connecting
+        dismissPanel(true);
         void connect({ provider, model }, sessionId, true);
       },
       undefined,
       true,
     );
     picker.onCancel = () => {
-      if (parent) showPanel(parent);
-      else void pickModel(sessionId);
+      // Close model picker only, parent provider picker remains
+      dismissPanel();
+      if (!overlayHandles.length) {
+        // No parent picker, go back to provider selection
+        void pickModel(sessionId);
+      }
     };
   }
 

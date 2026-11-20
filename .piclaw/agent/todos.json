@@ -3,27 +3,36 @@
   "phases": [
     {
       "id": "phase-1",
-      "name": "8.7 detail.ts engine",
+      "name": "Sửa lỗi /model không hiển thị cửa sổ chọn model",
       "tasks": [
         {
           "id": "task-1",
-          "content": "Tạo src/detail.ts (prettyArguments, readFileDiffs, detailDiff, detailText, toolDetails)",
-          "status": "in_progress"
+          "content": "Sửa showPanel/dismissPanel trong ui.ts để dùng tui.showOverlay/hideOverlay (mount panel vào overlayStack để render)",
+          "status": "in_progress",
+          "details": "showPanel hiện chỉ setFocus không showOverlay nên panel không render. Thêm stack overlay handles, clearAll khi chọn xong, tránh push trùng panel cha khi cancel."
         },
         {
           "id": "task-2",
-          "content": "Approval panel hiển thị tool details + labels mới",
-          "status": "pending"
+          "content": "Sửa pickProviderModel onSelect/onCancel để clear overlay đúng cách",
+          "status": "pending",
+          "details": "onSelect: dismissPanel(true) clear hết overlay rồi connect. onCancel: pop 1 overlay để quay lại parent picker, không dính overlay."
         },
         {
           "id": "task-3",
-          "content": "ToolRow history expandable (setCall/finish/isExpanded)",
-          "status": "pending"
+          "content": "Build/typecheck để xác nhận không lỗi syntax",
+          "status": "pending",
+          "details": "Chạy npm run check hoặc tsc --noEmit"
+        },
+        {
+          "id": "task-4",
+          "content": "Xác nhận luồng /model: pickModel -> select provider -> select model -> hiển thị overlay",
+          "status": "pending",
+          "details": "Review lại code luồng sau khi sửa"
         }
       ]
     }
   ],
-  "nextTaskId": 4,
+  "nextTaskId": 5,
   "nextPhaseId": 2,
-  "updatedAt": "2026-11-19T04:15:47.174Z"
+  "updatedAt": "2026-11-20T05:53:11.180Z"
 }
