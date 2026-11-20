@@ -162,7 +162,7 @@ export async function runUI(
     mouse: true,
     scrollToEndIndicator: () => dim("↓ latest"),
   });
-  const header = new HeaderComponent({ version: "0.2.0" });
+  const header = new HeaderComponent();
   const transcript = new Transcript();
   // Prompts typed during a running turn wait below the transcript; drainQueue sends
   // them one at a time as each turn finishes.
@@ -494,7 +494,13 @@ export async function runUI(
         );
         signal?.addEventListener("abort", () => dialog.cancel(), { once: true });
         showPanel(dialog);
-        return await dialog.whenDone();
+        try {
+          return await dialog.whenDone();
+        } finally {
+          // The dialog settles its promise but never unmounts itself; the
+          // overlay must come down even when the flow was aborted.
+          dismissPanel();
+        }
       }
       if (params.kind === "secret" || params.kind === "select") {
         const options =
@@ -512,7 +518,11 @@ export async function runUI(
         );
         signal?.addEventListener("abort", () => dialog.cancel(), { once: true });
         showPanel(dialog);
-        return await dialog.whenDone();
+        try {
+          return await dialog.whenDone();
+        } finally {
+          dismissPanel();
+        }
       }
       return ask(message, signal);
     },
@@ -1268,20 +1278,22 @@ export async function runUI(
                     ? record.pinned
                     : true),
           );
-          if (!selecting)
-            picker.setItems(
-              records.map((record) => ({
-                value: record.id,
-                label: record.title,
-                description: [record.id === runtime.session?.id ? "Current" : "", record.directory]
-                  .filter(Boolean)
-                  .join(" · "),
-              })),
-            );
+          // `selecting` is true while a picker panel is open, so the items are
+          // filled in only then; a dismissed picker is left untouched.
+          if (!selecting) return;
+          picker.setItems(
+            records.map((record) => ({
+              value: record.id,
+              label: record.title,
+              description: [record.id === runtime.session?.id ? "Current" : "", record.directory]
+                .filter(Boolean)
+                .join(" · "),
+            })),
+          );
           tui.requestRender();
         })
         .catch((error) => {
-          if (!selecting) dismissPanel();
+          if (selecting) dismissPanel();
           add("Error", error instanceof Error ? error.message : String(error));
         });
       return;
@@ -1308,22 +1320,21 @@ export async function runUI(
         void runtime
           .jobs()
           .then((jobs) => {
-            if (!selecting)
-              picker.setItems(
-                jobs
-                  .filter(
-                    (job) => !stopping || job.status === "running" || job.status === "stopping",
-                  )
-                  .map((job) => ({
-                    value: job.id,
-                    label: job.label,
-                    description: `${job.status} · ${job.id}${job.progress ? " · " + job.progress : ""}`,
-                  })),
-              );
+            // Only fill a picker that is still on screen.
+            if (!selecting) return;
+            picker.setItems(
+              jobs
+                .filter((job) => !stopping || job.status === "running" || job.status === "stopping")
+                .map((job) => ({
+                  value: job.id,
+                  label: job.label,
+                  description: `${job.status} · ${job.id}${job.progress ? " · " + job.progress : ""}`,
+                })),
+            );
             tui.requestRender();
           })
           .catch((error) => {
-            dismissPanel();
+            if (selecting) dismissPanel();
             handleError(error);
           });
       }
@@ -1398,9 +1409,9 @@ export async function runUI(
           picker.setLoading();
           try {
             const choices = await runtime.choices(kind);
-            if (!selecting) picker.setItems(choices.options, choices.current);
+            if (selecting) picker.setItems(choices.options, choices.current);
           } catch (error) {
-            dismissPanel();
+            if (selecting) dismissPanel();
             throw error;
           }
         }
@@ -1451,7 +1462,7 @@ export async function runUI(
           );
         })
         .catch((error) => {
-          if (!selecting) dismissPanel();
+          if (selecting) dismissPanel();
           add("Error", error instanceof Error ? error.message : String(error));
         })
         .finally(() => {

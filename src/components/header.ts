@@ -8,6 +8,7 @@
 
 import { Spacer, Text, type Component } from "@earendil-works/pi-tui";
 import { theme } from "../theme/theme.ts";
+import { packageVersion } from "../version.ts";
 import { keyDisplayText, keyHint, rawKeyHint } from "../keybinding-hints.js";
 
 /** Official deepseek.com SVG silhouette sampled into 2×4 Braille cells. */
@@ -24,12 +25,15 @@ const whale = [
   "        ⠈⠉⠉⠉⠁",
 ];
 
-const VERSION = "0.2.0";
+/** The running app version, read once from the package manifest. */
+function version(): string {
+  return packageVersion();
+}
 
 function withLogo(hints: string): string {
   const lines = whale.map((line) => theme.fg("accent", line));
   const [first, second, third] = lines;
-  return `${first} ${theme.fg("dim", `v${VERSION}`)}\n${second ?? ""} ${hints}\n${third ?? ""}`;
+  return `${first} ${theme.fg("dim", `v${version()}`)}\n${second ?? ""} ${hints}\n${third ?? ""}`;
 }
 
 /** Full hint list, one per line, shown when the header is expanded. */
@@ -77,7 +81,6 @@ function compactOnboarding(): string {
 }
 
 export interface HeaderOptions {
-  version?: string;
   expanded?: boolean;
   showOnboarding?: boolean;
 }

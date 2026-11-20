@@ -1009,6 +1009,14 @@ have both `tool-execution.ts` and the approval panel consume it.
 - [x] Bump all 36 `@deepseek-ai/dsh-*` packages
 - [x] Verify old sessions still resume (session format compatibility), `pnpm run check && pnpm run test`
 
+### 8.9 Overlay panel follow-ups (2026-11-20)
+
+- [x] **`/model` overlay** — `showPanel` now mounts the panel via `tui.showOverlay()` and pushes a handle onto an `overlayHandles` stack; `dismissPanel(false)` pops one (back to the parent picker), `dismissPanel(true)` clears all. Provider → Model nesting works, cancel from the model picker falls back to the provider list.
+- [x] **Inverted `selecting` guards fixed** — `/archive`, `/restore`, `/pin`, `/unpin`, `/ps`, `/stop`, `/cd` and `/permission` pickers now fill items only while their panel is open (`selecting === true`); previously the inverted guard left every one of them stuck on `Loading…`, and error paths never dismissed the panel.
+- [x] **Login dialog overlay no longer leaks** — `onAuth` settles the dialog's promise but never unmounted it, so a completed/cancelled login left an overlay that captured input forever; both dialog paths now `dismissPanel()` in a `finally`.
+- [x] **Header version no longer hardcoded** — `src/version.ts` reads `package.json` once (shared with `cli.ts --version`); the header renders the real package version instead of the stale `0.2.0`.
+- [x] Tests: `test/version.test.ts` + dist smoke test (`node dist/cli.mjs --version` → `lazydsh 0.2.3`). Suite: 112/112 passing.
+
 ### Done criteria
 
 - Ctrl+C during a turn interrupts (not exits); second press force-exits; idle exits; draft clears
@@ -1017,6 +1025,8 @@ have both `tool-execution.ts` and the approval panel consume it.
 - Question panel never pushes choices off screen at 80x24 and below
 - Resumed sessions show reasoning rows and expandable tool details with diffs
 - Approval prompts show tool name, arguments, and diff before allowing
+- Pickers that load asynchronously (`/archive`, `/ps`, `/cd`, …) fill their items while open and close on error
+- Login dialogs (notice/secret/select) vanish when the flow settles or aborts
 
 ### Phase 8 outcome (2026-11-18)
 

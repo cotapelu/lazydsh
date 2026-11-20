@@ -8,31 +8,55 @@
         {
           "id": "task-1",
           "content": "Sửa showPanel/dismissPanel trong ui.ts để dùng tui.showOverlay/hideOverlay (mount panel vào overlayStack để render)",
-          "status": "in_progress",
+          "status": "completed",
           "details": "showPanel hiện chỉ setFocus không showOverlay nên panel không render. Thêm stack overlay handles, clearAll khi chọn xong, tránh push trùng panel cha khi cancel."
         },
         {
           "id": "task-2",
           "content": "Sửa pickProviderModel onSelect/onCancel để clear overlay đúng cách",
-          "status": "pending",
+          "status": "completed",
           "details": "onSelect: dismissPanel(true) clear hết overlay rồi connect. onCancel: pop 1 overlay để quay lại parent picker, không dính overlay."
         },
         {
           "id": "task-3",
           "content": "Build/typecheck để xác nhận không lỗi syntax",
-          "status": "pending",
+          "status": "completed",
           "details": "Chạy npm run check hoặc tsc --noEmit"
         },
         {
           "id": "task-4",
           "content": "Xác nhận luồng /model: pickModel -> select provider -> select model -> hiển thị overlay",
-          "status": "pending",
+          "status": "completed",
           "details": "Review lại code luồng sau khi sửa"
+        }
+      ]
+    },
+    {
+      "id": "phase-2",
+      "name": "Sửa bug tìm thấy khi review luồng panel/overlay",
+      "tasks": [
+        {
+          "id": "task-5",
+          "content": "Guard if (!selecting) bị đảo trong /archive /restore /pin /unpin /ps /stop /cd /permission",
+          "status": "completed",
+          "details": "selecting=true khi panel đang mở; guard cũ khiến picker kẹt Loading… và lỗi không dismiss panel."
+        },
+        {
+          "id": "task-6",
+          "content": "LoginDialog overlay không tự tắt sau whenDone (leak, user bị kẹt dialog)",
+          "status": "completed",
+          "details": "onAuth path: bọc return await dialog.whenDone() trong try/finally dismissPanel()."
+        },
+        {
+          "id": "task-7",
+          "content": "Header hiển thị version hardcode 0.2.0",
+          "status": "completed",
+          "details": "Tạo src/version.ts đọc package.json; cli.ts dùng chung helper; test + build smoke test (v0.2.3)."
         }
       ]
     }
   ],
-  "nextTaskId": 5,
-  "nextPhaseId": 2,
-  "updatedAt": "2026-11-20T05:53:11.180Z"
+  "nextTaskId": 8,
+  "nextPhaseId": 3,
+  "updatedAt": "2026-11-20T10:45:00.000Z"
 }

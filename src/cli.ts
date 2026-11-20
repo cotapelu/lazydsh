@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { formatNotification, terminalColor } from "./theme.ts";
+import { packageVersion } from "./version.ts";
 import { loadModel, preferencesPath } from "./preferences.ts";
 import { normalizeProvider } from "./provider.ts";
 import type {} from "./plugin.ts";
@@ -9,7 +10,7 @@ import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { enableCompileCache } from "node:module";
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 
 // Keep V8's compile cache out of the OS temp directory so a reboot does not
 // make the next launch recompile every plugin module.
@@ -57,15 +58,6 @@ const flagHelp: Record<string, string> = {
   help: row("-h, --help", "Show help"),
 };
 
-function packageVersion(): string {
-  try {
-    const manifest = JSON.parse(
-      readFileSync(new URL("../package.json", import.meta.url), "utf8"),
-    ) as { version?: unknown };
-    if (typeof manifest.version === "string") return manifest.version;
-  } catch {}
-  return "unknown";
-}
 const help = `${bold("lazydsh")} — A lazier terminal UI for DeepSeek Harness.
 
 ${heading("Usage:")}
