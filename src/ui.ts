@@ -282,8 +282,8 @@ export async function runUI(
   let pendingFiles: AdmittedPromptContentPart[] = [];
   /** The streaming answer of the active turn (folded with reasoning at the end). */
   let liveAssistant: AssistantMessageComponent | undefined;
-  /** Pi-style: reasoning blocks stay hidden until Ctrl+T expands them. */
-  let hideThinkingBlock = true;
+  /** Pi's default: reasoning streams visibly; Ctrl+T collapses it to a label. */
+  let hideThinkingBlock = false;
   let busy = false;
   let starting = false;
   let startupFailed = false;
@@ -1494,6 +1494,9 @@ export async function runUI(
       // component is cleared in the finally block below.
       let liveText = "";
       let liveReasoning = "";
+      // Lazily mount the answer block. The accumulated reasoning/text is built
+      // by the caller before this runs, so the constructor must not reset it;
+      // a retry (assistant/attempt) resets both instead.
       const ensureLiveAssistant = () => {
         if (liveAssistant === undefined || !transcript.children.includes(liveAssistant)) {
           liveAssistant = new AssistantMessageComponent(
@@ -1502,13 +1505,11 @@ export async function runUI(
             markdownTheme,
             "Thinking…",
           );
-          liveText = "";
-          liveReasoning = "";
           transcript.addChild(liveAssistant);
         }
         return liveAssistant;
       };
-      const renderLive = (streaming: boolean) =>
+      const renderLive = (streaming: boolean, stopReason?: "aborted" | "length" | "error") =>
         ensureLiveAssistant().updateContent(
           {
             content: [
@@ -1517,6 +1518,7 @@ export async function runUI(
                 : []),
               ...(liveText.trim() ? [{ type: "text" as const, text: liveText }] : []),
             ],
+            ...(stopReason === undefined ? {} : { stopReason }),
           },
           streaming,
         );
@@ -1586,23 +1588,20 @@ export async function runUI(
         if (result.finalResponse && result.finalResponse !== lastAssistant)
           add(result.finishReason === "error" ? "Error" : "dsh", result.finalResponse);
         else if (result.finishReason === "error") add("Error", "dsh reported an error.");
-        // Fold the finished message (reasoning + text + stop reason) into the
-        // streaming block, so the turn ends as one assistant message.
+        // Settle the streaming block with everything the turn streamed. The
+        // content comes from the deltas — a multi-step turn keeps the text it
+        // produced before its tool calls — while only the stop reason comes
+        // from the persisted record (DSH messages carry no stop reason).
         if (liveAssistant !== undefined) {
           const events = await runtime.history().catch(() => []);
           const final = events.findLast((item) => item.type === "assistant/message");
-          if (final?.type === "assistant/message") {
-            // DSH speaks "reasoning" blocks; the assistant component renders
-            // "thinking" blocks — translate so the finished turn folds the
-            // reasoning in above the answer.
-            const content: { type: "text" | "thinking"; text?: string; thinking?: string }[] = [];
-            for (const block of final.data.message.content) {
-              if (block.type === "reasoning")
-                content.push({ type: "thinking", thinking: block.text });
-              else if (block.type === "text") content.push({ type: "text", text: block.text });
-            }
-            liveAssistant.updateContent({ content }, false);
-          }
+          const stop =
+            final?.type === "assistant/message" && final.data.interrupted === true
+              ? "aborted"
+              : result.finishReason === "error"
+                ? "error"
+                : undefined;
+          renderLive(false, stop);
           liveAssistant = undefined;
         }
       } catch (error) {
