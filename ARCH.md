@@ -39,11 +39,11 @@
 
 ### ✅ Phase 7-8 Complete (2026-11-20)
 
-| Milestone | Status | Notes |
-| --------- | ------ | ----- |
-| Phase 7 (docs, performance audit, integration testing) | ✅ | ~122ms cold start; README covers keybindings, themes, tool cards |
-| Phase 8 upstream parity (Ctrl+C interrupt, /new vs /clear, question budget, reasoning history, detail.ts, rc.4) | ✅ | Suite 112/112 |
-| §8.9 Overlay panel follow-ups | ✅ | `/model` two-level picker; async pickers fill items; login dialogs dismiss; real package version in header |
+| Milestone                                                                                                       | Status | Notes                                                                                                      |
+| --------------------------------------------------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------- |
+| Phase 7 (docs, performance audit, integration testing)                                                          | ✅     | ~122ms cold start; README covers keybindings, themes, tool cards                                           |
+| Phase 8 upstream parity (Ctrl+C interrupt, /new vs /clear, question budget, reasoning history, detail.ts, rc.4) | ✅     | Suite 112/112                                                                                              |
+| §8.9 Overlay panel follow-ups                                                                                   | ✅     | `/model` two-level picker; async pickers fill items; login dialogs dismiss; real package version in header |
 
 ### ⚠️ Components Implemented (Basic vs Polished)
 
