@@ -6,7 +6,7 @@
  * Ported from pi-coding-agent's model-catalog-refresh.js
  */
 
-import type { ModelRuntime } from "./runtime.ts";
+import type { ModelRuntime } from "./interfaces.ts";
 
 interface RefreshResult {
   aborted: boolean;

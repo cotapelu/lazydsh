@@ -1,5 +1,5 @@
 import type { Runtime } from "./runtime.ts";
-import type { RuntimeOptions } from "./runtime.ts";
+import type { RuntimeOptions } from "./interfaces.ts";
 
 /** /bug: report a bug with crash details. */
 export async function reportBug(

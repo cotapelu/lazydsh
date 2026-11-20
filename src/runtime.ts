@@ -9,14 +9,11 @@ import {
   type Session,
 } from "@deepseek-ai/dsh-session";
 import { createUserMessage } from "@deepseek-ai/dsh-llm/message";
-import type { ReasoningEffortId, TokenUsage } from "@deepseek-ai/dsh-llm";
+import type { TokenUsage } from "@deepseek-ai/dsh-llm";
 import { credentialRef, credentialKey, type CredentialInfo } from "@deepseek-ai/dsh-credentials";
 import { AuthorizationDeclinedError } from "@deepseek-ai/dsh-authorization";
 import { UserQuestionError } from "@deepseek-ai/dsh-user-questions";
-import type {
-  AskUserQuestionRequest,
-  AskUserQuestionAnswer,
-} from "@deepseek-ai/dsh-user-questions";
+
 import type { AdmittedPromptContentPart, ImageMediaType } from "@deepseek-ai/dsh-attachment";
 import type {} from "@deepseek-ai/dsh-subagent";
 import type {} from "@deepseek-ai/dsh-session-query";
@@ -40,58 +37,32 @@ import type {} from "@deepseek-ai/dsh-skill";
 import { JobId } from "@deepseek-ai/dsh-jobs";
 import { formatFileMention } from "@deepseek-ai/dsh-file-reference/grammar";
 import { builtinProviders } from "@earendil-works/pi-ai/providers/all";
-import type { AutocompleteItem } from "@earendil-works/pi-tui";
 import { registerCommands } from "./native-commands.ts";
 import { contentText, isAuthFailure, type RuntimeEvent } from "./runtime-events.ts";
 
 export { eventText, isAuthFailure } from "./runtime-events.ts";
 export type { RuntimeEvent } from "./runtime-events.ts";
-export type ModelRuntime = any;
-
-export type Route = { provider: string; model: string };
-export type QuestionResult = AskUserQuestionAnswer | { cancelled: true };
-/** Where the credential for a route currently comes from. */
-export type CredentialSource = {
-  kind: "environment" | "store" | "oauth" | "ambient" | "keyless" | "none" | "unknown";
-  /** Human-readable description for notices. */
-  label: string;
-  /** Environment-variable name when `kind` is `environment`. */
-  ref?: string;
-};
-export type RuntimeOptions = {
-  cwd?: string;
-  dshHome?: string;
-  reasoningEffort?: ReasoningEffortId;
-  signal?: AbortSignal;
-};
-export type ApprovalRequest = {
-  toolName: string;
-  reason?: string;
-  displayReason?: { en: string; [locale: string]: string };
-  callId?: string;
-  signal?: AbortSignal;
-};
-export type Callbacks = {
-  resume?: string;
-  onAuth?: (
-    method: string,
-    params: Record<string, unknown>,
-    signal?: AbortSignal,
-  ) => Promise<unknown>;
-  onApproval?: (
-    params: ApprovalRequest,
-  ) => Promise<{ outcome: "allowed-once" | "rejected" | "cancelled" }>;
-  onUserQuestion?: (
-    request: AskUserQuestionRequest,
-    context: { signal: AbortSignal },
-  ) => Promise<QuestionResult>;
-};
-export type RunResult = {
-  sessionId: string;
-  finalResponse: string;
-  finishReason: "completed" | "error" | "aborted";
-  events: SessionEvent[];
-};
+// The boundary contract lives in interfaces.ts so the TUI never imports this
+// module purely for types.
+export type {
+  Route,
+  QuestionResult,
+  CredentialSource,
+  RuntimeOptions,
+  ApprovalRequest,
+  Callbacks,
+  RunResult,
+  ModelRuntime,
+  AutocompleteItem,
+} from "./interfaces.ts";
+import type {
+  Route,
+  CredentialSource,
+  RuntimeOptions,
+  Callbacks,
+  RunResult,
+  AutocompleteItem,
+} from "./interfaces.ts";
 
 function describeCredentialRef(ref: string, info: CredentialInfo): CredentialSource {
   switch (info.source) {

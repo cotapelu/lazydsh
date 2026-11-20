@@ -1,5 +1,5 @@
 import type { Runtime } from "./runtime.ts";
-import type { RuntimeOptions } from "./runtime.ts";
+import type { RuntimeOptions } from "./interfaces.ts";
 
 /** Generate a shareable link for the current session. */
 export async function generateShareLink(

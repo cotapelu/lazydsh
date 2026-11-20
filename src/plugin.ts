@@ -1,6 +1,7 @@
 import type { Context } from "@deepseek-ai/cordis";
 import type {} from "@deepseek-ai/dsh-cmdline";
-import type { Runtime as RuntimeInstance, RuntimeOptions } from "./runtime.ts";
+import type { Runtime as RuntimeInstance } from "./runtime.ts";
+import type { RuntimeOptions } from "./interfaces.ts";
 import {
   activateDeferredPlugins,
   applyDeferredPatches,

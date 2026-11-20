@@ -11,7 +11,7 @@ import { highlightCode } from "./highlight.ts";
 import type { SessionStats } from "./stats.ts";
 import { Autocomplete } from "./autocomplete.ts";
 import { commandMenu } from "./commands.ts";
-import type { RuntimeOptions, QuestionResult } from "./runtime.ts";
+import type { RuntimeOptions, QuestionResult } from "./interfaces.ts";
 import type { AdmittedPromptContentPart } from "@deepseek-ai/dsh-attachment";
 import { ToolLog, ToolRow } from "./tools.ts";
 import { SessionSelector } from "./session-selector.js";
@@ -41,7 +41,8 @@ import {
 } from "@earendil-works/pi-tui";
 import { eventText, isAuthFailure } from "./runtime-events.ts";
 import { AuthorizationDeclinedError } from "@deepseek-ai/dsh-authorization";
-import type { Runtime, Route, Callbacks, CredentialSource } from "./runtime.ts";
+import type { Runtime } from "./runtime.ts";
+import type { Route, Callbacks, CredentialSource } from "./interfaces.ts";
 import {
   resumeDirectoryOptions,
   resumeDirectoryTarget,

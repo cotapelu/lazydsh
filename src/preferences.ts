@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { homedir } from "node:os";
-import type { Route } from "./runtime.ts";
+import type { Route } from "./interfaces.ts";
 
 export type SavedRoute = Route & { effort?: string };
 
