@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { stripVTControlCharacters } from "node:util";
 import { ThemeSelectorComponent } from "../src/interactive-mode/components/theme-selector.ts";
 
-const tui = { requestRender: () => {} };
 const plain = (component: ThemeSelectorComponent, width = 70) =>
   component.render(width).map(stripVTControlCharacters).join("\n");
 
