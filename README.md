@@ -231,7 +231,7 @@ Themes use semantic tokens and live-reload on file change. The default theme is 
 
 ### Theme Commands
 
-- `/settings` → Appearance → Select theme
+- `/settings` → Appearance → Theme — full picker with live preview (all built-in and user themes); selecting saves, cancelling restores
 - Edit `~/.config/lazydsh/theme.json` — changes apply instantly
 - System theme follows terminal (DA1 query) — auto light/dark
 
@@ -326,14 +326,14 @@ Copies the last assistant message to clipboard:
 - Native clipboard: `pbcopy` (macOS), `clip` (Windows), `wl-copy` (Wayland), `xclip`/`xsel` (X11)
 - Fallback: ANSI OSC 52 (terminal-supported clipboard)
 
-## Thinking Selector (`Ctrl+T`)
+## Thinking Selector (`/effort`)
 
-Cycles through the model's available reasoning effort levels:
+Opens the fuzzy reasoning-effort picker:
 
 1. Fetches available efforts via `runtime.efforts()`
-2. Cycles to next level
-3. Applies via `/effort <level>`
-4. Reports new level in transcript
+2. Fuzzy-search the levels; `✓` marks the current one, `default` badges the route default
+3. Enter applies via `/effort <level>` and reports the new level in the transcript
+4. `Ctrl+S` persists the level as the default for the current provider/model
 
 ## Bug Report (`/bug`)
 

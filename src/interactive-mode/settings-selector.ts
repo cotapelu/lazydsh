@@ -4,6 +4,7 @@ import { DynamicBorder } from "./components/dynamic-border.ts";
 import { accent, dim } from "./theme/theme.ts";
 import { keyHint } from "./keybinding-hints.ts";
 import { keybindingsConfigPath } from "./keybindings.ts";
+import { packageVersion } from "../utils/version.ts";
 
 /** Settings categories. */
 export type SettingsCategory = "general" | "appearance" | "keybindings" | "extensions" | "about";
@@ -37,10 +38,17 @@ export class SettingsSelectorComponent extends Container {
 
   private tui: { requestRender: () => void };
 
-  constructor(tui: { requestRender: () => void }) {
+  /**
+   * Extra values the launcher injects so the panel shows real state instead of
+   * the placeholder defaults compiled into the component.
+   */
+  constructor(
+    tui: { requestRender: () => void },
+    options: { currentTheme?: string; version?: string } = {},
+  ) {
     super();
     this.tui = tui;
-    this.initializeItems();
+    this.initializeItems(options.currentTheme, options.version);
     this.rebuild();
   }
 
@@ -52,7 +60,7 @@ export class SettingsSelectorComponent extends Container {
     this._focused = value;
   }
 
-  private initializeItems(): void {
+  private initializeItems(currentTheme?: string, version?: string): void {
     this.items = [
       // General
       {
@@ -78,7 +86,7 @@ export class SettingsSelectorComponent extends Container {
         description: "Color theme for the UI",
         category: "appearance",
         type: "select",
-        value: "lazydsh",
+        value: currentTheme ?? "lazydsh",
         options: [
           { value: "lazydsh", label: "lazydsh (default)" },
           { value: "system", label: "System (follows terminal)" },
@@ -123,7 +131,7 @@ export class SettingsSelectorComponent extends Container {
         description: "lazydsh version information",
         category: "about",
         type: "info",
-        value: "0.2.0",
+        value: version ?? packageVersion(),
       },
       {
         key: "github",
@@ -246,6 +254,10 @@ export class SettingsSelectorComponent extends Container {
       const item = this.filteredItems[this.selectedIndex];
       if (!item) return;
 
+      // The launcher may own an item entirely (opening the real theme picker
+      // instead of cycling the placeholder options here).
+      if (this.onActivate?.(item.key) === true) return;
+
       if (item.type === "toggle") {
         item.value = !item.value;
         item.onChange?.(item.value);
@@ -286,4 +298,10 @@ export class SettingsSelectorComponent extends Container {
   }
 
   onCancel?: () => void;
+
+  /**
+   * Called on Enter for any item. Return `true` when the launcher handled the
+   * activation itself (the built-in toggle/cycle is then skipped).
+   */
+  onActivate?: (key: string) => boolean | void;
 }

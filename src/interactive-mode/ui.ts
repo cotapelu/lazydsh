@@ -64,6 +64,7 @@ import {
 import { HeaderComponent } from "./components/header.ts";
 import { ThemeController } from "./theme/theme-controller.ts";
 import { safeText, accent, dim } from "./theme.ts";
+import { currentThemeName_ } from "./theme/theme.ts";
 
 const identity = (text: string) => text;
 const bold = (text: string) => `\x1b[1m${text}\x1b[0m`;
@@ -603,6 +604,25 @@ export async function runUI(
     if (selection) await saveModel(preferencesPath(options.dshHome), selection);
   }
 
+  /**
+   * Persist a reasoning level as the default for the active route (Ctrl+S in
+   * the thinking picker). Requires a selection to attach it to; the level
+   * still applies in-session even when nothing can be saved.
+   */
+  async function saveDefaultEffort(level: string) {
+    const selection = runtime.selection();
+    if (!selection) {
+      add("Thinking", `${level} applies to this session; pick a model to save it as default.`);
+      return;
+    }
+    try {
+      await saveModel(preferencesPath(options.dshHome), { ...selection, effort: level });
+      add("Thinking", `Default effort for ${selection.provider}/${selection.model}: ${level}`);
+    } catch (error) {
+      add("Error", error instanceof Error ? error.message : String(error));
+    }
+  }
+
   async function connect(
     nextRoute: Route,
     sessionId?: string,
@@ -723,6 +743,36 @@ export async function runUI(
       1,
       tui.terminal.rows - statusContainer.render(Math.max(1, tui.terminal.columns)).length,
     );
+  }
+
+  /**
+   * Theme picker: every built-in theme plus user themes, with live preview.
+   * Selecting persists the choice through the controller (which owns the
+   * settings document); cancelling restores the persisted theme.
+   */
+  function openThemePicker() {
+    void import("./components/theme-selector.ts").then(({ ThemeSelectorComponent }) => {
+      const picker = new ThemeSelectorComponent(
+        currentThemeName_(),
+        (name) => {
+          dismissPanel();
+          const applied = themeController.setThemeName(name);
+          if (!applied.success) {
+            add("Theme", `Cannot apply ${name}: ${applied.error ?? "unknown error"}`);
+            return;
+          }
+          themeController.setThemeSetting(name);
+          add("Theme", name);
+        },
+        () => {
+          dismissPanel();
+          // A preview must not outlive a cancelled pick.
+          themeController.applyFromSettings();
+        },
+        (name) => themeController.preview(name),
+      );
+      showPanel(picker);
+    });
   }
 
   function select(
@@ -1173,8 +1223,18 @@ export async function runUI(
     }
     if (text === "/settings") {
       const { SettingsSelectorComponent } = await import("./settings-selector.ts");
-      const settings = new SettingsSelectorComponent(tui);
+      const settings = new SettingsSelectorComponent(tui, {
+        currentTheme: currentThemeName_(),
+      });
       settings.onCancel = dismissPanel;
+      settings.onActivate = (key) => {
+        // The theme row opens the real picker with live preview instead of
+        // cycling the placeholder options compiled into the panel.
+        if (key === "theme") {
+          openThemePicker();
+          return true;
+        }
+      };
       showPanel(settings);
       return;
     }
@@ -1428,42 +1488,34 @@ export async function runUI(
       return;
     }
     if (text === "/effort") {
-      const picker: SearchPicker = select(
-        [],
-        "Reasoning effort",
-        (value) => {
-          editor.onSubmit?.(`/effort ${value}`);
-        },
-        undefined,
-        false,
-      );
-      picker.setLoading();
+      // The fuzzy thinking picker needs its level list before construction, so
+      // the catalog is fetched first while the status row reports the work.
       busy = true;
       update();
       void runtime
         .efforts()
-        .then((info) => {
-          if (!selecting) return;
-          picker.setItems(
-            [
-              {
-                value: "default",
-                label: "Default",
-                description: info.defaultEffort
-                  ? `Provider default (${info.defaultEffort})`
-                  : "Use provider defaults",
-              },
-              ...info.options.map((option) => ({
-                value: option.id,
-                label: option.name,
-                description: option.description,
-              })),
-            ],
-            info.current,
-          );
+        .then(async (info) => {
+          if (closing) return;
+          const { ThinkingSelectorComponent } = await import("./components/thinking-selector.ts");
+          const picker = new ThinkingSelectorComponent({
+            currentLevel: info.current,
+            availableLevels: info.options.map((option) => option.id),
+            ...(info.defaultEffort === undefined
+              ? {}
+              : { defaultThinkingLevel: info.defaultEffort }),
+            onSelect: (level) => {
+              dismissPanel();
+              editor.onSubmit?.(`/effort ${level}`);
+            },
+            onCancel: () => dismissPanel(),
+            onSelectAsDefault: (level) => {
+              dismissPanel();
+              void saveDefaultEffort(level);
+            },
+          });
+          showPanel(picker);
         })
         .catch((error) => {
-          if (selecting) dismissPanel();
           add("Error", error instanceof Error ? error.message : String(error));
         })
         .finally(() => {

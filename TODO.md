@@ -1017,6 +1017,12 @@ have both `tool-execution.ts` and the approval panel consume it.
 - [x] **Header version no longer hardcoded** — `src/version.ts` reads `package.json` once (shared with `cli.ts --version`); the header renders the real package version instead of the stale `0.2.0`.
 - [x] Tests: `test/version.test.ts` + dist smoke test (`node dist/cli.mjs --version` → `lazydsh 0.2.3`). Suite: 112/112 passing.
 
+### 8.10 Wire the unwired selectors (2026-11-20)
+
+- [x] **Theme selector reachable** — `/settings` → Appearance → Theme now opens the real `ThemeSelectorComponent` (all built-in + user themes) with live preview; selecting persists through the theme controller, cancelling restores the persisted theme. `SettingsSelectorComponent` gained an `onActivate` hook plus injected `currentTheme`/`version` values (the About version row showed a stale `0.2.0`).
+- [x] **Thinking selector reachable** — `/effort` now opens `ThinkingSelectorComponent` (fuzzy search, current/default markers); Enter applies the level, Ctrl+S persists it as the route default (`saveDefaultEffort`).
+- [x] Tests: `test/settings-selector.test.ts` (theme row delegates, toggles keep working, real version) + `test/thinking-selector.test.ts` (list, select, save-default, filter). Suite: 118/118 passing.
+
 ### Done criteria
 
 - Ctrl+C during a turn interrupts (not exits); second press force-exits; idle exits; draft clears
