@@ -9,7 +9,7 @@
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { theme } from "./theme/theme.ts";
 import { formatTokens, formatCwdForFooter, FooterDataProvider } from "./footer-data-provider.ts";
-import type { AccountLimits } from "../../../utils/limits.ts";
+import type { AccountLimits } from "../utils/limits.ts";
 
 interface FooterOptions {
   session: {

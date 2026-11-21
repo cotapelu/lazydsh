@@ -1,310 +1,156 @@
-# AGENTS.md - Agent Development Guide for lazydsh
+# AGENTS.md — Agent Development Guide for lazydsh
 
 ## Overview
 
-This document describes the agent architecture, development patterns, and guidelines for working on lazydsh - a TUI client for DeepSeek Harness (DSH).
+lazydsh is a standalone TUI client for **DeepSeek Harness (DSH)** — a headless
+Cordis-based agent platform. It is **not** a DSH plugin: it boots the DSH
+`@deepseek-ai/dsh-base` profile (101 plugin rows, see `DSH-BASE.md`) inside its
+own process and wraps the Agent in a `Runtime` class for the TUI.
 
-## Agent Architecture
+- Runtime: DSH via `@deepseek-ai/dsh-base` (+ 11 extra services from
+  `src/runtime/plugin-patch.ts`)
+- UI: `@earendil-works/pi-tui` (React-like component system)
+- Language: TypeScript ESM, Node ≥ 24.9, bundled by `vite-plus`
+- Suite: 145/145 · `npm run check` (format + lint + types) · `npm run build`
 
-### Core Runtime (DSH)
-
-- **Framework**: DeepSeek Harness (DSH) - headless agent platform
-- **Agent Core**: `@deepseek-ai/dsh-agent` (Cordis-based plugin system)
-- **Session Management**: `@deepseek-ai/dsh-session` (JSONL event-sourced)
-- **LLM Abstraction**: `@deepseek-ai/dsh-llm` + `@deepseek-ai/dsh-llm-pi-ai` (pi-ai providers)
-- **Tools**: 19 tool plugins via `@deepseek-ai/dsh-tool-*` (bash, fs, web, subagent, etc.)
-- **Presentation Protocol**: `@deepseek-ai/dsh-tools` (TypeScript types only - no UI implementation)
-
-### UI Framework
-
-- **TUI Library**: `@earendil-works/pi-tui` (React-like component system)
-- **Components**: ScrollView, VStack/HStack, Editor, Markdown, SearchPicker, Container, etc.
-- **Theming**: CSS-like token system with live reload support
-
-### lazydsh Specific
-
-- **Profile**: "lazydsh" Cordis profile extending `@deepseek-ai/dsh-base`
-- **Boot**: Two-phase (paint shell first, defer 50+ tool plugins)
-- **Runtime Wrapper**: `src/runtime.ts` (~1200 lines) - wraps DSH Agent for TUI consumption
-
-## Current Implementation Status
-
-### ✅ Core Structure Complete (Phases 1-6)
-
-| Component                        | Status      | Notes                                               |
-| -------------------------------- | ----------- | --------------------------------------------------- |
-| Layout (`chat-viewport.ts`)      | ✅          | Header/Chat/Pending/Status/Widgets/Editor/Footer    |
-| Footer (`footer.ts`)             | ✅          | Tokens, git, model, context%, responsive            |
-| Tool Cards (`tool-execution.ts`) | ✅ Polished | Custom renderers, images, duration, expandable      |
-| Bash Execution                   | ✅ Polished | ANSI strip, exit code, truncation warning           |
-| Model Selector                   | ✅ Polished | Fuzzy search, async refresh, progress, save default |
-| Session Selector                 | ✅ Polished | Tree view, progress, delete/archive, rename         |
-| Keybindings                      | ✅          | Configurable, hot-reload, legacy migration          |
-| Theme System                     | ✅          | Tokens, DA1 sync, live reload, auto-sync            |
-| Assistant Message                | ✅ Polished | Thinking toggle, OSC133 zones, stop reasons         |
-| User Message                     | ✅ Polished | OSC133 zones                                        |
-| Status Indicators                | ✅ Complete | Working/Retry/Compaction/Idle                       |
-| Header                           | ✅ Complete | Logo, key hints, changelog, click expand            |
-| Keybinding Hints                 | ✅ Complete | Everywhere in UI                                    |
-| Login Dialog                     | ✅ Complete | OAuth flow UI                                       |
-| External Editor (Ctrl+G)         | ✅ Complete | $EDITOR integration                                 |
-| Copy Message (Ctrl+X)            | ✅ Complete | Clipboard with fallback                             |
-| Thinking Selector (Ctrl+T)       | ✅ Complete | Cycle reasoning effort                              |
-| Bug Report (/bug)                | ✅ Complete | Auto-attached crash details                         |
-| Program Status (OSC 7501)        | ✅ Complete | Idle/Working/Blocked/Done/Error                     |
-| Session Share (/share)           | ✅ Complete | Placeholder share links                             |
-| Extension Widgets                | ✅ Complete | Registry, above/below editor                        |
-| Changelog Display (/changelog)   | ✅ Complete | Expand/collapse toggle                              |
-| Settings Selector (/settings)    | ✅ Complete | 5 categories, toggle/select/info                    |
-
-### ✅ Phase 7 Complete
-
-Documentation (README/keybindings/theme/tool-card guides), performance audit (~122ms cold start, streaming frame-rate check), and final integration testing are done — see TODO.md for the phase history.
-
-## Development Patterns
-
-### 1. Event-Driven Architecture
-
-```typescript
-// DSH tools emit events via Cordis context
-ctx.on("tool/bash", (agent, request) => { ... })
-
-// lazydsh UI subscribes to Runtime events
-runtime.on("tool_execution_start", (event) => {
-  // Create ToolExecutionComponent
-})
-```
-
-### 2. Component Structure (pi-tui)
-
-```typescript
-class MyComponent implements Component {
-  invalidate() {
-    /* mark dirty */
-  }
-  render(width: number): string[] {
-    /* return ANSI lines */
-  }
-  handleMouse?(event): { handled: boolean } | undefined;
-  handleInput?(keyData): void;
-}
-```
-
-### 3. Theme System
-
-```typescript
-// Use theme tokens, not hardcoded colors
-import { theme } from "./theme/theme.js";
-const styled = theme.fg("accent", text); // ✅
-const styled = "\x1b[34m" + text; // ❌ Hardcoded
-```
-
-### 4. Layering (CAUTRUC.md)
-
-- `interactive-mode/` may import `interfaces.ts`, `runtime-events.ts`, `utils/*`, `runtime/*`
-- `runtime/` may import `interfaces.ts`, `runtime-events.ts`, `utils/*` — never `interactive-mode/`
-- `utils/*` and the contract files import nothing local
-- Root (`cli.ts`, `plugin.ts`, `types.ts`) is the wiring plane and may reference both layers
-
-### 5. Deferred Plugin Loading
-
-- 50+ tool plugins disabled at boot
-- Activated after first paint via `activateDeferredPlugins()`
-- Keeps startup fast (< 500ms to first frame)
-
-## Code Organization
-
-Three layers plus a root wiring plane (see CAUTRUC.md for the full file map
-and the resolutions taken against its original inventory):
+## Architecture (3 layers + contracts)
 
 ```
 src/
-├── cli.ts                 # Entry point, arg parsing (wiring)
-├── plugin.ts              # Main Cordis plugin, Runtime creation (wiring)
-├── types.ts               # Barrel re-export of the contracts
-├── interfaces.ts          # CONTRACT: boundary types (Route, Callbacks, ...)
-├── runtime-events.ts      # CONTRACT: runtime event types
-├── runtime/               # DSH bridge + boot (no pi-tui imports)
-│   ├── runtime.ts         # Runtime wrapper (DSH Agent → TUI API)
-│   ├── dsh-boot.ts        # Profile boot, two-phase
-│   ├── deferred.ts        # Deferred plugin logic (RUNTIME_SERVICE_NAMES)
-│   ├── plugin-patch.ts    # Profile patches (extra services)
-│   ├── telemetry-patch.ts # Telemetry opt-out patch
-│   ├── catalog.ts         # Provider/model catalog
-│   ├── provider.ts        # Provider normalization
-│   ├── native-commands.ts # Native DSH commands
-│   ├── preferences.ts     # Model preference persistence
-│   ├── command-runner.ts  # ask/login/logout CLI runner
-│   ├── pending-runtime.ts # Pre-attach Runtime proxy
-│   └── upgrade.ts         # Self-upgrade logic
-├── interactive-mode/      # FE: the TUI (imports contracts + utils + runtime)
-│   ├── ui.ts              # Main TUI orchestration (1300+ lines)
-│   ├── presentation.ts    # Message/status/editor components
-│   ├── tool-execution.ts  # Rich tool cards
-│   ├── tool-presentation.ts # DSH tool → UI component bridge
-│   ├── bash-execution.ts  # Terminal streaming
-│   ├── model-selector.ts  # Model picker
-│   ├── session-selector.ts # Session picker with tree
-│   ├── session-selector-search.ts # Session search utilities
-│   ├── session-select.ts  # Session selection (standalone)
-│   ├── picker.ts          # SearchPicker component
-│   ├── keybindings.ts     # Configurable keybindings
-│   ├── keybinding-hints.ts # Key hint formatting
-│   ├── assistant-message / user-message → components/
-│   ├── approval.ts, question.ts, interrupt.ts, detail.ts, diff.ts
-│   ├── history.ts, tools.ts, streaming.ts, stream-highlight.ts
-│   ├── footer.ts, footer-data-provider.ts, stats panel data
-│   ├── theme.ts           # Theme core facade (tokens + controller)
-│   ├── theme/             # theme-tokens, theme-controller, system-theme, JSONs
-│   ├── components/        # 32 UI components (header, status, dialogs, selectors)
-│   └── ...                # extensions, bug-report, clipboard, program-status, ...
-└── utils/                 # Shared pure helpers (no pi-tui, no dsh)
-    ├── ansi.ts, truncate.ts, format.ts, models-are-equal.ts
-    ├── version.ts         # package.json version lookup
-    ├── stats.ts, limits.ts # formatting used by both layers
+├── cli.ts, plugin.ts, types.ts         # wiring: CLI → boot → app plugin
+├── interfaces.ts                       # CONTRACT: Route, Callbacks, RunResult, …
+├── runtime-events.ts                   # CONTRACT: RuntimeEvent + helpers
+├── runtime/                            # DSH bridge + boot (no pi-tui)
+│   ├── runtime.ts                      #   Runtime class (DSH Agent → TUI API)
+│   ├── dsh-boot.ts, deferred.ts,       #   two-phase boot, deferred loading
+│   │   plugin-patch.ts, telemetry-patch.ts
+│   ├── catalog.ts, provider.ts         #   provider/model table
+│   ├── native-commands.ts              #   DSH /export, /effort registration
+│   ├── preferences.ts                  #   $DSH_HOME/lazydsh-model.json
+│   ├── pending-runtime.ts, upgrade.ts
+├── interactive-mode/                   # the TUI (imports contracts, utils, runtime)
+│   ├── ui.ts                           #   orchestration (~1900 lines)
+│   ├── presentation.ts, presentation   #   editor/status/transcript primitives
+│   ├── tool-execution.ts*, tools.ts,   #   *unwired — see TODO REMAINING
+│   │   detail.ts, approval.ts, question.ts
+│   ├── model-*.ts, session-*.ts,       #   selectors + search
+│   │   picker.ts, autocomplete.ts
+│   ├── theme.ts, theme/                #   tokens, controller, JSON themes
+│   └── components/ (32)                #   header, dialogs, selectors, messages
+└── utils/ (7)                          # pure: ansi, truncate, format, stats,
+                                        # limits, models-are-equal, version
 ```
 
-## Key Interfaces
+**Dependency rule:** `interactive-mode/` may import contracts, `utils/`,
+`runtime/`; `runtime/` imports contracts and `utils/` only; `utils/` and the
+contracts import nothing local. Root files may reference both layers.
 
-### Runtime (src/runtime/runtime.ts)
+## Boot: two phases
+
+1. `cli.ts` writes a temp patch file (provider patch + app plugin patch), then
+   `ensureProfile("lazydsh", ["@deepseek-ai/dsh-base"])` and `runProfile`.
+2. `dsh-boot.ts` mounts **only the launcher plugin** first → first paint
+   (< 500 ms), then activates the remaining rows via `activateDeferredPlugins`
+   and waits for the 14 `RUNTIME_SERVICE_NAMES` services.
+3. `plugin.ts` creates the `Runtime` (or a `pending-runtime` proxy before attach)
+   and runs `ui.ts`.
+
+Services the TUI needs eagerly (`runtime/deferred.ts`): `agents`,
+`workingDirectory`, `commands`, `attachments`, `sessionProjections`, `llm`,
+`authorization`, `credentials`, `userQuestions`, `sessionTitle`,
+`workspaceRegistry`, `jobs`, `fileReferences`, `skills`. Everything else
+(tools, sandboxes, web, telemetry, PTC, MCP, …) mounts after first paint, and
+every enabled row of the 101-row bundle eventually runs.
+
+## Runtime API (used by the TUI)
 
 ```typescript
-class Runtime {
-  // Session management
-  open(route: Route, callbacks: Callbacks): Promise<string>;
-  sessions(): Promise<SessionInfo[]>;
-  forkSession(boundary: number): Promise<string>;
-  renameSession(id: string, title: string): Promise<string>;
-  manageSession(id: string, action: "archive" | "restore" | "pin" | "unpin"): Promise<void>;
-
-  // Model management
-  selection(): { provider: string; model: string; effort?: string } | undefined;
-  efforts(): Promise<{ current: string; defaultEffort?: string; options: any[] }>;
-
-  // Execution
-  run(
-    text: string,
-    onEvent?: (event: RuntimeEvent) => void,
-    attachments?: any[],
-    options?: any,
-  ): Promise<RunResult>;
-  cancel(): Promise<void>;
-  close(): Promise<void>;
-
-  // Auth
-  authenticate(signal?: AbortSignal, options?: any): Promise<string | undefined>;
-  logout(provider: string): Promise<string[] | undefined>;
-  credentialSource(provider?: string, signal?: AbortSignal): Promise<CredentialSource>;
-
-  // Tools/Refs
-  references(query: string, signal: AbortSignal): Promise<AutocompleteItem[]>;
-  attach(path: string): Promise<AdmittedPromptContentPart>;
-
-  // Stats
-  stats(connect?: boolean, onSnapshot?: (stats: SessionStats) => void): Promise<SessionStats>;
+interface Runtime {
+  open(route, callbacks): Promise<string>;
+  run(text, onEvent?, attachments?, options?): Promise<RunResult>;
+  cancel(): Promise<void>;  close(): Promise<void>;
+  sessions(); forkSession(boundary); renameSession(id, title);
+  manageSession(id, "archive" | "restore" | "pin" | "unpin");
+  selection(); efforts(); authProviders(); credentialSource(provider);
+  authenticate(signal, options); logout(provider);
+  references(query, signal); attach(path); stats(connect?, onSnapshot?);
+  job(id, stop?); choices(kind, value?); history(); sessionDirectory(id);
+  getToolDefinition(name); // + ctx accessors (sessionPersistence, sessionQuery, …)
 }
 ```
 
-### Tool Events (emitted from Runtime)
+Events (`runtime-events.ts`): `session.event` (DSH events, incl. `llm/retry`,
+`compaction/start|end` → status rows), `assistant.delta`, `assistant.reasoning`,
+`tool_execution_start|update|end`.
 
-```typescript
-interface ToolExecutionStartEvent {
-  toolName: string;
-  toolCallId: string;
-  args: Record<string, unknown>;
-}
+## Development Patterns
 
-interface ToolExecutionUpdateEvent {
-  toolCallId: string;
-  partialResult: any;
-}
+- **Provider-neutral tool UI**: tools declare render intent; the UI owns the
+  pixels. `detail.ts` renders arguments/diffs/output for history rows and the
+  approval panel — one engine, replay-safe.
+- **Overlay panels**: `showPanel(panel)` pushes an overlay handle; `dismissPanel(false)`
+  pops one, `dismissPanel(true)` clears all. Async pickers fill items only while
+  `selecting` is true.
+- **Theme tokens, never hardcoded ANSI**: `theme.fg("accent", …)`; `ThemedText`
+  is unnecessary here because `TUI.invalidate()` cascades to every child.
+- **Immutability**: components cache by width; mutate through setters and call
+  `tui.requestRender()`.
+- **Pure logic gets extracted and tested** (`interrupt.ts`, `model-cycle.ts`,
+  `settings-store.ts`, `theme-settings.ts`, `*_test.ts` beside them).
 
-interface ToolExecutionEndEvent {
-  toolCallId: string;
-  result: any;
-  isError: boolean;
-  durationMs?: number;
-}
-```
-
-## Testing Guidelines
-
-### Unit Tests
-
-- Test pure functions in isolation
-- Mock Cordis context for plugin tests
-- Use `vitest` (configured in package.json)
-
-### Integration Tests
-
-- Test Runtime methods against real DSH profile
-- Use `--offline` flag for CI
-
-### Manual Testing
+## Testing
 
 ```bash
-# Development
-npm run start          # Run from source
-npm run demo           # Demo script
-
-# Build & test
-npm run check          # TypeScript + lint
-npm run test           # Unit tests
-npm run build          # Production build
+npm run check    # format + lint + types (must be warning-free)
+npm test         # vitest — 145 tests, 40 files
+npm run build    # vite-plus bundle → dist/
+node dist/cli.mjs --version
 ```
+
+Unit tests cover pure helpers and components (status container, selectors,
+theme, keybindings, detail, history, interruption, upgrade, CLI). Boot paths are
+covered by `test/runtime.test.ts` (real profile, temp home).
+
+## Configuration Files
+
+| File | Purpose |
+| ---- | ------- |
+| `~/.config/lazydsh/keybindings.json` | 27 actions, hot-reloaded |
+| `~/.config/lazydsh/theme.json` | Selected theme (`{"theme":"dark"}` or `"light/dark"`) |
+| `~/.config/lazydsh/themes/<name>.json` | User themes (validated on load) |
+| `~/.config/lazydsh/settings.json` | UI prefs (`confirmExit`) |
+| `$DSH_HOME/lazydsh-model.json` | Last provider/model/effort |
+| `$DSH_HOME/cache/lazydsh/tui.log` | Captured console output |
 
 ## Common Pitfalls
 
-1. **Don't hardcode ANSI colors** - use `theme.ts` tokens
-2. **Don't block the event loop** - use async/await properly
-3. **Don't mutate shared state** - pi-tui components expect immutable updates
-4. **Handle terminal resize** - components receive `width` in `render(width)`
-5. **Clean up subscriptions** - use `ctx.effect(() => cleanup)` pattern
-
-## Extension Points
-
-### Adding New Tool UI
-
-1. Tool plugin emits `tool_execution_start/update/end` via Cordis
-2. `Runtime` forwards as typed events
-3. `ui.ts` creates `ToolExecutionComponent` with tool definition
-4. Component uses `toolDefinition.renderCall/renderResult` if available
-
-### Adding New Slash Command
-
-1. Add to `commands.ts` slash command list
-2. Handle in `ui.ts` `editor.onSubmit`
-3. Or register via Cordis plugin for DSH-native commands
-
-### Adding Theme
-
-1. Add JSON file to `src/theme/`
-2. Register in `theme-controller.ts`
-3. Use token references in components
+1. No hardcoded colors — theme tokens only.
+2. Don't block the event loop; the deferred bridge returns promises.
+3. Don't mutate components in place — setters + `requestRender()`.
+4. Panels: push/pop the overlay stack symmetrically; dismiss in `finally` for
+   promise-driven dialogs.
+5. Clean up timers (`picker.dispose()`, theme file watchers) on close.
+6. The runtime is a throwing proxy until the deferred plugins attach — use the
+   `safeRead`/`safe*` helpers during first paint.
 
 ## Performance Targets
 
-| Metric                 | Target  |
-| ---------------------- | ------- |
-| Time to first frame    | < 500ms |
-| Frame rate (idle)      | 60fps   |
-| Frame rate (streaming) | 30fps   |
-| Memory (idle)          | < 100MB |
-| Startup (cold)         | < 2s    |
+| Metric | Target | Measured |
+| ------ | ------ | -------- |
+| Time to first frame | < 500 ms | ~122 ms |
+| Idle frame | < 16 ms | ~2 ms |
+| Streaming frame | < 33 ms | ~5 ms |
+| Memory (idle) | < 100 MB | ~80 MB |
 
 ## Debugging
 
 ```bash
-# Enable debug logging
-DEBUG=lazydsh:* npm run start
-
-# Profile startup
-PI_STARTUP_BENCHMARK=1 npm run start
-
-# Inspect Cordis context
-# Use /plugin command in running TUI
+DEBUG=lazydsh:* npm start   # plugin logs
+node dist/cli.mjs --list    # providers/models without a session
+# Runtime diagnostics: ~/.dsh/cache/lazydsh/tui.log (console capture)
 ```
 
----
+## Status
 
-_Current state: Phases 1-7 complete; Phase 8 (upstream parity) complete including the overlay panel follow-ups (§8.9). Next structured plan: the 3-layer restructure in CAUTRUC.md. Suite: 112/112 passing._
+All phases complete; see `TODO.md` for the phase history and the REMAINING list
+(bash mode, tool-renderer duplication, orphan components).

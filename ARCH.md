@@ -1,480 +1,129 @@
-# ARCH.md - Architecture Document for lazydsh
+# ARCH.md — lazydsh Architecture
 
 ## System Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              lazydsh Architecture                           │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐   │
-│  │   User Input     │────▶│   pi-tui TUI     │────▶│  lazydsh UI      │   │
-│  │  (keyboard/mouse) │     │  (components)    │     │  (orchestration) │   │
-│  └──────────────────┘     └──────────────────┘     └────────┬─────────┘   │
-│                                                              │             │
-│  ┌──────────────────┐     ┌──────────────────┐     ┌────────▼─────────┐   │
-│  │  DSH Runtime     │◀───│   Runtime        │◀───│  Runtime Events  │   │
-│  │  (Cordis Context)│     │  Wrapper         │     │  (typed events)  │   │
-│  └────────┬─────────┘     └──────────────────┘     └──────────────────┘   │
-│           │                                                 ▲              │
-│           ▼                                                 │              │
-│  ┌──────────────────┐     ┌────────────────__┐             │              │
-│  │  DSH Plugins     │     │  Tool Events     │─────────────┘              │
-│  │  (80+ plugins)   │     │  (execution)     │                            │
-│  └──────────────────┘     └──────────────────┘                            │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+User input (keyboard/mouse)
+      │
+      ▼
+┌─────────────────────────────┐        ┌─────────────────────────────┐
+│ interactive-mode/ (FE)      │        │ runtime/ (BE)               │
+│  ui.ts orchestration        │◄──────►│  Runtime (DSH Agent wrapper)│
+│  components/, theme/, …     │ types  │  catalog, native-commands,  │
+│  imports ▼                  │        │  preferences, boot patches  │
+│  interfaces.ts, utils/      │        └───────┬─────────────────────┘
+└─────────────────────────────┘                │ Cordis ctx
+                                               ▼
+                                      ┌─────────────────────────────┐
+                                      │ DSH: @deepseek-ai/dsh-base  │
+                                      │ 101 plugin rows; 14 eager   │
+                                      │ services + deferred tools   │
+                                      └─────────────────────────────┘
 ```
 
-## Implementation Status
+## Layers
 
-### ✅ Core Structure Complete (Phases 1-5)
+**Root wiring** — `cli.ts` (args, patch file, profile run), `plugin.ts` (app
+plugin, Runtime creation, `ask/resume/login/logout` commands), `types.ts`
+(barrel), plus the two contracts `interfaces.ts` (types that cross the boundary)
+and `runtime-events.ts` (event union + helpers).
 
-| Layer                | Status            | Notes                               |
-| -------------------- | ----------------- | ----------------------------------- |
-| UI Layer             | ✅ Core structure | 5/199 components vs pi-coding-agent |
-| Runtime Wrapper      | ✅ Complete       | 50+ methods, typed events           |
-| DSH Core Integration | ✅ Complete       | Cordis context, 80+ plugins         |
-| Boot Process         | ✅ Complete       | Two-phase (< 500ms)                 |
+**runtime/ (11)** — everything DSH: the `Runtime` class, two-phase boot
+(`dsh-boot.ts`, `deferred.ts`, `plugin-patch.ts`), catalog/provider, DSH-native
+commands, preferences, pending-runtime proxy, upgrade. No pi-tui imports.
 
-### ✅ Phase 7-8 Complete (2026-11-20)
+**interactive-mode/ (47 + 32 components + 8 theme)** — the TUI: `ui.ts`
+(orchestration), presentation primitives, tool rows + detail engine, selectors
+(model/session/effort/theme/permission), pickers, footer, header, status
+indicators, dialogs (login, approval, question), messages, theme system.
 
-| Milestone                                                                                                       | Status | Notes                                                                                                      |
-| --------------------------------------------------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------- |
-| Phase 7 (docs, performance audit, integration testing)                                                          | ✅     | ~122ms cold start; README covers keybindings, themes, tool cards                                           |
-| Phase 8 upstream parity (Ctrl+C interrupt, /new vs /clear, question budget, reasoning history, detail.ts, rc.4) | ✅     | Suite 112/112                                                                                              |
-| §8.9 Overlay panel follow-ups                                                                                   | ✅     | `/model` two-level picker; async pickers fill items; login dialogs dismiss; real package version in header |
+**utils/ (7)** — pure helpers shared by both layers (ansi, truncate, format,
+stats, limits, models-are-equal, version).
 
-### ⚠️ Components Implemented (Basic vs Polished)
+## Boot sequence
 
-| Component                        | Status      | Missing Polish                        |
-| -------------------------------- | ----------- | ------------------------------------- |
-| Layout (`chat-viewport.ts`)      | ✅          | Header widget area done               |
-| Footer (`footer.ts`)             | ✅          | Extension statuses done               |
-| Tool Cards (`tool-execution.ts`) | ✅ Polished | Custom renderers, images, duration    |
-| Bash Execution                   | ✅ Polished | Truncation warning, exit code pill    |
-| Model Selector                   | ✅ Polished | Async refresh, progress, save default |
-| Session Selector                 | ✅ Polished | Progress, delete/archive, rename      |
-| Keybindings                      | ✅          | UI hints done                         |
-| Theme System                     | ✅          | Key hints in UI done                  |
-| Assistant Message                | ✅ Polished | OSC133 zones, stop reasons            |
-| User Message                     | ✅ Polished | OSC133 zones                          |
-| Status Indicators                | ✅ Complete | Working/Retry/Compaction/Idle         |
-| Header                           | ✅ Complete | Logo, key hints, changelog            |
-| Keybinding Hints                 | ✅ Complete | Everywhere in pi                      |
-| Login Dialog                     | ✅ Complete | OAuth flow UI                         |
-| Model Selector Refresh           | ✅ Complete | Async refresh with progress           |
-| Session Selector Loading         | ✅ Complete | Progress states                       |
+1. `cli.ts` parses args; writes a temp JSON patch (provider patch + app patch);
+   calls `ensureProfile` + `runProfile`.
+2. `dsh-boot.ts` composes the profile; for the interactive path it mounts **only
+   the launcher plugin** (`fullDefer`), so the Loader never imports the other
+   rows during boot. SIGINT/SIGTERM → graceful dispose.
+3. First paint via `ui.ts` → `hooks.afterFirstPaint()`: refresh packages,
+   `activateDeferredPlugins(rows)`, `waitForRuntimeServices(14 names)`, attach
+   the real `Runtime` to the proxy.
+4. Pending startup connection → session opens.
 
-## Layer Details
-
-### 1. UI Layer (pi-tui Components)
-
-**Location**: `src/*.ts` (components), `node_modules/@earendil-works/pi-tui`
-
-| Component                        | Responsibility                           |
-| -------------------------------- | ---------------------------------------- |
-| `TuiAltScreen` / `TuiMainScreen` | Terminal screen management               |
-| `ScrollView`                     | Scrollable content with follow mode      |
-| `VStack` / `HStack`              | Flexbox-like layout                      |
-| `Editor`                         | Input editor with autocomplete           |
-| `Markdown`                       | Markdown rendering with syntax highlight |
-| `SearchPicker`                   | Fuzzy search modal picker                |
-| `Container`                      | Generic child container                  |
-| `Loader`                         | Spinner animation                        |
-| `Image`                          | Image rendering (Kitty/ITerm2)           |
-| `Box`                            | Bordered container                       |
-| `MouseRegion`                    | Click handling                           |
-| `Text`                           | Styled text                              |
-
-### 2. lazydsh UI Orchestration
-
-**Location**: `src/interactive-mode/ui.ts`, `src/interactive-mode/footer.ts`, `src/interactive-mode/components/*`
+## Data flow (one turn)
 
 ```
-ui.ts (Main Orchestrator, 1300+ lines)
-├── Layout (chat-viewport.ts)
-│   ├── Header (logo, version, key hints, click to expand) ✅
-│   ├── Transcript (ScrollView)
-│   │   ├── User Messages (UserMessageComponent) ✅ OSC133
-│   │   ├── Assistant Messages (AssistantMessageComponent) ✅ OSC133, stop reasons
-│   │   ├── Tool Executions (ToolExecutionComponent) ✅ custom renderers, images
-│   │   └── Bash Executions (BashExecutionComponent) ✅ truncation, exit codes
-│   ├── Pending Messages Queue (QueueView)
-│   ├── Status Indicators (Working/Retry/Compaction/Idle) ✅
-│   ├── Extension Widgets (above/below editor) ✅
-│   ├── Editor (PromptEditor with autocomplete)
-│   └── Footer (FooterComponent) ✅
-├── Event Handling
-│   ├── Keyboard (keybindings.ts) ✅ hints everywhere
-│   ├── Mouse (click tool cards to expand)
-│   └── Runtime Events (tool_execution_*, message_*, agent_*)
-├── State Management
-│   ├── Session/Route state
-│   ├── Tool output expansion
-│   ├── Thinking visibility
-│   └── Queued messages
-└── Command System
-    ├── Slash commands (/model, /session, /login, /bug, /share, /changelog, /settings, etc.)
-    ├── Extension commands
-    └── Bash mode (! prefix)
+editor.onSubmit → add("You", text) → runtime.run(text, onEvent)
+  → DSH Agent → LLM → tool plugins execute (bash/fs/web/subagent/…)
+  → events: tool_execution_start/update/end, assistant.delta,
+            assistant.reasoning, session.event (llm/retry, compaction/*)
+  → ui.ts: ToolRow / AssistantMessageComponent / status rows / footer
 ```
 
-### 3. Runtime Wrapper (`src/runtime/runtime.ts`)
+Session resume replays `historyRows()` from the JSONL log — same components as
+the live path.
 
-**Purpose**: Bridge DSH Agent → TUI-consumable API
+## Key contracts
 
-```typescript
-class Runtime {
-  // DSH Agent reference
-  private handle?: AgentHandle
+- `interfaces.ts`: `Route`, `RuntimeOptions`, `Callbacks`, `RunResult`,
+  `CredentialSource`, `ApprovalRequest`, `QuestionResult`, `ModelRuntime`.
+- `runtime-events.ts`: `RuntimeEvent` union; `eventText` projects DSH session
+  events (incl. tool `meta` for diffs) into transcript rows; `reasoningText`
+  for thinking rows.
+- `detail.ts`: one renderer for arguments/diff/output — shared by the approval
+  panel and expandable history rows.
 
-  // Event emission for UI
-  emit(event: "tool_execution_start", data: ToolExecutionStartEvent)
-  emit(event: "tool_execution_update", data: ToolExecutionUpdateEvent)
-  emit(event: "tool_execution_end", data: ToolExecutionEndEvent)
-  emit(event: "message_start", data: MessageStartEvent)
-  emit(event: "message_update", data: MessageUpdateEvent)
-  emit(event: "message_end", data: MessageEndEvent)
-  emit(event: "agent_start" | "agent_end", data: AgentEvent)
+## UI composition
 
-  // Public API (50+ methods)
-  open(route, callbacks)
-  run(text, onEvent, attachments, options)
-  sessions(), forkSession(), renameSession(), manageSession()
-  authenticate(), logout(), credentialSource()
-  stats(), references(), attach()
-  // ... 50+ methods
-}
-```
+`ui.ts` builds: header → transcript (ScrollView) → queue view → status
+container → extension widgets (above) → editor → widgets (below) → footer.
+Overlay stack (`showPanel`/`dismissPanel`) carries every picker and dialog;
+`panelHeight()` keeps question panels inside short terminals.
 
-### 4. DSH Core (Cordis Plugin Context)
+Status states: working (spinner + message), retry (attempt/max + countdown, from
+`llm/retry`), compaction (spinner + label, from `compaction/start|end`), idle
+("Ready · N queued").
 
-**Location**: `@deepseek-ai/dsh-base` bundle (80+ plugins)
+## Configuration
 
-```
-Cordis Context (ctx)
-├── Services (injected)
-│   ├── agents: Agent management
-│   ├── llm: LLM abstraction (dsh-llm + dsh-llm-pi-ai)
-│   ├── sessionPersistence: JSONL storage
-│   ├── sessionProjections: Queryable session views
-│   ├── workspaceRegistry: Session archive/pin
-│   ├── credentials: API key / OAuth storage
-│   ├── authorization: OAuth flows
-│   ├── userApproval: Tool approval prompts
-│   ├── userQuestions: Ask-user questions
-│   ├── commands: Slash command registry
-│   ├── workingDirectory: CWD management
-│   ├── fileReferences: @file autocomplete
-│   ├── skills: Skill system
-│   ├── subagents: Subagent management
-│   ├── jobs: Background jobs
-│   └── tools: Tool registry (via dsh-tools)
-│
-├── Plugins (lazy-loaded via deferred.ts)
-│   ├── dsh-tool-bash, dsh-tool-fs, dsh-tool-web, etc.
-│   ├── dsh-tool-subagent, dsh-tool-todo, dsh-tool-goal
-│   └── 50+ more
-│
-└── lazydsh Plugin (src/plugin.ts)
-    ├── Provides: lazydshApp { done: Promise }
-    ├── Creates Runtime after appReady
-    └── Handles: ask/resume/login/logout commands
-```
+| File | Owner |
+| ---- | ----- |
+| `~/.config/lazydsh/keybindings.json` | 27 actions, hot reload |
+| `~/.config/lazydsh/theme.json` | selected theme / auto pair |
+| `~/.config/lazydsh/themes/*.json` | user themes (validated) |
+| `~/.config/lazydsh/settings.json` | `confirmExit` |
+| `$DSH_HOME/lazydsh-model.json` | model preference |
+| `$DSH_HOME/cache/lazydsh/tui.log` | console capture |
 
-### 5. Boot Process (`src/dsh-boot.ts`)
+DSH's own configuration (credentials, permission presets, sandbox policy)
+belongs to the profile: `$DSH_HOME/.credentials.yaml`, `settings`, env vars.
 
-```
-1. cli.ts: Parse args, create temp dir for patches
-2. Generate provider patch (catalog.ts) + plugin patch (plugin-patch.ts)
-3. dsh-boot.ts: ensureProfile("lazydsh", ["@deepseek-ai/dsh-base"])
-4. composeProfile(): Load profile + overlay patches
-5. Two-phase boot:
-   Phase A (fast): Mount only lazydsh plugin → paint shell (< 500ms)
-   Phase B (deferred): Activate 50+ tool plugins after first paint
-6. plugin.ts: Create Runtime, launch UI
-```
+## Performance
 
----
+Two-phase boot (< 500 ms to first frame, measured ~122 ms), per-component render
+caching, visual truncation for large outputs, image transcoding cache in tool
+rows, deferred plugin activation with 5 s per-plugin timeout.
 
-## Data Flow
+## Security boundaries
 
-### User Message Flow
+The TUI never holds credentials: `authorization`/`credentials` services resolve
+keys per request. Tool execution stays inside DSH's sandbox + approval policy;
+the launcher only adds UI. Proxy: `installProxyFromEnvironment`.
 
-```
-User types in Editor
-       │
-       ▼
-editor.onSubmit(text)
-       │
-       ▼
-ui.ts: Validate, add "You" message to transcript
-       │
-       ▼
-runtime.run(text, onEvent, attachments)
-       │
-       ▼
-Runtime → DSH Agent → LLM
-       │
-       ▼
-DSH Tool Plugins execute (bash, fs, web, etc.)
-       │
-       ▼
-Tool Events emitted via Cordis (tool/call, tool/result)
-       │
-       ▼
-Runtime forwards typed events:
-  - tool_execution_start → UI creates ToolExecutionComponent
-  - tool_execution_update → UI updates component (live args/result)
-  - tool_execution_end → UI finalizes component
-  - message_update (assistant delta) → StreamingMarkdown.append()
-  - message_end → Finalize assistant message
-       │
-       ▼
-UI renders each frame via pi-tui
-```
+## Extension points
 
-### Session Resume Flow
+- **Widgets**: `extensionWidgets.register({ id, name, component, position,
+  priority, status? })` — the `status()` hook feeds the footer row.
+- **Slash commands**: handled in `ui.ts` `editor.onSubmit`; unknown `/x` falls
+  through to DSH's native command registry (profile patches may add more).
+- **Themes**: drop JSON in `~/.config/lazydsh/themes/` (validated against the
+  token schema) or pick it in `/settings` → Appearance → Theme.
+- **Keybindings**: edit `~/.config/lazydsh/keybindings.json`; hot reload.
 
-```
-lazydsh resume [session-id]
-       │
-       ▼
-cli.ts: --resume flag
-       │
-       ▼
-plugin.ts: pickSession=true or resume=sessionId
-       │
-       ▼
-Runtime.open(route, { resume: sessionId })
-       │
-       ▼
-DSH Agent.resume() → loads session from JSONL
-       │
-       ▼
-UI: renderInitialMessages() → historyRows() → transcript
-```
+## Known gaps
 
----
-
-## Key Interfaces
-
-### Runtime Events (for UI)
-
-```typescript
-// Tool execution (one card per call)
-interface ToolExecutionStartEvent {
-  toolName: string
-  toolCallId: string
-  args: Record<string, unknown>
-}
-
-interface ToolExecutionUpdateEvent {
-  toolCallId: string
-  partialResult: any
-}
-
-interface ToolExecutionEndEvent {
-  toolCallId: string
-  result: ToolResult    // { content, isError, meta? }
-  isError: boolean
-  durationMs?: number
-}
-
-// Assistant streaming
-interface MessageUpdateEvent {
-  sessionId: string
-  attemptId: string
-  type: "text-delta" | "reasoning-delta" | "usage"
-  index?: number
-  text?: string
-  usage?: TokenUsage
-}
-
-// Session events
-interface SessionEvent {
-  sessionId: string
-  event: {
-    type: "user/message" | "assistant/message" | "assistant/attempt" | "turn/end" | "tool/bash" | ...
-    seq: number
-    data: any
-  }
-}
-```
-
-### Tool Presentation Protocol (from `@deepseek-ai/dsh-tools`)
-
-```typescript
-// Call views (what tool declares for pending state)
-type ToolCallView =
-  | GenericCallView // title, kind, rawInput, locations
-  | TerminalCallView // command, cwd, description
-  | DiffCallView; // title, diffs[]
-
-// Result views (what tool declares for completed state)
-type ToolResultView =
-  | GenericResultView // title?, content?
-  | TerminalResultView // output, exitCode, signal
-  | DiffResultView // diffs[]
-  | SearchResultView // matches grouped by file / paths
-  | ReadResultView // path, lines[], offset, totalLines, lang
-  | WebResultView; // sources[], answer? / url, statusCode
-
-// UI maps these to components via toolDefinition.renderCall/renderResult
-```
-
----
-
-## Component Communication
-
-### pi-tui Component Protocol
-
-```typescript
-interface Component {
-  invalidate(): void; // Mark for re-render
-  render(width: number): string[]; // Return ANSI lines
-  handleMouse?(event): { handled: boolean }; // Optional mouse
-  handleInput?(keyData): void; // Optional keyboard
-}
-
-// Layout components (VStack, HStack, ScrollView) compose children
-// Focus management via tui.setFocus(component)
-// Render cycle: tui.requestRender() → root.render(width) → terminal.write()
-```
-
-### Event Bus (Runtime → UI)
-
-```typescript
-// Runtime extends EventEmitter
-runtime.on("tool_execution_start", handler);
-runtime.on("tool_execution_update", handler);
-runtime.on("tool_execution_end", handler);
-runtime.on("message_start", handler);
-runtime.on("message_update", handler);
-runtime.on("message_end", handler);
-runtime.on("agent_start", handler);
-runtime.on("agent_end", handler);
-```
-
----
-
-## Configuration & Extensibility
-
-### User Configuration
-
-```
-~/.config/lazydsh/
-├── keybindings.json      # Custom keybindings (migrated from pi)
-├── lazydsh.json          # Custom theme (or theme name)
-└── preferences.json      # Last used provider/model/effort
-```
-
-### Theme System (pi-tui based)
-
-```typescript
-// Token-based theming
-interface ThemeTokens {
-  colors: {
-    foreground: string;
-    background: string;
-    palette: string[16];
-    // Semantic tokens
-    accent: string;
-    muted: string;
-    error: string;
-    warning: string;
-    success: string;
-    toolPendingBg: string;
-    toolSuccessBg: string;
-    toolErrorBg: string;
-    thinkingText: string;
-    // ...
-  };
-}
-
-// Live reload via theme-controller.ts
-// Terminal color query (DA1) for system theme sync
-```
-
-### Keybindings (pi-coding-agent compatible)
-
-```json
-{
-  "app.interrupt": "escape",
-  "app.clear": "ctrl+c",
-  "app.exit": "ctrl+d",
-  "app.model.select": "ctrl+l",
-  "app.tools.expand": "ctrl+o",
-  "app.thinking.toggle": "ctrl+t",
-  "app.editor.external": "ctrl+g",
-  "app.message.followUp": "alt+enter",
-  "app.session.resume": "ctrl+r"
-}
-```
-
----
-
-## Performance Characteristics
-
-| Metric                     | Current | Target         |
-| -------------------------- | ------- | -------------- |
-| Cold start to first frame  | ~500ms  | < 500ms        |
-| Frame render (idle)        | ~2ms    | < 16ms (60fps) |
-| Frame render (streaming)   | ~5ms    | < 33ms (30fps) |
-| Memory (idle)              | ~80MB   | < 100MB        |
-| Deferred plugin activation | ~300ms  | < 500ms        |
-
-### Optimization Strategies
-
-1. **Two-phase boot** - Paint shell before loading tool plugins
-2. **Component caching** - `cachedWidth`/`cachedLines` in render()
-3. **Selective invalidation** - Only re-render changed components
-4. **Visual line truncation** - `truncateToVisualLines` for large output
-5. **Image reuse** - Cache PNG transcoded images in ToolExecutionComponent
-
----
-
-## Security Boundaries
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    TRUST BOUNDARIES                         │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  User Input ──▶ Editor ──▶ Runtime.run() ──▶ DSH Agent     │
-│       │                                              │      │
-│       │         ┌────────────────────────────────────┘      │
-│       ▼         ▼                                           │
-│  Validation    DSH Sandbox (bwrap/landlock/Seatbelt)         │
-│  (no shell    │  Tool plugins execute in sandbox            │
-│   injection)  │  Network via dsh-http-proxy                  │
-│               │                                             │
-│               ▼                                             │
-│         Credentials (dsh-credentials)                       │
-│         - API keys in ~/.config/dsh/.env                    │
-│         - OAuth tokens encrypted                            │
-│         - Never logged, only passed to LLM                  │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Deployment
-
-### Distribution
-
-- **npm package**: `lazydsh` (global CLI)
-- **Binary**: Single `dist/cli.mjs` (ESM, Node.js 24+)
-- **Dependencies**: Bundled via `vite-plus` (no external node_modules needed at runtime)
-
-### Runtime Requirements
-
-- Node.js ≥ 24.9.0
-- Terminal with ANSI color + Unicode support
-- Optional: `fd`, `rg` for autocomplete (auto-downloaded)
-
----
-
-_Status: Phases 1-8 complete (see TODO.md). Remaining structure plan: the 3-layer restructure in CAUTRUC.md._
+See `TODO.md` REMAINING: bash mode (`!`) not implemented, tool-renderer
+duplication (`tool-execution.ts`/`tool-presentation.ts` vs `tools.ts`), orphan
+component library, duplicate session search.

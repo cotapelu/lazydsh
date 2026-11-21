@@ -1,106 +1,75 @@
-# GOAL.md - Project Context & Goals for lazydsh
+# GOAL.md — Project Context & Goals
 
-## Project Overview
+## Overview
 
-**lazydsh** is a standalone TUI (Terminal User Interface) client for **DeepSeek Harness (DSH)** — a headless agent platform. It provides a pi-coding-agent-level interactive experience while remaining completely independent from the DSH core package.
+**lazydsh** is a standalone TUI for **DeepSeek Harness (DSH)**: a lazier terminal
+UI that boots the DSH profile in-process and gives it a pi-coding-agent-grade
+interactive shell. It is not a DSH plugin — no version coupling with a host
+installation, no Office dependencies.
 
-## Technical Stack
+Goals, in order:
 
-- **Runtime**: DeepSeek Harness (DSH) via `@deepseek-ai/dsh-base` profile
-- **TUI Framework**: `@earendil-works/pi-tui` (React-like component system)
-- **Language**: TypeScript (ESM, Node.js 24+)
-- **Build**: `vite-plus` (single-file bundle)
+1. **Fast to first frame** — two-phase boot, ~122 ms cold start.
+2. **Complete interactive experience** — every advertised key, panel, and state
+   actually works (claims are audited against code; see TODO.md §8.14/§8.19).
+3. **Standalone & provider-independent** — any pi-ai provider, credentials
+   resolved by DSH services.
+4. **Replay-safe** — session log drives identical rows on live and resume paths.
 
-## Architecture Summary
+## Stack
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      lazydsh Architecture                    │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  User Input ──▶ pi-tui TUI ──▶ lazydsh UI Orchestration    │
-│                        │                    │                │
-│                        ▼                    ▼                │
-│              DSH Runtime Wrapper ◀─── Runtime Events        │
-│                        │                                    │
-│                        ▼                                    │
-│              DSH Core (Cordis Context + 80+ plugins)       │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
+| Layer | Technology |
+| ----- | ---------- |
+| Runtime | `@deepseek-ai/dsh-base` profile (101 rows) + 11 extra services |
+| UI | `@earendil-works/pi-tui`, token-based theming with DA1 sync |
+| Language | TypeScript ESM (Node ≥ 24.9), single-file bundle via `vite-plus` |
+| Tests | vitest — 145/145 |
 
-### Key Components
+## Design Principles
 
-| Layer         | Files                                                            | Responsibility                             |
-| ------------- | ---------------------------------------------------------------- | ------------------------------------------ |
-| **UI**        | `ui.ts`, `chat-viewport.ts`, `components/*.ts`                   | TUI rendering, layout, input handling      |
-| **Runtime**   | `runtime.ts`, `plugin.ts`                                        | DSH Agent wrapper, event emission          |
-| **Theme**     | `theme/*.ts`, `theme.ts`                                         | Token-based theming, live reload, DA1 sync |
-| **Tools**     | `tool-presentation.ts`, `tool-execution.ts`, `bash-execution.ts` | DSH tool → pi-tui component bridge         |
-| **Selectors** | `model-selector.ts`, `session-selector*.ts`                      | Fuzzy search, tree views                   |
-| **Config**    | `keybindings.ts`, `theme-controller.ts`                          | Persistent, hot-reload settings            |
+1. **No reimplementation of DSH internals** — tools, auth, sessions, sandbox,
+   compaction belong to the profile.
+2. **Deferred plugins** — the shell paints before the 100-odd rows load; only the
+   14 services the TUI needs are eager.
+3. **Provider-neutral tool UI** — tools declare render intent; the UI maps to
+   components (`detail.ts`, replay-safe).
+4. **Token theming** — no hardcoded ANSI; user themes validated on load; the
+   selection (name or auto light/dark pair) persists.
+5. **Every claim verified** — documentation is corrected against the code in the
+   same commit that changes behavior (§8.9–§8.19 pattern).
+6. **3 layers + contracts** — FE never reaches into BE types; BE never imports UI.
 
 ## Current State
 
-**Completed (Phases 1-8)**: All planned phases are done — core layout, tool cards, selectors, keybindings, theme, message components, status/header polish, auth flows, external editor, copy, thinking selector, bug report, program status, session share, model catalog refresh, changelog, settings, extension widgets, plus the Phase 8 upstream-parity port (Ctrl+C interrupt state machine, `/new` vs `/clear`, question panel height budget, reasoning history, tool detail engine, rc.4 bump) and the overlay panel follow-ups (§8.9 in TODO.md).
+**All phases complete** (see TODO.md phase history). 145/145 tests, `check` and
+`build` clean.
 
-| Feature                              | Status   |
-| ------------------------------------ | -------- |
-| Layout (`chat-viewport.ts`)          | ✅       |
-| Footer (`footer.ts`)                 | ✅       |
-| Tool Cards (`tool-execution.ts`)     | ⚠️ Basic |
-| Bash Execution (`bash-execution.ts`) | ⚠️ Basic |
-| Model Selector                       | ⚠️ Basic |
-| Session Selector                     | ⚠️ Basic |
-| Keybindings                          | ✅       |
-| Theme System                         | ✅       |
-| Assistant Message                    | ⚠️ Basic |
-| User Message                         | ⚠️ Basic |
+- Full interactive parity with pi-coding-agent's documented feature set.
+- 27 keybindings wired; Ctrl+C state machine; suspend/resume; model cycling.
+- Live status rows for retry/compaction; footer with git, providers, extension
+  statuses.
+- Persistence: keybindings, theme (name/auto pair), UI settings, model choice.
 
-**Missing Polish (vs pi-coding-agent's 199 components):**
+## Layer Layout
 
-- Status Indicators (Working/Retry/Compaction/Idle)
-- Header with Logo/Key Hints/Changelog
-- Keybinding Hints in UI
-- Model Selector: Async Refresh/Progress/Errors
-- Session Selector: Progress/Delete/Rename
-- Login Dialog (OAuth Flow UI)
-- External Editor Integration (Ctrl+G)
-- Copy Message (Ctrl+X)
-- Thinking Selector (Ctrl+T)
-- Bug Report (/bug)
-- Program Status (OSC 7501)
+Applied (CAUTRUC.md): `interactive-mode/` (TUI, `components/`, `theme/`),
+`runtime/` (DSH bridge + boot), `utils/` (pure), root contracts
+(`interfaces.ts`, `runtime-events.ts`) and wiring (`cli.ts`, `plugin.ts`,
+`types.ts`).
 
-## Development Commands
+## Current Gaps (honest list)
 
-```bash
-npm run start      # Run from source
-npm run check      # TypeScript + lint (vp check)
-npm run check --fix  # Auto-fix formatting
-npm run build      # Production bundle
-npm run test       # Unit tests
-```
+1. Bash mode (`!` prefix) — documented but not implemented; component orphaned.
+2. Tool-row renderer duplication — `tool-execution.ts` + `tool-presentation.ts`
+   are unwired; live rows use `tools.ts`/`detail.ts`.
+3. Orphan component library (extension/custom/first-run components) — awaiting
+   product decisions.
+4. Duplicate session-search implementations — merge or delete.
 
-## Key Design Principles
+Details and priority: `TODO.md` REMAINING.
 
-1. **No reimplementation of DSH internals** — Tools, auth, sessions, LLM abstraction all come from `@deepseek-ai/dsh-*` packages
-2. **Provider-neutral tool UI** — Tools declare render intent via `presentCall`/`presentResult`; UI maps to pi-tui components
-3. **Deferred plugin loading** — 50+ tool plugins activated after first paint (< 500ms cold start). Every enabled row of the 101-row dsh-base bundle eventually mounts (eager for boot-critical rows, deferred for tool rows); the app injects only the ~19 services the TUI actually uses (see `src/deferred.ts` `RUNTIME_SERVICE_NAMES`)
-4. **Token-based theming** — No hardcoded colors; DA1 terminal query + semantic tokens
-5. **Replay-safe** — Session log events drive identical UI on live and replay paths
+## Onboarding Files
 
-## Current Layer Layout
-
-The 3-layer layout from CAUTRUC.md is **applied**: `interactive-mode/` (TUI, its `components/` and `theme/`), `runtime/` (DSH bridge + boot), `utils/` (shared pure helpers), with the contracts at the root (`interfaces.ts`, `runtime-events.ts`) and the wiring entries (`cli.ts`, `plugin.ts`, `types.ts`). See CAUTRUC.md for the final structure and the resolutions taken where its inventory double-listed files.
-
-## Critical Files for Onboarding
-
-- `src/runtime.ts` — Runtime wrapper, tool event emission
-- `src/ui.ts` — Main orchestration, event loop
-- `src/tool-presentation.ts` — DSH tool → UI component bridge
-- `src/theme/theme.ts` — Theme singleton, token resolution
-- `src/theme/theme-controller.ts` — DA1, live reload, auto-sync
-
----
-
-## Bắt buộc phải đọc: ./AGENTS.md, ./ARCH.md, ./TODO.md
+`AGENTS.md` (patterns + runtime API) · `ARCH.md` (architecture) ·
+`CAUTRUC.md` (file map) · `TODO.md` (history + remaining) · `DSH-BASE.md`
+(the 101-row DSH bundle this app boots).
