@@ -40,7 +40,7 @@ root (cli, plugin, types, contracts) → may reference both layers
 | `pending-runtime.ts` | throwing proxy before the deferred plugins attach                                                     |
 | `upgrade.ts`         | self-upgrade (npm/pnpm/yarn/bun/vp)                                                                   |
 
-## interactive-mode/ (47 files + components/ + theme/)
+## interactive-mode/ (89 files + components/ + theme/)
 
 | File                                                                                       | Role                                                                        |
 | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
@@ -102,4 +102,4 @@ lazydsh.json
 | `command-runner.ts` in `runtime/`                            | `interactive-mode/` (drives TUI auth for CLI commands)                      |
 | `@/` alias imports                                           | relative imports (tsconfig NodeNext + the test resolve hook work with them) |
 | delete `components/session-selector.ts` (748-line dead file) | deleted                                                                     |
-| merge the two `session-selector-search.ts`                   | **open** — TODO REMAINING                                                   |
+| merge the two `session-selector-search.ts`                   | **open** — TODO REMAINING (component version simplified)                    |

@@ -11,7 +11,7 @@ own process and wraps the Agent in a `Runtime` class for the TUI.
   `src/runtime/plugin-patch.ts`)
 - UI: `@earendil-works/pi-tui` (React-like component system)
 - Language: TypeScript ESM, Node ≥ 24.9, bundled by `vite-plus`
-- Suite: 145/145 · `npm run check` (format + lint + types) · `npm run build`
+- Suite: 150/150 · `npm run check` (format + lint + types) · `npm run build`
 
 ## Architecture (3 layers + contracts)
 
@@ -36,7 +36,7 @@ src/
 │   ├── model-*.ts, session-*.ts,       #   selectors + search
 │   │   picker.ts, autocomplete.ts
 │   ├── theme.ts, theme/                #   tokens, controller, JSON themes
-│   └── components/ (32)                #   header, dialogs, selectors, messages
+│   └── components/ (32)                #   header, dialogs, selectors, messages (16 orphan)
 └── utils/ (7)                          # pure: ansi, truncate, format, stats,
                                         # limits, models-are-equal, version
 ```

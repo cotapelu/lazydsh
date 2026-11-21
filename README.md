@@ -220,7 +220,7 @@ never imports the TUI. Full map: `CAUTRUC.md`.
 ```bash
 npm run start    # run the built CLI
 npm run check    # format + lint + types
-npm test         # 145 tests
+npm test         # 150 tests
 npm run build    # bundle → dist/
 ```
 

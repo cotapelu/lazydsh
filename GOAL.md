@@ -23,7 +23,7 @@ Goals, in order:
 | Runtime  | `@deepseek-ai/dsh-base` profile (101 rows) + 11 extra services   |
 | UI       | `@earendil-works/pi-tui`, token-based theming with DA1 sync      |
 | Language | TypeScript ESM (Node ≥ 24.9), single-file bundle via `vite-plus` |
-| Tests    | vitest — 145/145                                                 |
+| Tests    | vitest — 150/150                                                 |
 
 ## Design Principles
 
@@ -41,7 +41,7 @@ Goals, in order:
 
 ## Current State
 
-**All phases complete** (see TODO.md phase history). 145/145 tests, `check` and
+**All phases complete** (see TODO.md phase history). 150/150 tests, `check` and
 `build` clean.
 
 - Full interactive parity with pi-coding-agent's documented feature set.
@@ -49,6 +49,7 @@ Goals, in order:
 - Live status rows for retry/compaction; footer with git, providers, extension
   statuses.
 - Persistence: keybindings, theme (name/auto pair), UI settings, model choice.
+- Bash mode (`!` / `!!`) wired via DSH shell executor.
 
 ## Layer Layout
 
@@ -57,16 +58,135 @@ Applied (CAUTRUC.md): `interactive-mode/` (TUI, `components/`, `theme/`),
 (`interfaces.ts`, `runtime-events.ts`) and wiring (`cli.ts`, `plugin.ts`,
 `types.ts`).
 
-## Current Gaps (honest list)
+## Comparison with pi-coding-agent interactive mode
 
-1. ~~Bash mode (`!` prefix)~~ — done (§8.20).
-2. Tool-row renderer duplication — `tool-execution.ts` + `tool-presentation.ts`
-   are unwired; live rows use `tools.ts`/`detail.ts`.
-3. Orphan component library (extension/custom/first-run components) — awaiting
-   product decisions.
-4. Duplicate session-search implementations — merge or delete.
+lazydsh's interactive-mode is a **port** of pi-coding-agent's `modes/interactive/`.
+Full comparison (all 62 reference files + 89 lazydsh files read):
 
-Details and priority: `TODO.md` REMAINING.
+### ✅ Parity (lazydsh = reference)
+
+- Core orchestration (ui.ts / InteractiveMode class)
+- Keyboard shortcuts (27 actions: Ctrl+C/D/Z/X/G/T, Alt+Enter/Up, `!`/`!!`)
+- Theme system (tokens, DA1 terminal query, auto light/dark, user themes, watcher)
+- Settings (settings-selector, settings-store) — simplified but functional
+- Login/OAuth (login-dialog, oauth-selector, terminal-login)
+- Model selector (fuzzy, scoped/all, current marker, default badge, Ctrl+S)
+- Session selector (DSH-native: tree, search with `re:`/`"exact"`, scope/sort/name/path)
+- Approval panel (operation preview, expandable details)
+- Question panel (multi-question, multi-select, height budget)
+- History rows (reasoning, tool rows, metrics)
+- Detail engine (arguments, diff, output)
+- Tool cards (tools.ts + detail.ts)
+- Bash execution (streaming, truncation, expand)
+- Assistant/user messages (markdown, thinking, OSC 133 zones)
+- Footer (pwd, git, tokens, cache, cost, context, model, thinking, routed, extension statuses)
+- Header (logo, version, key hints, changelog)
+- Program status (OSC 7501)
+- Session share (Radius + gist)
+- Bug report
+- Clipboard, syntax highlight, streaming markdown
+- Autocomplete, presentation (editor/status/transcript)
+- Status container, TUI renderer, external editor, console capture
+
+### ❌ Missing (gaps vs reference)
+
+| #   | Feature                 | Priority      | Notes                                                                                          |
+| --- | ----------------------- | ------------- | ---------------------------------------------------------------------------------------------- |
+| 1   | Mermaid rendering       | P2            | Unicode diagrams from mermaid code blocks                                                      |
+| 2   | Session tree view       | P2            | Navigation, folding, filtering, labeling, copying                                              |
+| 3   | Scoped models           | P2            | Toggle models for Ctrl+P cycling, reorder, persist                                             |
+| 4   | Skill invocation UI     | P2            | Render skill blocks with expand/collapse                                                       |
+| 5   | Config selector         | P2            | Resource management (extensions/skills/prompts/themes)                                         |
+| 6   | Radius MCP              | P3 (niche)    | Radius MCP integration with animated shimmer                                                   |
+| 7   | Easter eggs / mascot    | P3 (cosmetic) | armin, easter-egg-3d, earendil-announcement                                                    |
+| 8   | Pi logo                 | P3 (cosmetic) | Half-block logo with Apple Terminal fallback                                                   |
+| 9   | Custom editor           | P3            | Extends Editor with app keybindings                                                            |
+| 10  | Extension system (full) | Out of scope  | Needs real API design                                                                          |
+| 11  | Commands                | P2            | `/clone`, `/import`, `/reload`, `/debug`, `/hotkeys`, `/tree`, `/scoped`, `/trust`, `/skill:*` |
+| 12  | Settings (full)         | P2            | 40+ items vs lazydsh's 10 (DSH-delegated)                                                      |
+
+### ⚠️ Code smells (fixed)
+
+| #   | Issue                                   | Status                                                  |
+| --- | --------------------------------------- | ------------------------------------------------------- |
+| 1   | `messageCount: 0`                       | ✅ Fixed — now counts user messages from session events |
+| 2   | `footer.ts` inline `homedir()`          | ✅ Fixed — imports from `node:os`                       |
+| 3   | `getSessionPathKey` no canonicalization | ✅ Fixed — canonicalizes + case-insensitive on Windows  |
+| 4   | `ScopedModel` missing `thinkingLevel`   | ✅ Fixed — added optional field                         |
+| 5   | TODO.md stale (bash mode)               | ✅ Fixed — bash mode wired (§8.20)                      |
+| 6   | `safeSessionName` always undefined      | ⚠️ Dead code (low impact)                               |
+| 7   | `widthForLabel` hoisting                | ⚠️ Works (unusual)                                      |
+| 8   | `ui.ts` 2211 lines                      | ⚠️ Maintainability                                      |
+| 9   | `connect()` many params                 | ⚠️ Maintainability                                      |
+| 10  | `ask()` / `select()` race condition     | ⚠️ By design                                            |
+| 11  | `sessionManager` getter fallback        | ⚠️ Low risk                                             |
+| 12  | `settings-selector.ts` simplified       | ⚠️ DSH-delegated                                        |
+| 13  | `session-selector-search.ts` simplified | ⚠️ Search quality degraded                              |
+
+### 🟢 lazydsh extras (not in reference)
+
+- `provider-brand.ts` — Brand logo (DSH-specific, animated)
+- `status-container.ts` — Status indicator container
+- `footer-data-provider.ts` — Footer data provider (git, extension statuses)
+- `resume-directory.ts` — Resume directory picker
+- `model-catalog-runtime.ts` — Model catalog adapter
+- `model-cycle.ts` — Model cycling logic (extracted, tested)
+- `session-select.ts` — Session selection helpers
+- `presentation.ts` — Editor/status/transcript primitives
+- `bash-mode.ts` — Bash mode parsing
+- `tui-console.ts` — Console capture
+- `tui-renderer.ts` — TUI renderer wrapper
+- `program-status.ts` — Program status reporter
+- `approval.ts` — Approval panel (DSH-specific)
+- `detail.ts` — Tool detail rendering engine
+- `tools.ts` — Tool row + tool log
+- `history.ts` — History rows for replay
+- `interrupt.ts` — Ctrl+C state machine
+- `stream-highlight.ts` — Incremental syntax highlighting
+- `streaming.ts` — Streaming markdown
+- `terminal-login.ts` — Terminal login flow
+- `open-url.ts` — Open URL helper
+- `picker.ts` — Search picker component
+- `question.ts` — Question panel
+- `session-selector.ts` — Session selector (DSH-native)
+- `session-share.ts` — Share link generation
+- `settings-store.ts` — UI settings persistence
+- `show-changelog.ts` — Changelog panel
+- Commands: `/fork`, `/archive`, `/restore`, `/pin`, `/unpin`, `/ps`, `/stop`, `/effort`, `/cd`, `/file`, `/dsh`, `/permission`, `/session`, `/status`, `/new`, `/clear`
+
+### 📦 Orphan files (ported, unwired — need product decision)
+
+These files are **complete implementations** ported from pi-coding-agent. They are
+NOT dead code — they represent features that DSH provides and the TUI needs to
+display. They should be **wired, not deleted**.
+
+#### Need wiring (DSH provides the feature, TUI needs to display it)
+
+1. `branch-summary-message.ts` (105L) — DSH `branch_summary` events, not rendered
+2. `compaction-summary-message.ts` (107L) — DSH compaction events, not rendered
+3. `trust-selector.ts` (151L) — DSH trust management, no UI
+4. `user-message-selector.ts` (176L) — DSH fork from message, uses different approach
+5. `custom-entry.ts` (85L) — DSH custom entries, extension system needed
+6. `custom-message.ts` (152L) — DSH custom messages, extension system needed
+7. `extension-editor.ts` (136L) — DSH extension dialogs
+8. `extension-input.ts` (101L) — DSH extension dialogs
+9. `extension-selector.ts` (131L) — DSH extension dialogs
+10. `first-time-setup.ts` (155L) — DSH onboarding
+11. `settings-submenu.ts` (251L) — DSH complex settings
+12. `show-images-selector.ts` (55L) — DSH show images setting
+13. `bordered-loader.ts` (50L) — Utility for dialogs
+14. `countdown-timer.ts` (41L) — Utility for dialogs
+
+#### Quality improvements (merge or wire)
+
+15. `session-selector-search.ts` (330L) — Tiered fuzzy search, better than component version (190L)
+16. `tool-execution.ts` (438L) — Alternative tool renderer (dup of `tools.ts`/`detail.ts`)
+17. `tool-presentation.ts` (432L) — DSH render intent bridge (dup of `detail.ts` + tool meta)
+
+#### Truly unnecessary (could delete)
+
+18. `themed-text.ts` (41L) — Orphan by design (TUI.invalidate() cascades)
+19. `custom-editor.ts` (167L) — Different approach (PromptEditor extends Editor)
 
 ## Onboarding Files
 

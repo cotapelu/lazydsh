@@ -32,10 +32,11 @@ and `runtime-events.ts` (event union + helpers).
 (`dsh-boot.ts`, `deferred.ts`, `plugin-patch.ts`), catalog/provider, DSH-native
 commands, preferences, pending-runtime proxy, upgrade. No pi-tui imports.
 
-**interactive-mode/ (47 + 32 components + 8 theme)** — the TUI: `ui.ts`
-(orchestration), presentation primitives, tool rows + detail engine, selectors
-(model/session/effort/theme/permission), pickers, footer, header, status
-indicators, dialogs (login, approval, question), messages, theme system.
+**interactive-mode/ (89 files: 49 top-level + 32 components + 8 theme)** — the TUI:
+`ui.ts` (orchestration), presentation primitives, tool rows + detail engine,
+selectors (model/session/effort/theme/permission), pickers, footer, header,
+status indicators, dialogs (login, approval, question), messages, theme system.
+Many ported components are unwired (see TODO.md §C).
 
 **utils/ (7)** — pure helpers shared by both layers (ansi, truncate, format,
 stats, limits, models-are-equal, version).
@@ -124,6 +125,13 @@ the launcher only adds UI. Proxy: `installProxyFromEnvironment`.
 
 ## Known gaps
 
-See `TODO.md` REMAINING: tool-renderer
-duplication (`tool-execution.ts`/`tool-presentation.ts` vs `tools.ts`), orphan
-component library, duplicate session search.
+See `TODO.md` REMAINING for the full list. Key gaps:
+
+- 11 missing features vs pi-coding-agent (mermaid, tree view, scoped models,
+  skill invocation, config selector, radius MCP, easter eggs, pi logo, custom
+  editor, extension system, 9 commands, full settings).
+- 27 orphan files ported but unwired (see TODO.md §C).
+- 8 code smells (see TODO.md §B).
+- 1 functional bug (`safeSessionName` dead code).
+
+Full comparison: `GOAL.md` "Comparison with pi-coding-agent interactive mode".
