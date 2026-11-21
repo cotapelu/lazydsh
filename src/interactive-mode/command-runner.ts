@@ -1,5 +1,5 @@
-import { formatNotification, terminalColor } from "../interactive-mode/theme.ts";
-import type { Runtime } from "./runtime.ts";
+import { formatNotification, terminalColor } from "./theme.ts";
+import type { Runtime } from "../runtime/runtime.ts";
 
 export type CommandOptions = {
   command: "ask" | "login" | "logout";
@@ -12,7 +12,7 @@ export type CommandOptions = {
 
 export async function runCommand(runtime: Runtime, config: CommandOptions, signal: AbortSignal) {
   if (config.command === "login") {
-    const { terminalAuth } = await import("../interactive-mode/terminal-login.ts");
+    const { terminalAuth } = await import("./terminal-login.ts");
     const result = await terminalAuth(runtime, "login", config.provider, signal);
     if (result.notice !== undefined) {
       console.log(formatNotification("Login", result.notice, terminalColor(process.stdout)));
@@ -24,7 +24,7 @@ export async function runCommand(runtime: Runtime, config: CommandOptions, signa
   if (config.command === "logout") {
     let provider = config.provider;
     if (provider === undefined) {
-      const { terminalAuth } = await import("../interactive-mode/terminal-login.ts");
+      const { terminalAuth } = await import("./terminal-login.ts");
       provider = (await terminalAuth(runtime, "logout", undefined, signal)).provider;
     }
     const remaining = await runtime.logout(provider);

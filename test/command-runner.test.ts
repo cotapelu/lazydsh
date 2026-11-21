@@ -1,6 +1,6 @@
 import { test, vi } from "vite-plus/test";
 import assert from "node:assert/strict";
-import { runCommand } from "../src/runtime/command-runner.ts";
+import { runCommand } from "../src/interactive-mode/command-runner.ts";
 import type { Callbacks, Runtime } from "../src/runtime/runtime.ts";
 
 test("ask cancels and fails rather than waiting for human approval or questions", async () => {

@@ -99,7 +99,7 @@ export function apply(ctx: Context, config: PluginOptions = {}) {
     if (pending === undefined) await waitForRuntimeServices(ctx);
     const runtime = pending?.runtime ?? (await createRuntime(ctx, options, effort));
     if (config.command) {
-      const { runCommand } = await import("./runtime/command-runner.ts");
+      const { runCommand } = await import("./interactive-mode/command-runner.ts");
       await runCommand(
         runtime,
         {
