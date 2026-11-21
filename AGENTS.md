@@ -75,6 +75,7 @@ interface Runtime {
   authenticate(signal, options); logout(provider);
   references(query, signal); attach(path); stats(connect?, onSnapshot?);
   job(id, stop?); choices(kind, value?); history(); sessionDirectory(id);
+  shell(command, {timeoutMs?, signal?}); // local bash (`!` mode) via DSH's executor
   getToolDefinition(name); // + ctx accessors (sessionPersistence, sessionQuery, …)
 }
 ```

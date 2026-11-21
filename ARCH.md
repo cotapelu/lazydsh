@@ -124,6 +124,6 @@ the launcher only adds UI. Proxy: `installProxyFromEnvironment`.
 
 ## Known gaps
 
-See `TODO.md` REMAINING: bash mode (`!`) not implemented, tool-renderer
+See `TODO.md` REMAINING: tool-renderer
 duplication (`tool-execution.ts`/`tool-presentation.ts` vs `tools.ts`), orphan
 component library, duplicate session search.

@@ -43,6 +43,7 @@ DeepSeek plus every pi-ai provider (OpenAI, Anthropic, Google, OpenCode, …) ou
 | Alt-screen       | ✅ Transcript search (`Ctrl+Shift+F`), select-to-copy, URL click-through                                     |
 | Login            | ✅ OAuth (device code) and API key flows                                                                     |
 | Settings         | ✅ `/settings` with persisted confirm-on-exit                                                                |
+| Bash mode        | ✅ `!cmd` / `!!cmd` — local shell via DSH's executor, expandable output card                                 |
 | Misc             | ✅ Ctrl+G external editor, Ctrl+X copy, Ctrl+Z suspend, bug report, program status (OSC 7501), session share |
 
 ## Installation
@@ -226,10 +227,22 @@ npm run build    # bundle → dist/
 Docs: `AGENTS.md` (patterns) · `ARCH.md` (architecture) · `CAUTRUC.md` (file map) ·
 `TODO.md` (history + remaining work) · `DSH-BASE.md` (the DSH bundle).
 
+## Bash mode
+
+Prefix a line with `!` to run it locally through DSH's shell (the profile's
+sandbox policy applies); `!!` keeps the output out of the conversation:
+
+```
+!cargo build          # runs; its output rides the next prompt
+!!curl -s api/health  # runs; nothing is sent to the model
+```
+
+Each run renders an expandable card (ANSI-stripped output, exit-code pill, spill
+path when the output is truncated) and works while a turn is running.
+
 ## Known gaps
 
-Bash mode (`!cmd`) is documented in the roadmap but not yet implemented, and a
-few ported components await wiring decisions — see `TODO.md` REMAINING.
+A few ported components await wiring decisions — see `TODO.md` REMAINING.
 
 ## License
 

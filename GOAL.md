@@ -59,7 +59,7 @@ Applied (CAUTRUC.md): `interactive-mode/` (TUI, `components/`, `theme/`),
 
 ## Current Gaps (honest list)
 
-1. Bash mode (`!` prefix) — documented but not implemented; component orphaned.
+1. ~~Bash mode (`!` prefix)~~ — done (§8.20).
 2. Tool-row renderer duplication — `tool-execution.ts` + `tool-presentation.ts`
    are unwired; live rows use `tools.ts`/`detail.ts`.
 3. Orphan component library (extension/custom/first-run components) — awaiting

@@ -50,6 +50,7 @@ import {
 } from "./resume-directory.ts";
 import { captureConsole } from "./tui-console.ts";
 import { ctrlCAction } from "./interrupt.ts";
+import { bashContextBlock, parseBashMode, type BashIntent } from "./bash-mode.ts";
 import { dshCachePath } from "@deepseek-ai/dsh-home-paths";
 
 import {
@@ -428,6 +429,54 @@ export async function runUI(
     if (count && !closing) update();
     return count;
   }
+
+  /**
+   * Bash mode: `!cmd` runs locally through DSH's shell (the profile's sandbox
+   * policy applies) and its output joins the next prompt; `!!cmd` runs without
+   * touching the conversation. The card streams nothing until completion —
+   * the shell executor returns the captured result in one shot.
+   */
+  async function runBash(intent: BashIntent) {
+    const { BashExecutionComponent } = await import("./bash-execution.ts");
+    const card = new BashExecutionComponent(intent.command, tui, intent.excludeFromContext);
+    transcript.addChild(card);
+    scroll.scrollToEnd();
+    busy = true;
+    update();
+    try {
+      const result = await runtime.shell(intent.command, { signal: options.signal });
+      const stdout = result.stdout?.text ?? "";
+      const stderr = result.stderr?.text ?? "";
+      const combined = [stdout, stderr].filter((part) => part !== "").join("\n");
+      if (combined !== "") card.appendOutput(combined);
+      const truncated = result.stdout?.truncated === true || result.stderr?.truncated === true;
+      const spillPath = result.stdout?.spillPath ?? result.stderr?.spillPath;
+      card.setComplete(
+        result.exitCode ?? undefined,
+        result.aborted,
+        truncated
+          ? { truncated: true, ...(spillPath === undefined ? {} : { path: spillPath }) }
+          : undefined,
+        spillPath,
+      );
+      const block = bashContextBlock(intent, {
+        exitCode: result.exitCode,
+        stdout,
+        stderr,
+      });
+      if (block !== "") bashContext = bashContext === "" ? block : `${bashContext}\n\n${block}`;
+    } catch (error) {
+      card.setComplete(undefined, false, undefined, undefined);
+      add("Bash", error instanceof Error ? error.message : String(error));
+    } finally {
+      busy = false;
+      scroll.scrollToEnd();
+      update();
+    }
+  }
+
+  /** Bash output waiting to be prepended to the next prompt (`!!` runs are skipped). */
+  let bashContext = "";
 
   function enqueue(text: string) {
     editor.addToHistory(text);
@@ -925,6 +974,7 @@ export async function runUI(
   // Codex-compatible chat lifecycle: both commands start a new session, but
   // /new keeps the previous transcript visible while /clear wipes it first.
   async function startNewConversation(clearScreen: boolean) {
+    bashContext = "";
     if (clearScreen) {
       transcript.clear();
       scroll.scrollToEnd();
@@ -1220,6 +1270,15 @@ export async function runUI(
       return;
     }
     if (!fromQueue && (busy || starting || startupFailed || !text.trim())) return;
+    // Bash mode runs locally, so it works during a turn and never queues.
+    const bashIntent = parseBashMode(text);
+    if (bashIntent !== undefined) {
+      editor.addToHistory(text);
+      if (editor.getText() === text) editor.setText("");
+      add("You", text);
+      void runBash(bashIntent);
+      return;
+    }
     if (running && !canRunDuringTurn(text)) {
       if (shouldQueueDuringTurn(text)) {
         enqueue(text);
@@ -1617,8 +1676,13 @@ export async function runUI(
           streaming,
         );
       try {
+        // A `!cmd` run's output rides along with the next prompt; `!!cmd` runs
+        // never get here (bashContextBlock drops them).
+        const prompt = bashContext === "" ? text : `${bashContext}\n\n${text}`;
+        // Consume the context here so a queued follow-up does not repeat it.
+        bashContext = "";
         const result = await runtime.run(
-          text,
+          prompt,
           (notification) => {
             if (
               ownsTurn &&

@@ -17,6 +17,9 @@ import { UserQuestionError } from "@deepseek-ai/dsh-user-questions";
 import type { AdmittedPromptContentPart, ImageMediaType } from "@deepseek-ai/dsh-attachment";
 import type {} from "@deepseek-ai/dsh-subagent";
 import type {} from "@deepseek-ai/dsh-session-query";
+import type {} from "@deepseek-ai/dsh-shell";
+import type ShellExecutor from "@deepseek-ai/dsh-shell";
+import type { ShellRunResult } from "@deepseek-ai/dsh-shell";
 import type {} from "@deepseek-ai/dsh-user-approval";
 import type {} from "@deepseek-ai/dsh-plan-mode";
 import type {} from "@deepseek-ai/dsh-permission-presets";
@@ -218,6 +221,27 @@ export class Runtime {
       percent: (cp as any).percent ?? null,
       contextWindow: (cp as any).contextWindow,
     };
+  }
+
+  /**
+   * Run a local shell command through DSH's executor, so the profile's sandbox
+   * policy applies exactly as it does to the agent's own bash tool. Resolves
+   * with the foreground result (exit code, captured output, truncation facts).
+   * Throws when no shell service is mounted (the deferred rows have not
+   * attached yet).
+   */
+  async shell(
+    command: string,
+    options: { timeoutMs?: number; signal?: AbortSignal } = {},
+  ): Promise<ShellRunResult> {
+    // The unchecked accessor: this plugin does not inject `shell` (only the
+    // agent's bash tool consumes it), and an unmounted service must read as
+    // undefined rather than throwing.
+    const executor = this.ctx.get("shell") as ShellExecutor | undefined;
+    if (!executor) throw new Error("Shell executor is unavailable; is the tool set loaded?");
+    const spec = executor.resolve({ command, ...options });
+    const execution = await executor.execute(spec);
+    return await execution.result();
   }
 
   getToolDefinition(name: string): any {
