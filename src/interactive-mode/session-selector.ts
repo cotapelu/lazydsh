@@ -52,6 +52,12 @@ export interface SessionSelectorOptions extends SessionSelectorCallbacks {
   canRename?: boolean;
 }
 
+/** Current terminal width, minus the dock padding, used for label fitting. */
+function widthForLabel(overhead: number): number {
+  const columns = process.stdout.columns ?? 80;
+  return Math.max(10, columns - 2 - overhead);
+}
+
 function formatAge(modified: number): string {
   const now = Date.now();
   const diffMs = Math.max(0, now - modified);
@@ -483,12 +489,6 @@ export class SessionSelector extends Container {
     this.filter(this.searchInput.getValue());
     this.callbacks.requestRender();
   }
-}
-
-/** Current terminal width, minus the dock padding, used for label fitting. */
-function widthForLabel(overhead: number): number {
-  const columns = process.stdout.columns ?? 80;
-  return Math.max(10, columns - 2 - overhead);
 }
 
 export { SessionSelectorHeader, formatAge, shortenHome };

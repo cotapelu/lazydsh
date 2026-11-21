@@ -126,14 +126,6 @@ function safeLeafId(runtime: Runtime): string {
     return "0";
   }
 }
-function safeSessionName(runtime: Runtime): string | undefined {
-  try {
-    const name = runtime.sessionManager?.getSessionName?.();
-    return typeof name === "string" ? name : undefined;
-  } catch {
-    return undefined;
-  }
-}
 
 /** Map DSH session records onto the selector's view model. */
 function toSessionRecords(
@@ -216,7 +208,7 @@ export async function runUI(
       // One entry while totals exist: the footer re-derives its counters
       // whenever the snapshot changes instead of caching stale zeros.
       getEntryCount: () => (stats?.totals === undefined ? 0 : 1),
-      getSessionName: () => safeSessionName(runtime),
+      getSessionName: () => undefined,
       getEntries: () => footerUsageEntries(),
     },
     routedModel: safeRead(runtime, () => runtime.routedModel),
