@@ -63,6 +63,7 @@ import {
 } from "./presentation.ts";
 import { HeaderComponent } from "./components/header.ts";
 import { ThemeController } from "./theme/theme-controller.ts";
+import { readThemeSetting, writeThemeSetting } from "./theme/theme-settings.ts";
 import { safeText, accent, dim } from "./theme.ts";
 import { currentThemeName_ } from "./theme/theme.ts";
 
@@ -266,8 +267,10 @@ export async function runUI(
     selectList: { ...selectionTheme, noMatch: dim },
   });
 
-  // Theme controller: applies theme, queries terminal colors (DA1), auto-syncs with terminal light/dark mode
-  let themeSetting: string | undefined = "lazydsh";
+  // Theme controller: applies theme, queries terminal colors (DA1), auto-syncs with terminal light/dark mode.
+  // The persisted setting (name or "<light>/<dark>" pair) comes from
+  // ~/.config/lazydsh/theme.json so a choice survives a restart.
+  let themeSetting: string | undefined = readThemeSetting();
   const themeController = new ThemeController(tui, {
     getSettingsManager: () => ({ getThemeSetting: () => themeSetting }),
     showError: (msg) => add("Error", msg),
@@ -749,6 +752,13 @@ export async function runUI(
    * Selecting persists the choice through the controller (which owns the
    * settings document); cancelling restores the persisted theme.
    */
+  /** Apply + persist the theme setting (name or "<light>/<dark>" pair). */
+  function persistThemeSetting(setting: string) {
+    themeSetting = setting;
+    themeController.setThemeSetting(setting);
+    writeThemeSetting(setting);
+  }
+
   function openThemePicker() {
     void import("./components/theme-selector.ts").then(({ ThemeSelectorComponent }) => {
       const setting = themeController.getThemeSetting();
@@ -763,7 +773,7 @@ export async function runUI(
           if (selection.includes("/")) {
             // Auto: persist the pair; the controller re-applies on every
             // terminal light/dark change from here on.
-            themeController.setThemeSetting(selection);
+            persistThemeSetting(selection);
             add("Theme", `auto: ${selection.split("/").join(" / ")} (follows terminal)`);
             return;
           }
@@ -772,7 +782,7 @@ export async function runUI(
             add("Theme", `Cannot apply ${selection}: ${applied.error ?? "unknown error"}`);
             return;
           }
-          themeController.setThemeSetting(selection);
+          persistThemeSetting(selection);
           add("Theme", selection);
         },
         () => {

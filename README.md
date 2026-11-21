@@ -386,12 +386,13 @@ Widgets are sorted by priority (higher = closer to editor).
 
 ## Configuration Files
 
-| File                                 | Purpose                  |
-| ------------------------------------ | ------------------------ |
-| `~/.config/lazydsh/keybindings.json` | Custom keybindings       |
-| `~/.config/lazydsh/theme.json`       | Custom theme             |
-| `~/.config/lazydsh/preferences.json` | Model defaults, UI state |
-| `~/.config/lazydsh/tui.log`          | TUI debug log            |
+| File                                   | Purpose                                                               |
+| -------------------------------------- | --------------------------------------------------------------------- |
+| `~/.config/lazydsh/keybindings.json`   | Custom keybindings                                                    |
+| `~/.config/lazydsh/theme.json`         | Selected theme (`{"theme":"dark"}`, or `"light/dark"` for auto)       |
+| `~/.config/lazydsh/themes/<name>.json` | User-authored themes (validated on load; picked up by the selector)   |
+| `$DSH_HOME/lazydsh-model.json`         | Last used provider/model/effort (default `~/.dsh/lazydsh-model.json`) |
+| `$DSH_HOME/cache/lazydsh/tui.log`      | Captured TUI console output (default `~/.dsh/cache/lazydsh/tui.log`)  |
 
 ## Providers
 

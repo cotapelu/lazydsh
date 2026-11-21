@@ -1064,6 +1064,12 @@ An audit of every declared keybinding against its handlers found six global keys
 - [x] Tests: `test/model-cycle.test.ts` (wrap-around both directions, single provider, unknown current, empty order). Suite: 129/129 passing.
 - [x] Post-audit: **no declared keybinding is left unhandled** except the `tui.altScreen.*` / `tui.editor.undo` families, which pi-tui owns internally (alt-screen search/page scrolling, editor undo) — those work now that `ui.ts` builds the TUI through `createInteractiveTui` (§8.11).
 
+### 8.15 Theme setting persistence (2026-11-21)
+
+- [x] **Theme choices survived only until exit** — `ui.ts` built the `ThemeController` with an in-memory settings manager (`let themeSetting = "lazydsh"`), so every session started on the default theme. New `src/interactive-mode/theme/theme-settings.ts` persists the setting (a name, or the `"<light>/<dark>"` auto pair) to `~/.config/lazydsh/theme.json` as `{ "theme": "dark" }`; the controller loads it at startup and the picker writes it on selection (including the §8.13 auto row).
+- [x] Tests: `test/theme-settings.test.ts` (round-trip, pair verbatim, missing/malformed/empty fallbacks, directory creation, silent failure on a dead path). Suite: 133/133 passing.
+- [x] README's Configuration Files table had three wrong paths (`preferences.json`, `theme.json` as "custom theme", `tui.log`): corrected to the real locations (`$DSH_HOME/lazydsh-model.json`, the setting file vs `themes/<name>.json` for user themes, `$DSH_HOME/cache/lazydsh/tui.log`).
+
 ### Done criteria
 
 - Ctrl+C during a turn interrupts (not exits); second press force-exits; idle exits; draft clears
