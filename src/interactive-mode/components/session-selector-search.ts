@@ -2,8 +2,13 @@
  * Session Selector Search Utilities
  *
  * Filtering, sorting, and tree building for sessions.
+ * Merged: tiered fuzzy search (from top-level session-selector-search.ts)
+ * + DSH-native SessionRecord type + canonicalized path keys.
  * Ported from pi-coding-agent's session-selector-search.js
  */
+
+import { fuzzyMatch } from "@earendil-works/pi-tui";
+import { realpathSync } from "node:fs";
 
 /** Session record from DSH runtime. */
 export interface SessionRecord {
@@ -44,63 +49,170 @@ export function formatSessionDate(modified: number): string {
   return `${Math.floor(diffDays / 365)}y`;
 }
 
-/**
- * Filter and sort sessions for flat list display.
- */
-export function filterAndSortSessions(
-  sessions: SessionRecord[],
-  query: string,
-  sortMode: "threaded" | "recent" | "relevance",
-  nameFilter: "all" | "named",
-): SessionRecord[] {
-  const trimmed = query.trim();
-  const nameFiltered = nameFilter === "all" ? sessions : sessions.filter(hasSessionName);
+/* ------------------------------------------------------------------ */
+/* Tiered fuzzy search (ported from pi-coding-agent)                  */
+/* ------------------------------------------------------------------ */
 
-  if (sortMode === "threaded" && !trimmed) {
-    // Threaded mode without search returns tree structure (handled elsewhere)
-    return nameFiltered;
-  }
-
-  let filtered = nameFiltered;
-  if (trimmed) {
-    const lowerQuery = trimmed.toLowerCase();
-    filtered = filtered.filter(
-      (session) =>
-        session.title.toLowerCase().includes(lowerQuery) ||
-        session.id.toLowerCase().includes(lowerQuery) ||
-        (session.directory && session.directory.toLowerCase().includes(lowerQuery)),
-    );
-  }
-
-  if (sortMode === "recent") {
-    // Sort by modified date descending (most recent first)
-    filtered.sort((a, b) => b.modified - a.modified);
-  } else if (sortMode === "relevance" && trimmed) {
-    const lowerQuery = trimmed.toLowerCase();
-    // Relevance sort: exact matches first, then prefix, then substring
-    const exact = filtered.filter(
-      (s) => s.title.toLowerCase() === lowerQuery || s.id === lowerQuery,
-    );
-    const prefix = filtered.filter(
-      (s) =>
-        !exact.includes(s) &&
-        (s.title.toLowerCase().startsWith(lowerQuery) || s.id.startsWith(lowerQuery)),
-    );
-    const substring = filtered.filter((s) => !exact.includes(s) && !prefix.includes(s));
-    filtered = [...exact, ...prefix, ...substring];
-  } else if (trimmed) {
-    // Default: sort by modified date for search results
-    filtered.sort((a, b) => b.modified - a.modified);
-  }
-
-  return filtered;
+function normalizeWhitespaceLower(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-/** Comparison key for a session file path; follows symlinks and ignores case on Windows. */
-import { realpathSync } from "node:fs";
+/** Match tiers, best first */
+const TIER_NAME = 0; // query text appears in the session name
+const TIER_TEXT = 1; // query text appears in the session id or directory
+const TIER_FUZZY = 2; // query characters appear scattered in the session name or directory
+const TIER_WEIGHT = 1_000_000;
 
+function tierScore(tier: number, score = 0): number {
+  return tier * TIER_WEIGHT + score;
+}
+
+/** Exact (case-insensitive) text match. */
+function matchLiteralToken(session: SessionRecord, value: string): number | undefined {
+  const name = session.title?.toLowerCase() ?? "";
+  if (name.includes(value)) return tierScore(TIER_NAME, fuzzyMatch(value, name).score);
+  if (session.id.toLowerCase().includes(value)) return tierScore(TIER_TEXT);
+  if (session.directory.toLowerCase().includes(value)) return tierScore(TIER_TEXT);
+  return undefined;
+}
+
+function matchFuzzyToken(session: SessionRecord, value: string): number | undefined {
+  const literal = matchLiteralToken(session, value.toLowerCase());
+  if (literal !== undefined) return literal;
+  let best: number | undefined;
+  for (const field of [session.title ?? "", session.directory]) {
+    const m = fuzzyMatch(value, field);
+    if (m.matches && (best === undefined || m.score < best)) best = m.score;
+  }
+  return best === undefined ? undefined : tierScore(TIER_FUZZY, best);
+}
+
+function matchPhraseToken(session: SessionRecord, phrase: string): number | undefined {
+  const name = normalizeWhitespaceLower(session.title ?? "");
+  if (name.includes(phrase)) return tierScore(TIER_NAME, fuzzyMatch(phrase, name).score);
+  if (session.id.toLowerCase().includes(phrase)) return tierScore(TIER_TEXT);
+  if (normalizeWhitespaceLower(session.directory).includes(phrase)) return tierScore(TIER_TEXT);
+  return undefined;
+}
+
+function matchRegex(session: SessionRecord, regex: RegExp): number | undefined {
+  if (session.title && regex.test(session.title)) return tierScore(TIER_NAME);
+  if (regex.test(session.id) || regex.test(session.directory)) return tierScore(TIER_TEXT);
+  return undefined;
+}
+
+export interface ParsedSearchQuery {
+  mode: "tokens" | "regex";
+  tokens: Array<{ kind: "fuzzy" | "phrase"; value: string }>;
+  regex: RegExp | null;
+  error?: string;
+}
+
+/** Parse search query into tokens (regex mode, phrase mode, fuzzy mode). */
+export function parseSearchQuery(query: string): ParsedSearchQuery {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return { mode: "tokens", tokens: [], regex: null };
+  }
+
+  // Regex mode: re:<pattern>
+  if (trimmed.startsWith("re:")) {
+    const pattern = trimmed.slice(3).trim();
+    if (!pattern) {
+      return { mode: "regex", tokens: [], regex: null, error: "Empty regex" };
+    }
+    try {
+      return { mode: "regex", tokens: [], regex: new RegExp(pattern, "i") };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { mode: "regex", tokens: [], regex: null, error: msg };
+    }
+  }
+
+  // Token mode with quote support
+  const tokens: Array<{ kind: "fuzzy" | "phrase"; value: string }> = [];
+  let buf = "";
+  let inQuote = false;
+  let hadUnclosedQuote = false;
+
+  const flush = (kind: "fuzzy" | "phrase") => {
+    const v = buf.trim();
+    buf = "";
+    if (!v) return;
+    tokens.push({ kind, value: v });
+  };
+
+  for (let i = 0; i < trimmed.length; i++) {
+    const ch = trimmed[i];
+    if (ch === '"') {
+      if (inQuote) {
+        flush("phrase");
+        inQuote = false;
+      } else {
+        flush("fuzzy");
+        inQuote = true;
+      }
+      continue;
+    }
+    if (!inQuote && /\s/.test(ch)) {
+      flush("fuzzy");
+      continue;
+    }
+    buf += ch;
+  }
+  if (inQuote) {
+    hadUnclosedQuote = true;
+  }
+
+  // If quotes were unbalanced, fall back to plain whitespace tokenization
+  if (hadUnclosedQuote) {
+    return {
+      mode: "tokens",
+      tokens: trimmed
+        .split(/\s+/)
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0)
+        .map((t) => ({ kind: "fuzzy", value: t })),
+      regex: null,
+    };
+  }
+  flush(inQuote ? "phrase" : "fuzzy");
+  return { mode: "tokens", tokens, regex: null };
+}
+
+/** Match a session against a parsed query */
+export function matchSession(
+  session: SessionRecord,
+  parsed: ParsedSearchQuery,
+): { matches: boolean; score: number } {
+  if (parsed.mode === "regex") {
+    if (!parsed.regex) return { matches: false, score: 0 };
+    const score = matchRegex(session, parsed.regex);
+    return score === undefined ? { matches: false, score: 0 } : { matches: true, score };
+  }
+
+  let totalScore = 0;
+  for (const token of parsed.tokens) {
+    let score: number | undefined;
+    if (token.kind === "phrase") {
+      const phrase = normalizeWhitespaceLower(token.value);
+      if (!phrase) continue;
+      score = matchPhraseToken(session, phrase);
+    } else {
+      score = matchFuzzyToken(session, token.value);
+    }
+    if (score === undefined) return { matches: false, score: 0 };
+    totalScore += score;
+  }
+  return { matches: true, score: totalScore };
+}
+
+/* ------------------------------------------------------------------ */
+/* Tree building (ported from pi-coding-agent)                         */
+/* ------------------------------------------------------------------ */
+
+/** Comparison key for a session file path; follows symlinks and ignores case on Windows. */
 export function getSessionPathKey(path: string): string {
-  // Follow symlinks and ignore case on Windows, matching pi-coding-agent's behavior.
   let canonical = path;
   try {
     canonical = realpathSync.native(path);
@@ -113,11 +225,46 @@ export function getSessionPathKey(path: string): string {
   return canonical;
 }
 
-/**
- * Build a tree structure from sessions.
- * Since DSH sessions don't have parentSessionId, this creates a flat tree.
- * Returns root nodes sorted by modified date (descending).
- */
+/** Filter and sort sessions based on query and options (tiered search). */
+export function filterAndSortSessions(
+  sessions: SessionRecord[],
+  query: string,
+  sortMode: "threaded" | "recent" | "relevance",
+  nameFilter: "all" | "named" = "all",
+): SessionRecord[] {
+  const nameFiltered = nameFilter === "all" ? sessions : sessions.filter(hasSessionName);
+  const trimmed = query.trim();
+
+  if (!trimmed) return nameFiltered;
+
+  const parsed = parseSearchQuery(query);
+  if (parsed.error) return [];
+
+  // Recent mode: filter only, keep incoming order.
+  if (sortMode === "recent") {
+    const filtered: SessionRecord[] = [];
+    for (const s of nameFiltered) {
+      const res = matchSession(s, parsed);
+      if (res.matches) filtered.push(s);
+    }
+    return filtered;
+  }
+
+  // Relevance mode: sort by score, tie-break by modified desc.
+  const scored: Array<{ session: SessionRecord; score: number }> = [];
+  for (const s of nameFiltered) {
+    const res = matchSession(s, parsed);
+    if (!res.matches) continue;
+    scored.push({ session: s, score: res.score });
+  }
+  scored.sort((a, b) => {
+    if (a.score !== b.score) return a.score - b.score;
+    return b.session.modified - a.session.modified;
+  });
+  return scored.map((r) => r.session);
+}
+
+/** Build a tree structure from sessions based on parentSessionId. */
 export function buildSessionTree(sessions: SessionRecord[]): SessionTreeNode[] {
   const byPath = new Map<string, SessionTreeNode>();
 
@@ -125,7 +272,7 @@ export function buildSessionTree(sessions: SessionRecord[]): SessionTreeNode[] {
     const sessionPath = getSessionPathKey(session.id);
     byPath.set(sessionPath, {
       session,
-      children: [],
+      children: [] as SessionTreeNode[],
       latestActivity: session.modified,
     });
   }
@@ -168,9 +315,7 @@ export interface SessionTreeNode {
   latestActivity: number;
 }
 
-/**
- * Flatten tree into display list with tree structure metadata.
- */
+/** Flatten tree into display list with tree structure metadata. */
 export function flattenSessionTree(roots: SessionTreeNode[]): FlattenedSessionNode[] {
   const result: FlattenedSessionNode[] = [];
   const walk = (
@@ -182,7 +327,6 @@ export function flattenSessionTree(roots: SessionTreeNode[]): FlattenedSessionNo
     result.push({ session: node.session, depth, isLast, ancestorContinues });
     for (let i = 0; i < node.children.length; i++) {
       const childIsLast = i === node.children.length - 1;
-      // Only show continuation line for non-root ancestors
       const continues = depth > 0 ? !isLast : false;
       walk(node.children[i], depth + 1, [...ancestorContinues, continues], childIsLast);
     }
