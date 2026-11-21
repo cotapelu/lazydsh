@@ -108,18 +108,19 @@ All keybindings are configurable in `~/.config/lazydsh/keybindings.json`. The fi
 
 ### Global
 
-| Action             | Default     | Description                                     |
-| ------------------ | ----------- | ----------------------------------------------- |
-| Interrupt / Cancel | `Escape`    | Cancel running turn, close dialogs              |
-| Clear Editor       | `Ctrl+C`    | Clear editor when empty; stop turn when running |
-| Exit               | `Ctrl+D`    | Exit when editor is empty                       |
-| Suspend            | `Ctrl+Z`    | Suspend to background (Unix)                    |
-| External Editor    | `Ctrl+G`    | Open `$EDITOR` with current text                |
-| Copy Message       | `Ctrl+X`    | Copy last assistant message or selection        |
-| Toggle Thinking    | `Ctrl+T`    | Cycle reasoning effort level                    |
-| Queue Follow-up    | `Alt+Enter` | Queue a follow-up message                       |
-| Restore Queued     | `Alt+Up`    | Restore queued messages                         |
-| Paste Image        | `Ctrl+V`    | Paste image/text from clipboard                 |
+| Action             | Default          | Description                                     |
+| ------------------ | ---------------- | ----------------------------------------------- |
+| Interrupt / Cancel | `Escape`         | Cancel running turn, close dialogs              |
+| Clear Editor       | `Ctrl+C`         | Clear editor when empty; stop turn when running |
+| Exit               | `Ctrl+D`         | Exit when editor is empty                       |
+| Suspend            | `Ctrl+Z`         | Suspend to background (Unix)                    |
+| Delete Session     | `Ctrl+Backspace` | Archive a session (empty editor)                |
+| External Editor    | `Ctrl+G`         | Open `$EDITOR` with current text                |
+| Copy Message       | `Ctrl+X`         | Copy last assistant message or selection        |
+| Toggle Thinking    | `Ctrl+T`         | Cycle reasoning effort level                    |
+| Queue Follow-up    | `Alt+Enter`      | Queue a follow-up message                       |
+| Restore Queued     | `Alt+Up`         | Restore queued messages                         |
+| Paste Image        | `Ctrl+V`         | Paste image/text from clipboard                 |
 
 ### Model & Session
 

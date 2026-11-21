@@ -480,25 +480,25 @@ All features implemented, tested, and documented.
 
 ### Critical Missing (Blocking true parity)
 
-| Component                                   | Status     | Effort  | Priority                                |
-| ------------------------------------------- | ---------- | ------- | --------------------------------------- |
-| `tui-renderer.ts`                           | ✅ Wired (§8.11) | — | `ui.ts` builds the TUI via `createInteractiveTui` (search styling, URL open, select-to-copy) |
-| `interactive-mode.ts`                       | ❌ Missing | 5 days  | **CRITICAL** - Main orchestration class |
-| `interactive-mode.ts` - full feature parity | ❌         | 10 days | **CRITICAL** - Main orchestration class |
+| Component                                   | Status           | Effort  | Priority                                                                                     |
+| ------------------------------------------- | ---------------- | ------- | -------------------------------------------------------------------------------------------- |
+| `tui-renderer.ts`                           | ✅ Wired (§8.11) | —       | `ui.ts` builds the TUI via `createInteractiveTui` (search styling, URL open, select-to-copy) |
+| `interactive-mode.ts`                       | ❌ Missing       | 5 days  | **CRITICAL** - Main orchestration class                                                      |
+| `interactive-mode.ts` - full feature parity | ❌               | 10 days | **CRITICAL** - Main orchestration class                                                      |
 
 ### High Priority (Needed for true parity)
 
-| Component              | Status   | Effort | Notes                                                  |
-| ---------------------- | -------- | ------ | ------------------------------------------------------ |
-| `oauth-selector.ts`    | ⚠️ Basic | 3 days | Provider status, brand animations, auth type selection |
-| `session-selector.ts`  | ⚠️ Basic | 4 days | Tree view, progress loading, delete/rename             |
-| `model-selector.ts`    | ✅ Wired (§8.12) | — | `/model` opens the fuzzy selector (scoped/all, save default, current marker) |
-| `provider-brand.ts`    | ❌       | 2 days | Animated brand styles (Radius, OpenRouter)             |
-| `auth-url.ts`          | ⚠️       | 1 day  | OAuth URL display with copy/click                      |
-| `thinking-selector.ts` | ✅       | -      | Done                                                   |
-| `theme-selector.ts`    | ✅       | -      | Done                                                   |
-| `auth-url.ts`          | ❌       | 1 day  | OAuth URL display with copy/click                      |
-| `login-dialog.ts`      | ✅ Basic | 1 day  | Device code handling with Enter key                    |
+| Component              | Status           | Effort | Notes                                                                        |
+| ---------------------- | ---------------- | ------ | ---------------------------------------------------------------------------- |
+| `oauth-selector.ts`    | ⚠️ Basic         | 3 days | Provider status, brand animations, auth type selection                       |
+| `session-selector.ts`  | ⚠️ Basic         | 4 days | Tree view, progress loading, delete/rename                                   |
+| `model-selector.ts`    | ✅ Wired (§8.12) | —      | `/model` opens the fuzzy selector (scoped/all, save default, current marker) |
+| `provider-brand.ts`    | ❌               | 2 days | Animated brand styles (Radius, OpenRouter)                                   |
+| `auth-url.ts`          | ⚠️               | 1 day  | OAuth URL display with copy/click                                            |
+| `thinking-selector.ts` | ✅               | -      | Done                                                                         |
+| `theme-selector.ts`    | ✅               | -      | Done                                                                         |
+| `auth-url.ts`          | ❌               | 1 day  | OAuth URL display with copy/click                                            |
+| `login-dialog.ts`      | ✅ Basic         | 1 day  | Device code handling with Enter key                                          |
 
 ### Medium Priority (Nice to have)
 
@@ -709,28 +709,28 @@ Main orchestration class `InteractiveMode` with:
 
 ### 3. HIGH PRIORITY: Complete Missing Components
 
-| Component              | Effort | Notes                                                  |
-| ---------------------- | ------ | ------------------------------------------------------ |
-| `oauth-selector.ts`    | 3 days | Provider status, brand animations, auth type selection |
-| `session-selector.ts`  | 4 days | Tree view, progress loading, delete/rename             |
-| ~~`model-selector.ts`~~ | done (§8.12) | Fuzzy picker wired: scoped/all, save-as-default      |
-| `provider-brand.ts`    | 2 days | Animated brand styles (Radius, OpenRouter)             |
-| `auth-url.ts`          | 1 day  | OAuth URL display with copy/click                      |
-| `thinking-selector.ts` | 2 days | Fuzzy search, save-as-default                          |
-| `theme-selector.ts`    | 1 day  | Live preview                                           |
-| `auth-url.ts`          | 1 day  | OAuth URL display with copy/click                      |
-| `provider-brand.ts`    | 2 days | Animated brand styles (Radius, OpenRouter)             |
-| `thinking-selector.ts` | 2 days | Fuzzy search, save-as-default                          |
-| `theme-selector.ts`    | 1 day  | Live preview                                           |
-| `auth-url.ts`          | 1 day  | OAuth URL display with copy/click                      |
-| `provider-brand.ts`    | 2 days | Animated brand styles (Radius, OpenRouter)             |
-| `thinking-selector.ts` | 2 days | Fuzzy search, save-as-default                          |
-| `theme-selector.ts`    | 1 day  | Live preview                                           |
-| `auth-url.ts`          | 1 day  | OAuth URL display with copy/click                      |
-| `provider-brand.ts`    | 2 days | Animated brand styles (Radius, OpenRouter)             |
-| `thinking-selector.ts` | 2 days | Fuzzy search, save-as-default                          |
-| `theme-selector.ts`    | 1 day  | Live preview                                           |
-| `auth-url.ts`          | 1 day  | OAuth URL display with copy/click                      |
+| Component               | Effort       | Notes                                                  |
+| ----------------------- | ------------ | ------------------------------------------------------ |
+| `oauth-selector.ts`     | 3 days       | Provider status, brand animations, auth type selection |
+| `session-selector.ts`   | 4 days       | Tree view, progress loading, delete/rename             |
+| ~~`model-selector.ts`~~ | done (§8.12) | Fuzzy picker wired: scoped/all, save-as-default        |
+| `provider-brand.ts`     | 2 days       | Animated brand styles (Radius, OpenRouter)             |
+| `auth-url.ts`           | 1 day        | OAuth URL display with copy/click                      |
+| `thinking-selector.ts`  | 2 days       | Fuzzy search, save-as-default                          |
+| `theme-selector.ts`     | 1 day        | Live preview                                           |
+| `auth-url.ts`           | 1 day        | OAuth URL display with copy/click                      |
+| `provider-brand.ts`     | 2 days       | Animated brand styles (Radius, OpenRouter)             |
+| `thinking-selector.ts`  | 2 days       | Fuzzy search, save-as-default                          |
+| `theme-selector.ts`     | 1 day        | Live preview                                           |
+| `auth-url.ts`           | 1 day        | OAuth URL display with copy/click                      |
+| `provider-brand.ts`     | 2 days       | Animated brand styles (Radius, OpenRouter)             |
+| `thinking-selector.ts`  | 2 days       | Fuzzy search, save-as-default                          |
+| `theme-selector.ts`     | 1 day        | Live preview                                           |
+| `auth-url.ts`           | 1 day        | OAuth URL display with copy/click                      |
+| `provider-brand.ts`     | 2 days       | Animated brand styles (Radius, OpenRouter)             |
+| `thinking-selector.ts`  | 2 days       | Fuzzy search, save-as-default                          |
+| `theme-selector.ts`     | 1 day        | Live preview                                           |
+| `auth-url.ts`           | 1 day        | OAuth URL display with copy/click                      |
 
 ### Medium Priority
 
@@ -875,34 +875,34 @@ Main orchestration class `InteractiveMode` with:
 
 ### 🔴 REMAINING HIGH PRIORITY (Blocking true parity)
 
-| Task                                                     | Effort | Priority     |
-| -------------------------------------------------------- | ------ | ------------ |
-| `tui-renderer.ts`                                        | 1 day  | **CRITICAL** |
-| `interactive-mode.ts`                                    | 5 days | **CRITICAL** |
-| `oauth-selector.ts` full parity                          | 3 days | **HIGH**     |
-| `session-selector.ts` tree view, progress, delete/rename | 4 days | **HIGH**     |
-| ~~`model-selector.ts` async refresh, save-as-default~~   | done (§8.12) | —        |
-| `provider-brand.ts`                                      | 2 days | **HIGH**     |
-| `auth-url.ts`                                            | 1 day  | **HIGH**     |
-| `thinking-selector.ts`                                   | 2 days | **HIGH**     |
-| `theme-selector.ts`                                      | 1 day  | **HIGH**     |
-| `auth-url.ts`                                            | 1 day  | **HIGH**     |
-| `provider-brand.ts`                                      | 2 days | **HIGH**     |
-| `thinking-selector.ts`                                   | 2 days | **HIGH**     |
-| `theme-selector.ts`                                      | 1 day  | **HIGH**     |
-| `auth-url.ts`                                            | 1 day  | **HIGH**     |
-| `provider-brand.ts`                                      | 2 days | **HIGH**     |
-| `thinking-selector.ts`                                   | 2 days | **HIGH**     |
-| `theme-selector.ts`                                      | 1 day  | **HIGH**     |
-| `auth-url.ts`                                            | 1 day  | **HIGH**     |
-| `provider-brand.ts`                                      | 2 days | **HIGH"      |
-| `thinking-selector.ts`                                   | 2 days | **HIGH**     |
-| `theme-selector.ts`                                      | 1 day  | **HIGH**     |
-| `auth-url.ts`                                            | 1 day  | **HIGH**     |
-| `provider-brand.ts`                                      | 2 days | **HIGH"      |
-| `thinking-selector.ts`                                   | 2 days | **HIGH"      |
-| `theme-selector.ts`                                      | 1 day  | **HIGH"      |
-| `auth-url.ts`                                            | 1 day  | **HIGH"      |
+| Task                                                     | Effort       | Priority     |
+| -------------------------------------------------------- | ------------ | ------------ |
+| `tui-renderer.ts`                                        | 1 day        | **CRITICAL** |
+| `interactive-mode.ts`                                    | 5 days       | **CRITICAL** |
+| `oauth-selector.ts` full parity                          | 3 days       | **HIGH**     |
+| `session-selector.ts` tree view, progress, delete/rename | 4 days       | **HIGH**     |
+| ~~`model-selector.ts` async refresh, save-as-default~~   | done (§8.12) | —            |
+| `provider-brand.ts`                                      | 2 days       | **HIGH**     |
+| `auth-url.ts`                                            | 1 day        | **HIGH**     |
+| `thinking-selector.ts`                                   | 2 days       | **HIGH**     |
+| `theme-selector.ts`                                      | 1 day        | **HIGH**     |
+| `auth-url.ts`                                            | 1 day        | **HIGH**     |
+| `provider-brand.ts`                                      | 2 days       | **HIGH**     |
+| `thinking-selector.ts`                                   | 2 days       | **HIGH**     |
+| `theme-selector.ts`                                      | 1 day        | **HIGH**     |
+| `auth-url.ts`                                            | 1 day        | **HIGH**     |
+| `provider-brand.ts`                                      | 2 days       | **HIGH**     |
+| `thinking-selector.ts`                                   | 2 days       | **HIGH**     |
+| `theme-selector.ts`                                      | 1 day        | **HIGH**     |
+| `auth-url.ts`                                            | 1 day        | **HIGH**     |
+| `provider-brand.ts`                                      | 2 days       | **HIGH"      |
+| `thinking-selector.ts`                                   | 2 days       | **HIGH**     |
+| `theme-selector.ts`                                      | 1 day        | **HIGH**     |
+| `auth-url.ts`                                            | 1 day        | **HIGH**     |
+| `provider-brand.ts`                                      | 2 days       | **HIGH"      |
+| `thinking-selector.ts`                                   | 2 days       | **HIGH"      |
+| `theme-selector.ts`                                      | 1 day        | **HIGH"      |
+| `auth-url.ts`                                            | 1 day        | **HIGH"      |
 
 ### Summary
 
@@ -1044,6 +1044,25 @@ Follow-up to 8.10: the same dead-claim pattern covered the rest of the gap-analy
 - [x] `ThemeSelectorComponent` gained the optional auto row; `onSelect`/`onPreview` receive the pair string (real theme names never contain a slash, so the selection stays unambiguous).
 - [x] Tests: `test/theme-selector.test.ts` (auto row listed with its pair, preview emits the pair, select yields the pair, active marker, plain list without the option). Suite: 126/126 passing.
 - [x] Last orphan audit: `themed-text.ts` stays unwired **by design** — pi needed it because its rows cached colored strings; pi-tui's `TUI.invalidate()` cascades to every child here, so a theme change re-renders the whole transcript through the theme proxy. `components/index.ts` remains the documented barrel.
+
+### 8.14 Wire the advertised-but-dead keybindings (2026-11-21)
+
+An audit of every declared keybinding against its handlers found six global keys the header hints and README advertised but nothing handled (each referenced only from `header.ts` hint text):
+
+| Key                       | Claimed             | Now                                                                                              |
+| ------------------------- | ------------------- | ------------------------------------------------------------------------------------------------ |
+| `Ctrl+L`                  | Open model selector | `pickModel()`                                                                                    |
+| `Ctrl+P` / `Shift+Ctrl+P` | Cycle model         | `cycleModel(±1)` over logged-in providers (`src/interactive-mode/model-cycle.ts`, pure + tested) |
+| `Alt+Enter`               | Queue follow-up     | `enqueue(current draft)`                                                                         |
+| `Alt+Up`                  | Restore queued      | `dequeueToEditor()`                                                                              |
+| `Ctrl+D` (empty editor)   | Exit                | `stop()` when the editor is empty                                                                |
+| `Ctrl+Z`                  | Suspend             | `suspendToBackground()` — leaves the alt screen, `SIGTSTP`, restarts on `SIGCONT` (idle only)    |
+| `Ctrl+Backspace`          | Delete session      | archive picker (`openSessionActionPicker`, extracted from the slash commands)                    |
+
+- [x] `app.session.new` / `app.session.resume` (unbound by default) now work when a user maps them: `/new`-equivalent and the DSH session picker (`openSessionPicker`, extracted from the `/resume` command path).
+- [x] Model cycling refuses mid-turn switches (they would race the live request) and walks only providers with credentials, preferring the saved model for that provider.
+- [x] Tests: `test/model-cycle.test.ts` (wrap-around both directions, single provider, unknown current, empty order). Suite: 129/129 passing.
+- [x] Post-audit: **no declared keybinding is left unhandled** except the `tui.altScreen.*` / `tui.editor.undo` families, which pi-tui owns internally (alt-screen search/page scrolling, editor undo) — those work now that `ui.ts` builds the TUI through `createInteractiveTui` (§8.11).
 
 ### Done criteria
 
