@@ -1360,6 +1360,75 @@ export async function runUI(
       showChangelog(tui, showPanel, dismissPanel);
       return;
     }
+    if (text === "/copy") {
+      void copyLastMessage();
+      return;
+    }
+    if (text === "/name" || text.startsWith("/name ")) {
+      const title = text.slice(6).trim() || (await ask("New session title (Esc to cancel)"));
+      if (title !== null) {
+        void runBusy(async () => {
+          const id = runtime.session?.id;
+          if (id) add("Renamed", await runtime.renameSession(id, title));
+        });
+      }
+      return;
+    }
+    if (text === "/hotkeys") {
+      const lines = [
+        "Keyboard Shortcuts",
+        "",
+        "Navigation:",
+        "  Up/Down/Left/Right  Move cursor",
+        "  Ctrl+Left/Right  Move by word",
+        "  Home/End  Start/end of line",
+        "  PgUp/PgDn  Page up/down",
+        "",
+        "Editing:",
+        "  Enter  Send message",
+        "  Shift+Enter  New line",
+        "  Ctrl+W  Delete word backward",
+        "  Ctrl+Delete  Delete word forward",
+        "  Ctrl+U  Delete to line start",
+        "  Ctrl+K  Delete to line end",
+        "  Ctrl+Y  Paste deleted text",
+        "  Ctrl+_  Undo",
+        "",
+        "App:",
+        "  Esc  Cancel/abort",
+        "  Ctrl+C  Clear editor (first) / exit (second)",
+        "  Ctrl+D  Exit (when empty)",
+        "  Ctrl+Z  Suspend to background",
+        "  Shift+Tab  Cycle thinking level",
+        "  Ctrl+P / Shift+Ctrl+P  Cycle models",
+        "  Ctrl+L  Open model selector",
+        "  Ctrl+O  Toggle tool output",
+        "  Ctrl+T  Toggle thinking blocks",
+        "  Ctrl+G  External editor",
+        "  Ctrl+X  Copy last message",
+        "  Alt+Enter  Queue follow-up",
+        "  Alt+Up  Restore queued messages",
+        "  Ctrl+V  Paste from clipboard",
+        "  /  Slash commands",
+        "  !  Run bash command",
+        "  !!  Run bash command (excluded from context)",
+      ];
+      add("Hotkeys", lines.join("\n"));
+      return;
+    }
+    if (text === "/clone") {
+      const leafId = runtime.session?.id;
+      if (!leafId) {
+        add("Error", "Nothing to clone yet.");
+        return;
+      }
+      void runBusy(async () => {
+        const childId = await runtime.forkSession(Number(runtime.forkPoints().at(-1)?.value ?? 0));
+        await connect(route as Route, childId);
+        add("Cloned", childId);
+      });
+      return;
+    }
     if (text === "/settings") {
       const { SettingsSelectorComponent } = await import("./settings-selector.ts");
       const settings = new SettingsSelectorComponent(tui, {
