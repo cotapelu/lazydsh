@@ -610,22 +610,3 @@ All Phases 1-8 complete. Test suite: 111/111 passing.
 
 ---
 
-## 📋 REMAINING WORK (Post-Parity)
-
-| Task                                                                       | Priority | Location       | Status         |
-| -------------------------------------------------------------------------- | -------- | -------------- | -------------- |
-| **Merge boot files** (5→3 files)                                           | HIGH     | `docs/TODO.md` | 🔄 **PLANNED** |
-| Create `src/runtime/boot.ts` (merge dsh-boot + deferred + pending-runtime) |          |                | ⏳ Pending     |
-| Inline `native-commands.ts` into `runtime.ts`                              |          |                | ⏳ Pending     |
-| Rename `ui.ts` → `app.ts`                                                  |          |                | ⏳ Pending     |
-| Update `plugin.ts` imports to use `boot.ts`                                |          |                | ⏳ Pending     |
-| Delete old boot files                                                      |          |                | ⏳ Pending     |
-| Verify cold start ~122ms unchanged                                         |          |                | ⏳ Pending     |
-
----
-
-## 📝 Notes
-
-- **GAP ANALYSIS removed** — was outdated (written before Phase 8). All 32 "missing" components were implemented during Phase 8.
-- **`interactive-mode.ts` not needed** — current architecture (`ui.ts` + `plugin.ts`) works correctly with 111 tests passing.
-- **Boot merge** is the only remaining structural improvement — tracked in `docs/TODO.md`.

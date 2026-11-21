@@ -30,10 +30,13 @@ test("extension statuses set, sanitize, remove, and clear", () => {
   const provider = createFooterDataProvider("/work");
   provider.setExtensionStatus("alpha", "ok");
   provider.setExtensionStatus("beta", "multi\nline\ttext");
-  assert.deepEqual([...provider.getExtensionStatuses().entries()].sort(), [
-    ["alpha", "ok"],
-    ["beta", "multi line text"],
-  ]);
+  assert.deepEqual(
+    [...provider.getExtensionStatuses().entries()].sort(([a], [b]) => a.localeCompare(b)),
+    [
+      ["alpha", "ok"],
+      ["beta", "multi line text"],
+    ],
+  );
   provider.removeExtensionStatus("alpha");
   assert.deepEqual([...provider.getExtensionStatuses().keys()], ["beta"]);
   provider.setExtensionStatus("alpha", "back");
