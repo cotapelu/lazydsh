@@ -184,7 +184,16 @@ export class Runtime {
   }
 
   get sessionManager() {
-    return this.ctx.get("sessionManager") ?? this.ctx.get("sessionPersistence");
+    const manager = this.ctx.get("sessionManager");
+    if (manager !== undefined) return manager;
+    const persistence = this.ctx.get("sessionPersistence");
+    if (persistence !== undefined) {
+      this.ctx.logger?.warn(
+        "lazydsh: sessionManager unavailable, falling back to sessionPersistence",
+      );
+      return persistence;
+    }
+    throw new Error("lazydsh: neither sessionManager nor sessionPersistence is available");
   }
 
   get modelRuntime() {
