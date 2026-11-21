@@ -60,7 +60,7 @@ lazydsh implements the full interactive experience of pi-coding-agent:
 | **Program Status**    | ✅ OSC 7501 (idle/working/blocked/done/error)                         |
 | **Session Share**     | ✅ /share generates share link                                        |
 | **Changelog**         | ✅ /changelog with expand/collapse                                    |
-| **Settings**          | ✅ /settings (5 categories)                                           |
+| **Settings**          | ✅ /settings (5 categories; confirm-exit persists)                    |
 | **Widgets**           | ✅ Extension widget registry (above/below editor)                     |
 
 ## Installation
@@ -203,7 +203,7 @@ Custom DSH plugin commands are also available.
 
 ## Theme System
 
-Themes use semantic tokens and live-reload on file change. The default theme is at `~/.config/lazydsh/theme.json`.
+Themes use semantic tokens and live-reload on file change. The selected theme is remembered in `~/.config/lazydsh/theme.json`; user-authored themes live in `~/.config/lazydsh/themes/`.
 
 ### Token Categories
 
@@ -393,6 +393,7 @@ Widgets are sorted by priority (higher = closer to editor).
 | `~/.config/lazydsh/themes/<name>.json` | User-authored themes (validated on load; picked up by the selector)   |
 | `$DSH_HOME/lazydsh-model.json`         | Last used provider/model/effort (default `~/.dsh/lazydsh-model.json`) |
 | `$DSH_HOME/cache/lazydsh/tui.log`      | Captured TUI console output (default `~/.dsh/cache/lazydsh/tui.log`)  |
+| `~/.config/lazydsh/settings.json`      | UI preferences (`confirmExit`)                                        |
 
 ## Providers
 

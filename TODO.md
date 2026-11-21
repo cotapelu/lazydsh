@@ -1070,6 +1070,12 @@ An audit of every declared keybinding against its handlers found six global keys
 - [x] Tests: `test/theme-settings.test.ts` (round-trip, pair verbatim, missing/malformed/empty fallbacks, directory creation, silent failure on a dead path). Suite: 133/133 passing.
 - [x] README's Configuration Files table had three wrong paths (`preferences.json`, `theme.json` as "custom theme", `tui.log`): corrected to the real locations (`$DSH_HOME/lazydsh-model.json`, the setting file vs `themes/<name>.json` for user themes, `$DSH_HOME/cache/lazydsh/tui.log`).
 
+### 8.16 Real settings: confirm-exit, honest info rows (2026-11-21)
+
+- [x] **Three of the four `/settings` toggles were cosmetics** — they flipped RAM state, persisted nothing, and drove no behavior. They are now honest info rows pointing at whatever really owns the behavior: auto-compaction (the DSH context policy), background color (the active theme's JSON), code line numbers (the Markdown renderer does not emit them).
+- [x] **Confirm-on-exit is real** — new `src/interactive-mode/settings-store.ts` persists it to `~/.config/lazydsh/settings.json` (field-wise fallback, silent failure on unwritable paths); the toggle flips through `onToggle`, and key-driven exits (Ctrl+D on an empty editor, idle Ctrl+C) route through `requestExit()`, which asks `Exit lazydsh? (y/n)` via the existing inline `ask()` path. Explicit `/quit` and a force-exit second press still exit immediately.
+- [x] Tests: `test/ui-settings.test.ts` (round-trip, malformed fallback, silent failure) + rewritten `test/settings-selector.test.ts` (theme delegation, confirm-exit flips reporting both values, info rows flip nothing). Suite: 137/137 passing.
+
 ### Done criteria
 
 - Ctrl+C during a turn interrupts (not exits); second press force-exits; idle exits; draft clears

@@ -64,6 +64,7 @@ import {
 import { HeaderComponent } from "./components/header.ts";
 import { ThemeController } from "./theme/theme-controller.ts";
 import { readThemeSetting, writeThemeSetting } from "./theme/theme-settings.ts";
+import { readUiSettings, writeUiSettings, type UiSettings } from "./settings-store.ts";
 import { safeText, accent, dim } from "./theme.ts";
 import { currentThemeName_ } from "./theme/theme.ts";
 
@@ -271,6 +272,8 @@ export async function runUI(
   // The persisted setting (name or "<light>/<dark>" pair) comes from
   // ~/.config/lazydsh/theme.json so a choice survives a restart.
   let themeSetting: string | undefined = readThemeSetting();
+  // TUI-side preferences (~/.config/lazydsh/settings.json).
+  let uiSettings: UiSettings = readUiSettings();
   const themeController = new ThemeController(tui, {
     getSettingsManager: () => ({ getThemeSetting: () => themeSetting }),
     showError: (msg) => add("Error", msg),
@@ -1158,6 +1161,21 @@ export async function runUI(
     }
   }
 
+  /**
+   * A key-driven exit (Ctrl+D, idle Ctrl+C). Honours the Confirm-on-exit
+   * preference; explicit `/quit` and force-exits call `stop()` directly.
+   */
+  async function requestExit() {
+    if (uiSettings.confirmExit) {
+      const answer = await ask("Exit lazydsh? (y/n)");
+      if (answer === null || !/^y/i.test(answer.trim())) {
+        update();
+        return;
+      }
+    }
+    await stop();
+  }
+
   async function stop() {
     if (closing) return;
     closing = true;
@@ -1294,6 +1312,13 @@ export async function runUI(
       const { SettingsSelectorComponent } = await import("./settings-selector.ts");
       const settings = new SettingsSelectorComponent(tui, {
         currentTheme: currentThemeName_(),
+        confirmExit: uiSettings.confirmExit,
+        onToggle: (key, value) => {
+          if (key !== "confirmExit") return;
+          uiSettings.confirmExit = value;
+          writeUiSettings(uiSettings);
+          add("Settings", `Confirm on exit: ${value ? "on" : "off"}`);
+        },
       });
       settings.onCancel = dismissPanel;
       settings.onActivate = (key) => {
@@ -2006,7 +2031,7 @@ export async function runUI(
       return { consume: true };
     }
     if (kb.matches(data, "app.exit") && editor.getText().length === 0) {
-      void stop();
+      void requestExit();
       return { consume: true };
     }
     if (kb.matches(data, "app.clear")) {
@@ -2023,7 +2048,8 @@ export async function runUI(
         pendingFiles = [];
         update();
       } else if (action === "interrupt") cancelTurn();
-      else void stop(); // force-exit or exit
+      else if (action === "force-exit") void stop(); // second press: no confirmation
+      else void requestExit(); // idle press
       return { consume: true };
     }
     if (kb.matches(data, "app.interrupt") && !selecting) {

@@ -40,15 +40,22 @@ export class SettingsSelectorComponent extends Container {
 
   /**
    * Extra values the launcher injects so the panel shows real state instead of
-   * the placeholder defaults compiled into the component.
+   * the placeholder defaults compiled into the component. `onToggle` fires for
+   * every toggle flip so the launcher can persist the change.
    */
   constructor(
     tui: { requestRender: () => void },
-    options: { currentTheme?: string; version?: string } = {},
+    options: {
+      currentTheme?: string;
+      version?: string;
+      confirmExit?: boolean;
+      onToggle?: (key: string, value: boolean) => void;
+    } = {},
   ) {
     super();
     this.tui = tui;
-    this.initializeItems(options.currentTheme, options.version);
+    this.initializeItems(options.currentTheme, options.version, options.confirmExit);
+    this.onToggle = options.onToggle;
     this.rebuild();
   }
 
@@ -60,24 +67,23 @@ export class SettingsSelectorComponent extends Container {
     this._focused = value;
   }
 
-  private initializeItems(currentTheme?: string, version?: string): void {
+  private initializeItems(currentTheme?: string, version?: string, confirmExit?: boolean): void {
     this.items = [
       // General
       {
         key: "autoCompact",
         label: "Auto-compact context",
-        description: "Automatically summarize conversation when context is full",
+        description: "On when the DSH context policy decides — not a TUI setting",
         category: "general",
-        type: "toggle",
-        value: true,
+        type: "info",
       },
       {
         key: "confirmExit",
         label: "Confirm on exit",
-        description: "Ask for confirmation when pressing Ctrl+D",
+        description: "Ask for confirmation when pressing Ctrl+D or an idle Ctrl+C",
         category: "general",
         type: "toggle",
-        value: true,
+        value: confirmExit ?? false,
       },
       // Appearance
       {
@@ -94,19 +100,17 @@ export class SettingsSelectorComponent extends Container {
       },
       {
         key: "transparentBackground",
-        label: "Transparent background",
-        description: "Use terminal background color",
+        label: "Background",
+        description: "Set by the active theme — edit its JSON for a transparent background",
         category: "appearance",
-        type: "toggle",
-        value: false,
+        type: "info",
       },
       {
         key: "showLineNumbers",
-        label: "Show line numbers in code",
-        description: "Display line numbers in code blocks",
+        label: "Line numbers in code",
+        description: "Not rendered by the Markdown component — theme and colors only",
         category: "appearance",
-        type: "toggle",
-        value: true,
+        type: "info",
       },
       // Keybindings
       {
@@ -261,6 +265,7 @@ export class SettingsSelectorComponent extends Container {
       if (item.type === "toggle") {
         item.value = !item.value;
         item.onChange?.(item.value);
+        this.onToggle?.(item.key, Boolean(item.value));
         this.rebuild();
         this.tui.requestRender();
       } else if (item.type === "select" && item.options) {
@@ -304,4 +309,7 @@ export class SettingsSelectorComponent extends Container {
    * activation itself (the built-in toggle/cycle is then skipped).
    */
   onActivate?: (key: string) => boolean | void;
+
+  /** Called after a toggle flipped, with the new value. */
+  onToggle?: (key: string, value: boolean) => void;
 }
