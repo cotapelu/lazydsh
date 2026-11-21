@@ -751,24 +751,37 @@ export async function runUI(
    */
   function openThemePicker() {
     void import("./components/theme-selector.ts").then(({ ThemeSelectorComponent }) => {
+      const setting = themeController.getThemeSetting();
+      // The setting is a "<light>/<dark>" pair exactly when auto-sync is on.
+      const activePair =
+        setting !== undefined && setting.indexOf("/") !== -1 ? setting.split("/") : undefined;
+      const [light = "light", dark = "dark"] = activePair ?? [];
       const picker = new ThemeSelectorComponent(
         currentThemeName_(),
-        (name) => {
+        (selection) => {
           dismissPanel();
-          const applied = themeController.setThemeName(name);
-          if (!applied.success) {
-            add("Theme", `Cannot apply ${name}: ${applied.error ?? "unknown error"}`);
+          if (selection.includes("/")) {
+            // Auto: persist the pair; the controller re-applies on every
+            // terminal light/dark change from here on.
+            themeController.setThemeSetting(selection);
+            add("Theme", `auto: ${selection.split("/").join(" / ")} (follows terminal)`);
             return;
           }
-          themeController.setThemeSetting(name);
-          add("Theme", name);
+          const applied = themeController.setThemeName(selection);
+          if (!applied.success) {
+            add("Theme", `Cannot apply ${selection}: ${applied.error ?? "unknown error"}`);
+            return;
+          }
+          themeController.setThemeSetting(selection);
+          add("Theme", selection);
         },
         () => {
           dismissPanel();
           // A preview must not outlive a cancelled pick.
           themeController.applyFromSettings();
         },
-        (name) => themeController.preview(name),
+        (selection) => themeController.preview(selection),
+        { light, dark, active: activePair !== undefined },
       );
       showPanel(picker);
     });

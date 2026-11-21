@@ -15,7 +15,24 @@ const THEME_SELECT_LIST_LAYOUT = {
 };
 
 /**
- * Component that renders a theme selector
+ * The follow-terminal entry. Its value is the `"<light>/<dark>"` setting the
+ * theme controller persists (real theme names never contain a slash, so the
+ * selection string is unambiguous).
+ */
+interface AutoThemeOption {
+  light: string;
+  dark: string;
+  /** Whether the controller's current setting is this kind of pair. */
+  active: boolean;
+}
+
+function autoValue(option: AutoThemeOption): string {
+  return `${option.light}/${option.dark}`;
+}
+
+/**
+ * Component that renders a theme selector. `onSelect`/`onPreview` receive a
+ * theme name, or the `"<light>/<dark>"` pair when the auto row is chosen.
  */
 export class ThemeSelectorComponent extends Container {
   private selectList: SelectList;
@@ -26,6 +43,7 @@ export class ThemeSelectorComponent extends Container {
     onSelect: (themeName: string) => void,
     onCancel: () => void,
     onPreview: (themeName: string) => void,
+    autoOption?: AutoThemeOption,
   ) {
     super();
     this.onPreview = onPreview;
@@ -38,22 +56,35 @@ export class ThemeSelectorComponent extends Container {
       description: name === currentTheme ? "(current)" : undefined,
     }));
 
+    // The auto row rides on top so it is reachable without scrolling.
+    const autoItem =
+      autoOption === undefined
+        ? undefined
+        : {
+            value: autoValue(autoOption),
+            label: "auto (follow terminal)",
+            description: autoOption.active
+              ? "(active)"
+              : `light → ${autoOption.light} · dark → ${autoOption.dark}`,
+          };
+    const items = autoItem === undefined ? themeItems : [autoItem, ...themeItems];
+
     // Add top border
     this.addChild(new DynamicBorder());
 
     // Create selector
-    this.selectList = new SelectList(
-      themeItems,
-      10,
-      getSelectListTheme(),
-      THEME_SELECT_LIST_LAYOUT,
-    );
+    this.selectList = new SelectList(items, 10, getSelectListTheme(), THEME_SELECT_LIST_LAYOUT);
 
-    // Preselect current theme
-    const currentIndex = themes.indexOf(currentTheme);
-    if (currentIndex !== -1) {
-      this.selectList.setSelectedIndex(currentIndex);
-    }
+    // Preselect current theme; the auto row when the setting is a pair.
+    const currentIndex =
+      autoOption?.active === true
+        ? 0
+        : Math.max(
+            0,
+            items.findIndex((item) => item.value === currentTheme),
+          );
+
+    this.selectList.setSelectedIndex(currentIndex);
 
     this.selectList.onSelect = (item) => {
       onSelect(item.value);

@@ -233,6 +233,7 @@ Themes use semantic tokens and live-reload on file change. The default theme is 
 
 - `/settings` → Appearance → Theme — full picker with live preview (all built-in and user themes); selecting saves, cancelling restores
 - Edit `~/.config/lazydsh/theme.json` — changes apply instantly
+- **auto (follow terminal)** — pick a light theme and a dark theme; the controller switches between them on every terminal light/dark change (DA1)
 - System theme follows terminal (DA1 query) — auto light/dark
 
 ### DA1 Terminal Color Sync

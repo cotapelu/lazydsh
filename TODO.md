@@ -1038,6 +1038,13 @@ Follow-up to 8.10: the same dead-claim pattern covered the rest of the gap-analy
 - [x] **Adapter for the missing contract** — the component was ported against pi's `ModelRuntime` (`getAvailableSnapshot`/`getModel`/`refresh`), which the DSH `llm` service does not expose. `src/interactive-mode/model-catalog-runtime.ts` presents lazydsh's own catalog (the same table `--list` and route validation use) in that shape; with no live catalog service there is no `refresh`, which the coordinator treats as already fresh. Startup (`pickProviderModel` for a known provider) keeps the fast single-provider path.
 - [x] Tests: `test/model-catalog-runtime.test.ts` (snapshot, provider narrowing, lookup, absent refresh). Suite: 123/123 passing.
 
+### 8.13 Auto light/dark theme setting (2026-11-20)
+
+- [x] **The pair setting is reachable** — `ThemeController` has always understood a `"<light>/<dark>"` setting (auto-sync re-applies on every terminal light/dark change), but nothing wrote it: the picker listed theme names only. `/settings` → Appearance → Theme now shows an **`auto (follow terminal)`** row (preselected when the setting is a pair, marked `(active)`); choosing it persists the pair through `setThemeSetting`, and cancelling still restores the persisted theme. Default pair: the built-in `light`/`dark` themes.
+- [x] `ThemeSelectorComponent` gained the optional auto row; `onSelect`/`onPreview` receive the pair string (real theme names never contain a slash, so the selection stays unambiguous).
+- [x] Tests: `test/theme-selector.test.ts` (auto row listed with its pair, preview emits the pair, select yields the pair, active marker, plain list without the option). Suite: 126/126 passing.
+- [x] Last orphan audit: `themed-text.ts` stays unwired **by design** — pi needed it because its rows cached colored strings; pi-tui's `TUI.invalidate()` cascades to every child here, so a theme change re-renders the whole transcript through the theme proxy. `components/index.ts` remains the documented barrel.
+
 ### Done criteria
 
 - Ctrl+C during a turn interrupts (not exits); second press force-exits; idle exits; draft clears
