@@ -4,6 +4,8 @@
 
 Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactive experience while keeping full DSH runtime features.
 
+> **Path note:** Phase 1-6 were planned against the original flat `src/` tree. The 3-layer refactor (Phase 8 / CAUTRUC.md) moved those files: TUI files now live in `src/interactive-mode/` (+ `components/`, `theme/`), the DSH bridge in `src/runtime/`, shared pure helpers in `src/utils/`, with `src/interfaces.ts` and `src/runtime-events.ts` as the root contracts. Old paths below are kept for history; the current map is AGENTS.md / CAUTRUC.md.
+
 **Total Estimated Effort**: ~5 weeks (80 hours) + ~3 weeks (40 hours) for polish = ~120 hours
 **Approach**: Port pi-tui UI patterns, wire to existing DSH Runtime
 
@@ -13,7 +15,7 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
 
 ### 1.1 Layout Infrastructure
 
-- [x] **Create `src/chat-viewport.ts`** (2h)
+- [x] **Create `src/chat-viewport.ts`** (2h) — _later superseded by the inline layout in `ui.ts`; the file was deleted in §8.11 as dead code_
   - [x] Copy pi's `createChatViewport()` function
   - [x] Layout: Header → Transcript → Pending → Status → Widgets → Editor → Footer
   - [x] Support `overscroll: "chain"` for smooth scrolling
@@ -62,11 +64,13 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
 
 ### 1.2 Cleanup Redundant Files ✅
 
-- [x] **Delete `src/tools.ts`** (ToolLog - replaced by tool-execution.ts)
+_Historical cleanup pass; two rows below are actively false today and are corrected here:_
+
+- [x] **Delete `src/tools.ts`** (ToolLog - replaced by tool-execution.ts) — **NOT deleted: `src/interactive-mode/tools.ts` still ships `ToolLog`/`ToolRow` and `ui.ts` imports both** (§8.7 made the rows expandable)
 - [x] **Delete `src/presentation.ts` ThinkingView** (keep SentMessage, Notification, etc.)
 - [x] **Update `src/theme.ts`** → mark for replacement in Phase 4
 - [x] **Update `src/autocomplete.ts`** → mark for replacement in Phase 3
-- [x] **Delete `src/plugin-patch.ts`** (use `catalog.providerPatch()`)
+- [x] **Delete `src/plugin-patch.ts`** (use `catalog.providerPatch()`) — **NOT deleted: `src/runtime/plugin-patch.ts` still adds the non-base services** (`cli.ts` writes it into the profile patch))
 
 ---
 
@@ -293,7 +297,7 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
 - [x] **Create `src/components/status-indicator.ts`** (4h)
   - [x] `WorkingStatusIndicator` - spinner with message
   - [x] `RetryStatusIndicator` - retry count, message
-  - [x] `CompactionStatusIndicator` - progress bar
+  - [x] `CompactionStatusIndicator` - spinner + label (no progress bar; §8.17 wired it to DSH's `compaction/start`/`compaction/end`)
   - [x] `IdleStatus` - ready state
   - [x] Wire into `ui.ts` status container
 
@@ -609,4 +613,3 @@ npm i diff @types/diff
 All Phases 1-8 complete. Test suite: 111/111 passing.
 
 ---
-

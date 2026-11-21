@@ -9,6 +9,7 @@
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { theme } from "./theme/theme.ts";
 import { formatTokens, formatCwdForFooter, FooterDataProvider } from "./footer-data-provider.ts";
+import type { AccountLimits } from "../../../utils/limits.ts";
 
 interface FooterOptions {
   session: {
@@ -25,6 +26,7 @@ interface FooterOptions {
     thinkingLevel?: string;
     autoCompactionEnabled?: boolean;
     getContextUsage(): { percent: number | null; contextWindow?: number } | undefined;
+    limits?: AccountLimits;
   };
   footerData: FooterDataProvider;
 }
@@ -194,9 +196,7 @@ export class FooterComponent {
     }
 
     // Cost (subscription-aware)
-    const usingSubscription = state.model
-      ? state.model.provider === "kimi-coding" || false // TODO: check subscription
-      : false;
+    const usingSubscription = state.limits?.plan !== undefined;
     if (usageTotals.cost > 0 || usingSubscription) {
       const costStr = `$${usageTotals.cost.toFixed(3)}${usingSubscription ? " (sub)" : ""}`;
       statsParts.push(costStr);

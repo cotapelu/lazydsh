@@ -232,6 +232,7 @@ export async function runUI(
     thinkingLevel: safeRead(runtime, () => runtime.thinkingLevel),
     autoCompactionEnabled: true,
     getContextUsage: () => safeRead(runtime, () => runtime.contextUsage),
+    limits: stats?.limits,
   });
   function ensureFooter(): FooterComponent {
     if (footer === undefined) {

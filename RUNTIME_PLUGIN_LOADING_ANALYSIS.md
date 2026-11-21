@@ -2,11 +2,11 @@
 
 ## 📊 OVERVIEW
 
-| Stage | Packages Loaded | Mechanism |
-|-------|----------------|-----------|
-| **Eager (Initial Boot)** | ~70 | Cordis profile composition |
-| **Deferred (After First Paint)** | ~50 | Manual `activateDeferredPlugins()` |
-| **Never Loaded (Installed Only)** | ~221 | Transitive dependencies, alternatives |
+| Stage                             | Packages Loaded | Mechanism                             |
+| --------------------------------- | --------------- | ------------------------------------- |
+| **Eager (Initial Boot)**          | ~70             | Cordis profile composition            |
+| **Deferred (After First Paint)**  | ~50             | Manual `activateDeferredPlugins()`    |
+| **Never Loaded (Installed Only)** | ~221            | Transitive dependencies, alternatives |
 
 **Total Installed**: 341 packages in `node_modules/@deepseek-ai/`
 **Actually Loaded at Runtime**: ~120 packages
@@ -20,6 +20,7 @@ These are loaded during `runProfile()` → `boot()` → Cordis context creation.
 ### From `dsh-base/cordis.patch.yml` (Base Profile - ~130 rows, but many disabled)
 
 **ALWAYS ENABLED (Core Services):**
+
 ```
 1.  llm                    → @deepseek-ai/dsh-llm
 2.  deepseek-llm-api-extensions → @deepseek-ai/dsh-deepseek-llm-api-extensions
@@ -117,6 +118,7 @@ These are loaded during `runProfile()` → `boot()` → Cordis context creation.
 ```
 
 **DISABLED IN BASE (via `disabled: true` or `disabled: !!js ...`):**
+
 ```
 - tool-plugin-manager      (disabled: true)
 - plugin-manager           (disabled: !!js "!ctx.get('profileContext')")
@@ -206,6 +208,7 @@ const DEFERRED_ENTRY_IDS = [
 ```
 
 **Two modes:**
+
 1. **`fullDefer = true`** (default for fresh start): ALL enabled rows except `lazydsh` are deferred
 2. **`fullDefer = false`** (resume/pick session): Only `DEFERRED_ENTRY_IDS` are deferred
 
@@ -217,106 +220,107 @@ const DEFERRED_ENTRY_IDS = [
 
 ### ✅ EAGER LOADED (~70 packages)
 
-| Plugin ID | NPM Package | Loaded |
-|-----------|-------------|--------|
-| `llm` | `@deepseek-ai/dsh-llm` | ✅ |
-| `llm-pi-ai` | `@deepseek-ai/dsh-llm-pi-ai` | ✅ |
-| `session` | `@deepseek-ai/dsh-session` | ✅ |
-| `session-persistence-jsonl` | `@deepseek-ai/dsh-session-persistence-jsonl` | ✅ |
-| `agent` | `@deepseek-ai/dsh-agent` | ✅ |
-| `agent-default-model` | `@deepseek-ai/dsh-agent-default-model` | ✅ |
-| `authorization` | `@deepseek-ai/dsh-authorization` | ✅ |
-| `credentials` | `@deepseek-ai/dsh-credentials-local` | ✅ |
-| `working-directory` | `@deepseek-ai/dsh-working-directory` | ✅ |
-| `storage` | `@deepseek-ai/dsh-storage` | ✅ |
-| `storage-json` | `@deepseek-ai/dsh-storage-json` | ✅ |
-| `storage-domain` | `@deepseek-ai/dsh-storage-domain` | ✅ |
-| `session-projection` | `@deepseek-ai/dsh-session-projection` | ✅ |
-| `session-projection-cache` | `@deepseek-ai/dsh-session-projection-cache` | ✅ |
-| `subagent` | `@deepseek-ai/dsh-subagent` | ✅ |
-| `subagent-spawn-in-process` | `@deepseek-ai/dsh-subagent-spawn-in-process` | ✅ |
-| `subagent-fork-in-process` | `@deepseek-ai/dsh-subagent-fork-in-process` | ✅ |
-| `commands` | `@deepseek-ai/dsh-commands` | ✅ |
-| `plan-mode` | `@deepseek-ai/dsh-plan-mode` | ✅ |
-| `permission` | `@deepseek-ai/dsh-permission-presets` | ✅ |
-| `approval` | `@deepseek-ai/dsh-user-approval` | ✅ |
-| `user-questions` | `@deepseek-ai/dsh-user-questions` | ✅ |
-| `token-meter` | `@deepseek-ai/dsh-token-meter` | ✅ |
-| `compaction-basic` | `@deepseek-ai/dsh-compaction-basic` | ✅ |
-| `sandbox` | `@deepseek-ai/dsh-sandbox-local` | ✅ |
-| `sandbox-policy` | `@deepseek-ai/dsh-sandbox-policy` | ✅ |
-| `subprocess` | `@deepseek-ai/dsh-subprocess-local` | ✅ |
-| `session-title` | `@deepseek-ai/dsh-session-title` | ✅ |
-| `session-title-llm` | `@deepseek-ai/dsh-session-title-first-prompt-llm` | ✅ |
-| `attachment-local` | `@deepseek-ai/dsh-attachment-local` | ✅ |
-| `spill-local` | `@deepseek-ai/dsh-spill-local` | ✅ |
-| `spill-policy` | `@deepseek-ai/dsh-spill-policy` | ✅ |
-| `session-checkpoint-policy` | `@deepseek-ai/dsh-session-checkpoint-policy` | ✅ |
-| `tool-result-pruner` | `@deepseek-ai/dsh-compaction-tool-result-pruner` | ✅ |
-| `image-offload` | `@deepseek-ai/dsh-compaction-image-offload` | ✅ |
-| `repeat-tool-reminder` | `@deepseek-ai/dsh-repeat-tool-reminder` | ✅ |
-| `agent-instructions` | `@deepseek-ai/dsh-agent-instructions` | ✅ |
-| `skill` | `@deepseek-ai/dsh-skill` | ✅ |
-| `skill-filesystem` | `@deepseek-ai/dsh-skill-filesystem` | ✅ |
-| `system-prompt` | `@deepseek-ai/dsh-system-prompt` | ✅ |
-| `agent-loop` | `@deepseek-ai/dsh-agent-loop` | ✅ |
-| `fs-sandbox` | `@deepseek-ai/dsh-fs-sandbox` | ✅ |
-| `llm-deepseek` | `@deepseek-ai/dsh-llm-deepseek-api-key` | ✅ |
-| `llm-deepseek-account` | `@deepseek-ai/dsh-llm-deepseek-account` | ✅ |
-| `deepseek-account` | `@deepseek-ai/dsh-deepseek-account` | ✅ |
-| `deepseek-llm-api-extensions` | `@deepseek-ai/dsh-deepseek-llm-api-extensions` | ✅ |
-| `typert` | `@deepseek-ai/dsh-typert-registry` | ✅ |
-| `typert-loader` | `@deepseek-ai/dsh-typert-loader` | ✅ |
-| `typert-gateway` | `@deepseek-ai/dsh-api-gateway` | ✅ |
-| `remote-access` | `@deepseek-ai/dsh-api-remote-access` | ✅ |
-| `session-log-deepseek` | `@deepseek-ai/dsh-session-log-deepseek` | ✅ |
-| `session-query-sqlite` | `@deepseek-ai/dsh-session-query-sqlite` | ✅ (openAt: never) |
-| `otel` | `@deepseek-ai/dsh-otel` | ✅ |
-| `session-telemetry-otel` | `@deepseek-ai/dsh-session-telemetry-otel` | ✅ |
-| `bash-sandbox` | `@deepseek-ai/dsh-bash-sandbox` | ✅ (platform) |
-| `pwsh-sandbox` | `@deepseek-ai/dsh-pwsh-sandbox` | ✅ (platform) |
-| `shell-env` | `@deepseek-ai/dsh-shell-env` | ✅ |
-| `tool-bash` | `@deepseek-ai/dsh-tool-bash` | ⚠️ DEFERRED |
-| `tool-pwsh` | `@deepseek-ai/dsh-tool-pwsh` | ⚠️ DEFERRED |
-| `tool-jobs` | `@deepseek-ai/dsh-tool-jobs` | ⚠️ DEFERRED |
-| `tool-fs` | `@deepseek-ai/dsh-tool-fs` | ⚠️ DEFERRED |
-| `tool-fs-search` | `@deepseek-ai/dsh-tool-fs-search` | ⚠️ DEFERRED |
-| `tool-skill` | `@deepseek-ai/dsh-tool-skill` | ⚠️ DEFERRED |
-| `tool-web` | `@deepseek-ai/dsh-tool-web` | ⚠️ DEFERRED |
-| `web` | `@deepseek-ai/dsh-web` | ⚠️ DEFERRED |
-| `web-search-deepseek` | `@deepseek-ai/dsh-web-search-deepseek` | ⚠️ DEFERRED |
-| `web-deepseek-api` | `@deepseek-ai/dsh-web-deepseek-api` | ⚠️ DEFERRED |
-| `web-fetch-http` | `@deepseek-ai/dsh-web-fetch-http` | ⚠️ DEFERRED |
-| `tool-working-directory` | `@deepseek-ai/dsh-tool-working-directory` | ⚠️ DEFERRED |
-| `tool-schedule` | `@deepseek-ai/dsh-tool-schedule` | ⚠️ DEFERRED (but also inserted by lazydsh) |
-| `tool-ask-user` | `@deepseek-ai/dsh-tool-ask-user` | ⚠️ DEFERRED (but also inserted by lazydsh) |
-| `tool-todo` | `@deepseek-ai/dsh-tool-todo` | ⚠️ DEFERRED |
-| `tool-goal` | `@deepseek-ai/dsh-tool-goal` | ⚠️ DEFERRED |
-| `tool-subagent` | `@deepseek-ai/dsh-tool-subagent` | ⚠️ DEFERRED |
-| `tool-subagent-control` | `@deepseek-ai/dsh-tool-subagent-control` | ⚠️ DEFERRED |
-| `tool-subagent-fork` | `@deepseek-ai/dsh-tool-subagent` | ⚠️ DEFERRED |
-| `tool-agent-team` | `@deepseek-ai/dsh-tool-agent-team` | ⚠️ DEFERRED |
-| `present` | `@deepseek-ai/dsh-tool-present` | ⚠️ DEFERRED (but also inserted by lazydsh) |
-| `tool-workflow` | `@deepseek-ai/dsh-tool-workflow` | ⚠️ DEFERRED |
-| `workflow-ptc` | `@deepseek-ai/dsh-workflow-ptc` | ⚠️ DEFERRED |
-| `ptc-runtime` | `@deepseek-ai/dsh-ptc-runtime-node` | ⚠️ DEFERRED |
-| `mcp-resources` | `@deepseek-ai/dsh-mcp-resources` | ⚠️ DEFERRED |
-| `tool-executor-native` | `@deepseek-ai/dsh-tool-executor-native` | ✅ |
-| `tool-executor-ptc` | `@deepseek-ai/dsh-tool-executor-ptc` | ✅ (disabled) |
-| `timeout-policy` | `@deepseek-ai/dsh-tool-call-timeout-policy` | ✅ |
-| `command-compact` | `@deepseek-ai/dsh-command-compact` | ✅ |
-| `command-feedback` | `@deepseek-ai/dsh-command-feedback` | ✅ |
-| `command-goal` | `@deepseek-ai/dsh-command-goal` | ✅ |
-| `goal` | `@deepseek-ai/dsh-goal` | ✅ |
-| `goal-round-driver` | `@deepseek-ai/dsh-goal-round-driver` | ✅ |
-| `tool-skill` | `@deepseek-ai/dsh-tool-skill` | ⚠️ DEFERRED |
-| `tool-plugin-manager` | `@deepseek-ai/dsh-plugin-manager/tools` | ✅ (enabled by lazydsh) |
-| `plugin-manager` | `@deepseek-ai/dsh-plugin-manager` | ⚠️ DEFERRED |
-| `hmr` | `@deepseek-ai/dsh-hmr` | ✅ (disabled by lazydsh) |
-| `config-editor` | `@deepseek-ai/dsh-config-editor` | ✅ (disabled) |
-| `settings` | `@deepseek-ai/dsh-settings` | ✅ (disabled) |
+| Plugin ID                     | NPM Package                                       | Loaded                                     |
+| ----------------------------- | ------------------------------------------------- | ------------------------------------------ |
+| `llm`                         | `@deepseek-ai/dsh-llm`                            | ✅                                         |
+| `llm-pi-ai`                   | `@deepseek-ai/dsh-llm-pi-ai`                      | ✅                                         |
+| `session`                     | `@deepseek-ai/dsh-session`                        | ✅                                         |
+| `session-persistence-jsonl`   | `@deepseek-ai/dsh-session-persistence-jsonl`      | ✅                                         |
+| `agent`                       | `@deepseek-ai/dsh-agent`                          | ✅                                         |
+| `agent-default-model`         | `@deepseek-ai/dsh-agent-default-model`            | ✅                                         |
+| `authorization`               | `@deepseek-ai/dsh-authorization`                  | ✅                                         |
+| `credentials`                 | `@deepseek-ai/dsh-credentials-local`              | ✅                                         |
+| `working-directory`           | `@deepseek-ai/dsh-working-directory`              | ✅                                         |
+| `storage`                     | `@deepseek-ai/dsh-storage`                        | ✅                                         |
+| `storage-json`                | `@deepseek-ai/dsh-storage-json`                   | ✅                                         |
+| `storage-domain`              | `@deepseek-ai/dsh-storage-domain`                 | ✅                                         |
+| `session-projection`          | `@deepseek-ai/dsh-session-projection`             | ✅                                         |
+| `session-projection-cache`    | `@deepseek-ai/dsh-session-projection-cache`       | ✅                                         |
+| `subagent`                    | `@deepseek-ai/dsh-subagent`                       | ✅                                         |
+| `subagent-spawn-in-process`   | `@deepseek-ai/dsh-subagent-spawn-in-process`      | ✅                                         |
+| `subagent-fork-in-process`    | `@deepseek-ai/dsh-subagent-fork-in-process`       | ✅                                         |
+| `commands`                    | `@deepseek-ai/dsh-commands`                       | ✅                                         |
+| `plan-mode`                   | `@deepseek-ai/dsh-plan-mode`                      | ✅                                         |
+| `permission`                  | `@deepseek-ai/dsh-permission-presets`             | ✅                                         |
+| `approval`                    | `@deepseek-ai/dsh-user-approval`                  | ✅                                         |
+| `user-questions`              | `@deepseek-ai/dsh-user-questions`                 | ✅                                         |
+| `token-meter`                 | `@deepseek-ai/dsh-token-meter`                    | ✅                                         |
+| `compaction-basic`            | `@deepseek-ai/dsh-compaction-basic`               | ✅                                         |
+| `sandbox`                     | `@deepseek-ai/dsh-sandbox-local`                  | ✅                                         |
+| `sandbox-policy`              | `@deepseek-ai/dsh-sandbox-policy`                 | ✅                                         |
+| `subprocess`                  | `@deepseek-ai/dsh-subprocess-local`               | ✅                                         |
+| `session-title`               | `@deepseek-ai/dsh-session-title`                  | ✅                                         |
+| `session-title-llm`           | `@deepseek-ai/dsh-session-title-first-prompt-llm` | ✅                                         |
+| `attachment-local`            | `@deepseek-ai/dsh-attachment-local`               | ✅                                         |
+| `spill-local`                 | `@deepseek-ai/dsh-spill-local`                    | ✅                                         |
+| `spill-policy`                | `@deepseek-ai/dsh-spill-policy`                   | ✅                                         |
+| `session-checkpoint-policy`   | `@deepseek-ai/dsh-session-checkpoint-policy`      | ✅                                         |
+| `tool-result-pruner`          | `@deepseek-ai/dsh-compaction-tool-result-pruner`  | ✅                                         |
+| `image-offload`               | `@deepseek-ai/dsh-compaction-image-offload`       | ✅                                         |
+| `repeat-tool-reminder`        | `@deepseek-ai/dsh-repeat-tool-reminder`           | ✅                                         |
+| `agent-instructions`          | `@deepseek-ai/dsh-agent-instructions`             | ✅                                         |
+| `skill`                       | `@deepseek-ai/dsh-skill`                          | ✅                                         |
+| `skill-filesystem`            | `@deepseek-ai/dsh-skill-filesystem`               | ✅                                         |
+| `system-prompt`               | `@deepseek-ai/dsh-system-prompt`                  | ✅                                         |
+| `agent-loop`                  | `@deepseek-ai/dsh-agent-loop`                     | ✅                                         |
+| `fs-sandbox`                  | `@deepseek-ai/dsh-fs-sandbox`                     | ✅                                         |
+| `llm-deepseek`                | `@deepseek-ai/dsh-llm-deepseek-api-key`           | ✅                                         |
+| `llm-deepseek-account`        | `@deepseek-ai/dsh-llm-deepseek-account`           | ✅                                         |
+| `deepseek-account`            | `@deepseek-ai/dsh-deepseek-account`               | ✅                                         |
+| `deepseek-llm-api-extensions` | `@deepseek-ai/dsh-deepseek-llm-api-extensions`    | ✅                                         |
+| `typert`                      | `@deepseek-ai/dsh-typert-registry`                | ✅                                         |
+| `typert-loader`               | `@deepseek-ai/dsh-typert-loader`                  | ✅                                         |
+| `typert-gateway`              | `@deepseek-ai/dsh-api-gateway`                    | ✅                                         |
+| `remote-access`               | `@deepseek-ai/dsh-api-remote-access`              | ✅                                         |
+| `session-log-deepseek`        | `@deepseek-ai/dsh-session-log-deepseek`           | ✅                                         |
+| `session-query-sqlite`        | `@deepseek-ai/dsh-session-query-sqlite`           | ✅ (openAt: never)                         |
+| `otel`                        | `@deepseek-ai/dsh-otel`                           | ✅                                         |
+| `session-telemetry-otel`      | `@deepseek-ai/dsh-session-telemetry-otel`         | ✅                                         |
+| `bash-sandbox`                | `@deepseek-ai/dsh-bash-sandbox`                   | ✅ (platform)                              |
+| `pwsh-sandbox`                | `@deepseek-ai/dsh-pwsh-sandbox`                   | ✅ (platform)                              |
+| `shell-env`                   | `@deepseek-ai/dsh-shell-env`                      | ✅                                         |
+| `tool-bash`                   | `@deepseek-ai/dsh-tool-bash`                      | ⚠️ DEFERRED                                |
+| `tool-pwsh`                   | `@deepseek-ai/dsh-tool-pwsh`                      | ⚠️ DEFERRED                                |
+| `tool-jobs`                   | `@deepseek-ai/dsh-tool-jobs`                      | ⚠️ DEFERRED                                |
+| `tool-fs`                     | `@deepseek-ai/dsh-tool-fs`                        | ⚠️ DEFERRED                                |
+| `tool-fs-search`              | `@deepseek-ai/dsh-tool-fs-search`                 | ⚠️ DEFERRED                                |
+| `tool-skill`                  | `@deepseek-ai/dsh-tool-skill`                     | ⚠️ DEFERRED                                |
+| `tool-web`                    | `@deepseek-ai/dsh-tool-web`                       | ⚠️ DEFERRED                                |
+| `web`                         | `@deepseek-ai/dsh-web`                            | ⚠️ DEFERRED                                |
+| `web-search-deepseek`         | `@deepseek-ai/dsh-web-search-deepseek`            | ⚠️ DEFERRED                                |
+| `web-deepseek-api`            | `@deepseek-ai/dsh-web-deepseek-api`               | ⚠️ DEFERRED                                |
+| `web-fetch-http`              | `@deepseek-ai/dsh-web-fetch-http`                 | ⚠️ DEFERRED                                |
+| `tool-working-directory`      | `@deepseek-ai/dsh-tool-working-directory`         | ⚠️ DEFERRED                                |
+| `tool-schedule`               | `@deepseek-ai/dsh-tool-schedule`                  | ⚠️ DEFERRED (but also inserted by lazydsh) |
+| `tool-ask-user`               | `@deepseek-ai/dsh-tool-ask-user`                  | ⚠️ DEFERRED (but also inserted by lazydsh) |
+| `tool-todo`                   | `@deepseek-ai/dsh-tool-todo`                      | ⚠️ DEFERRED                                |
+| `tool-goal`                   | `@deepseek-ai/dsh-tool-goal`                      | ⚠️ DEFERRED                                |
+| `tool-subagent`               | `@deepseek-ai/dsh-tool-subagent`                  | ⚠️ DEFERRED                                |
+| `tool-subagent-control`       | `@deepseek-ai/dsh-tool-subagent-control`          | ⚠️ DEFERRED                                |
+| `tool-subagent-fork`          | `@deepseek-ai/dsh-tool-subagent`                  | ⚠️ DEFERRED                                |
+| `tool-agent-team`             | `@deepseek-ai/dsh-tool-agent-team`                | ⚠️ DEFERRED                                |
+| `present`                     | `@deepseek-ai/dsh-tool-present`                   | ⚠️ DEFERRED (but also inserted by lazydsh) |
+| `tool-workflow`               | `@deepseek-ai/dsh-tool-workflow`                  | ⚠️ DEFERRED                                |
+| `workflow-ptc`                | `@deepseek-ai/dsh-workflow-ptc`                   | ⚠️ DEFERRED                                |
+| `ptc-runtime`                 | `@deepseek-ai/dsh-ptc-runtime-node`               | ⚠️ DEFERRED                                |
+| `mcp-resources`               | `@deepseek-ai/dsh-mcp-resources`                  | ⚠️ DEFERRED                                |
+| `tool-executor-native`        | `@deepseek-ai/dsh-tool-executor-native`           | ✅                                         |
+| `tool-executor-ptc`           | `@deepseek-ai/dsh-tool-executor-ptc`              | ✅ (disabled)                              |
+| `timeout-policy`              | `@deepseek-ai/dsh-tool-call-timeout-policy`       | ✅                                         |
+| `command-compact`             | `@deepseek-ai/dsh-command-compact`                | ✅                                         |
+| `command-feedback`            | `@deepseek-ai/dsh-command-feedback`               | ✅                                         |
+| `command-goal`                | `@deepseek-ai/dsh-command-goal`                   | ✅                                         |
+| `goal`                        | `@deepseek-ai/dsh-goal`                           | ✅                                         |
+| `goal-round-driver`           | `@deepseek-ai/dsh-goal-round-driver`              | ✅                                         |
+| `tool-skill`                  | `@deepseek-ai/dsh-tool-skill`                     | ⚠️ DEFERRED                                |
+| `tool-plugin-manager`         | `@deepseek-ai/dsh-plugin-manager/tools`           | ✅ (enabled by lazydsh)                    |
+| `plugin-manager`              | `@deepseek-ai/dsh-plugin-manager`                 | ⚠️ DEFERRED                                |
+| `hmr`                         | `@deepseek-ai/dsh-hmr`                            | ✅ (disabled by lazydsh)                   |
+| `config-editor`               | `@deepseek-ai/dsh-config-editor`                  | ✅ (disabled)                              |
+| `settings`                    | `@deepseek-ai/dsh-settings`                       | ✅ (disabled)                              |
 
 **LAZYDSH INSERTED (EAGER):**
+
 ```
 connection              → @deepseek-ai/dsh-client-connection       ✅
 file-upload             → @deepseek-ai/dsh-client-file-upload      ✅
@@ -334,39 +338,39 @@ deliverable-file-refs   → @deepseek-ai/dsh-deliverable-file-references ✅
 
 These are dynamically imported via `activateDeferredPlugins()`:
 
-| Plugin ID | NPM Package | Notes |
-|-----------|-------------|-------|
-| `tool-bash` | `@deepseek-ai/dsh-tool-bash` | Sandboxed bash |
-| `tool-pwsh` | `@deepseek-ai/dsh-tool-pwsh` | PowerShell (win32 only) |
-| `tool-jobs` | `@deepseek-ai/dsh-tool-jobs` | Background jobs |
-| `tool-fs` | `@deepseek-ai/dsh-tool-fs` | Filesystem tools |
-| `tool-fs-search` | `@deepseek-ai/dsh-tool-fs-search` | File search |
-| `tool-working-directory` | `@deepseek-ai/dsh-tool-working-directory` | CWD tool |
-| `tool-skill` | `@deepseek-ai/dsh-tool-skill` | Skill invocation |
-| `tool-web` | `@deepseek-ai/dsh-tool-web` | Web search/fetch |
-| `web` | `@deepseek-ai/dsh-web` | Web service |
-| `web-search-deepseek` | `@deepseek-ai/dsh-web-search-deepseek` | DeepSeek search |
-| `web-deepseek-api` | `@deepseek-ai/dsh-web-deepseek-api` | |
-| `web-fetch-http` | `@deepseek-ai/dsh-web-fetch-http` | |
-| `tool-todo` | `@deepseek-ai/dsh-tool-todo` | Todo tracking |
-| `tool-goal` | `@deepseek-ai/dsh-tool-goal` | Goal tool |
-| `tool-subagent` | `@deepseek-ai/dsh-tool-subagent` | Subagent tool (spawn) |
-| `tool-subagent-control` | `@deepseek-ai/dsh-tool-subagent-control` | Control |
-| `tool-subagent-fork` | `@deepseek-ai/dsh-tool-subagent` | Fork variant |
-| `tool-agent-team` | `@deepseek-ai/dsh-tool-agent-team` | Agent teams |
-| `tool-workflow` | `@deepseek-ai/dsh-tool-workflow` | Workflow tool |
-| `workflow-ptc` | `@deepseek-ai/dsh-workflow-ptc` | PTC workflow |
-| `ptc-runtime` | `@deepseek-ai/dsh-ptc-runtime-node` | PTC runtime |
-| `mcp-resources` | `@deepseek-ai/dsh-mcp-resources` | MCP resources |
-| `present` | `@deepseek-ai/dsh-tool-present` | Presentation (if not eager) |
-| `plugin-manager` | `@deepseek-ai/dsh-plugin-manager` | Plugin manager |
-| `tool-plugin-manager` | `@deepseek-ai/dsh-plugin-manager/tools` | Plugin manager tools |
-| `otel` | `@deepseek-ai/dsh-otel` | OpenTelemetry |
-| `session-telemetry-otel` | `@deepseek-ai/dsh-session-telemetry-otel` | OTel telemetry |
-| `typert` | `@deepseek-ai/dsh-typert-registry` | Typert registry |
-| `typert-loader` | `@deepseek-ai/dsh-typert-loader` | |
-| `typert-gateway` | `@deepseek-ai/dsh-api-gateway` | |
-| `remote-access` | `@deepseek-ai/dsh-api-remote-access` | |
+| Plugin ID                | NPM Package                               | Notes                       |
+| ------------------------ | ----------------------------------------- | --------------------------- |
+| `tool-bash`              | `@deepseek-ai/dsh-tool-bash`              | Sandboxed bash              |
+| `tool-pwsh`              | `@deepseek-ai/dsh-tool-pwsh`              | PowerShell (win32 only)     |
+| `tool-jobs`              | `@deepseek-ai/dsh-tool-jobs`              | Background jobs             |
+| `tool-fs`                | `@deepseek-ai/dsh-tool-fs`                | Filesystem tools            |
+| `tool-fs-search`         | `@deepseek-ai/dsh-tool-fs-search`         | File search                 |
+| `tool-working-directory` | `@deepseek-ai/dsh-tool-working-directory` | CWD tool                    |
+| `tool-skill`             | `@deepseek-ai/dsh-tool-skill`             | Skill invocation            |
+| `tool-web`               | `@deepseek-ai/dsh-tool-web`               | Web search/fetch            |
+| `web`                    | `@deepseek-ai/dsh-web`                    | Web service                 |
+| `web-search-deepseek`    | `@deepseek-ai/dsh-web-search-deepseek`    | DeepSeek search             |
+| `web-deepseek-api`       | `@deepseek-ai/dsh-web-deepseek-api`       |                             |
+| `web-fetch-http`         | `@deepseek-ai/dsh-web-fetch-http`         |                             |
+| `tool-todo`              | `@deepseek-ai/dsh-tool-todo`              | Todo tracking               |
+| `tool-goal`              | `@deepseek-ai/dsh-tool-goal`              | Goal tool                   |
+| `tool-subagent`          | `@deepseek-ai/dsh-tool-subagent`          | Subagent tool (spawn)       |
+| `tool-subagent-control`  | `@deepseek-ai/dsh-tool-subagent-control`  | Control                     |
+| `tool-subagent-fork`     | `@deepseek-ai/dsh-tool-subagent`          | Fork variant                |
+| `tool-agent-team`        | `@deepseek-ai/dsh-tool-agent-team`        | Agent teams                 |
+| `tool-workflow`          | `@deepseek-ai/dsh-tool-workflow`          | Workflow tool               |
+| `workflow-ptc`           | `@deepseek-ai/dsh-workflow-ptc`           | PTC workflow                |
+| `ptc-runtime`            | `@deepseek-ai/dsh-ptc-runtime-node`       | PTC runtime                 |
+| `mcp-resources`          | `@deepseek-ai/dsh-mcp-resources`          | MCP resources               |
+| `present`                | `@deepseek-ai/dsh-tool-present`           | Presentation (if not eager) |
+| `plugin-manager`         | `@deepseek-ai/dsh-plugin-manager`         | Plugin manager              |
+| `tool-plugin-manager`    | `@deepseek-ai/dsh-plugin-manager/tools`   | Plugin manager tools        |
+| `otel`                   | `@deepseek-ai/dsh-otel`                   | OpenTelemetry               |
+| `session-telemetry-otel` | `@deepseek-ai/dsh-session-telemetry-otel` | OTel telemetry              |
+| `typert`                 | `@deepseek-ai/dsh-typert-registry`        | Typert registry             |
+| `typert-loader`          | `@deepseek-ai/dsh-typert-loader`          |                             |
+| `typert-gateway`         | `@deepseek-ai/dsh-api-gateway`            |                             |
+| `remote-access`          | `@deepseek-ai/dsh-api-remote-access`      |                             |
 
 **Note**: Some like `tool-schedule`, `tool-ask-user`, `present` are **also inserted eagerly** by lazydsh, so they load twice (eager wins, deferred skipped).
 
@@ -375,6 +379,7 @@ These are dynamically imported via `activateDeferredPlugins()`:
 ## 🚫 NEVER LOADED (Installed but Not Used at Runtime)
 
 ### Alternative Implementations (28 packages)
+
 ```
 @deepseek-ai/dsh-tool-bash-persistent
 @deepseek-ai/dsh-tool-pwsh-persistent
@@ -399,6 +404,7 @@ These are dynamically imported via `activateDeferredPlugins()`:
 ```
 
 ### Web UI Stack (40+ packages)
+
 ```
 @deepseek-ai/dsh-client-ui-* (all 40+ packages)
 @deepseek-ai/dsh-client-web
@@ -410,6 +416,7 @@ These are dynamically imported via `activateDeferredPlugins()`:
 ```
 
 ### Experimental (30+ packages)
+
 ```
 @deepseek-ai/dsh-experimental-*
 @deepseek-ai/dsh-cua
@@ -418,6 +425,7 @@ These are dynamically imported via `activateDeferredPlugins()`:
 ```
 
 ### Cloud/Remote (10+ packages)
+
 ```
 @deepseek-ai/dsh-e2b
 @deepseek-ai/dsh-fs-e2b
@@ -432,6 +440,7 @@ These are dynamically imported via `activateDeferredPlugins()`:
 ```
 
 ### SQLite Variants (6 packages)
+
 ```
 @deepseek-ai/dsh-session-persistence-sqlite
 @deepseek-ai/dsh-session-query-sqlite (loaded but openAt: never)
@@ -441,6 +450,7 @@ These are dynamically imported via `activateDeferredPlugins()`:
 ```
 
 ### Subagent Variants (6 packages)
+
 ```
 @deepseek-ai/dsh-subagent-acp
 @deepseek-ai/dsh-subagent-claude-code
@@ -450,6 +460,7 @@ These are dynamically imported via `activateDeferredPlugins()`:
 ```
 
 ### Platform-Specific Native (11 packages)
+
 ```
 @deepseek-ai/node-addon-landlock-run-linux-arm64
 @deepseek-ai/node-addon-landlock-run-linux-x64 (loaded)
@@ -467,6 +478,7 @@ These are dynamically imported via `activateDeferredPlugins()`:
 ```
 
 ### Windows-Only (7 packages)
+
 ```
 @deepseek-ai/dsh-win32-process
 @deepseek-ai/dsh-pwsh-local
@@ -477,6 +489,7 @@ These are dynamically imported via `activateDeferredPlugins()`:
 ```
 
 ### Testing/Mock/Demos (10 packages)
+
 ```
 @deepseek-ai/dsh-llm-mock-server
 @deepseek-ai/dsh-llm-replay
@@ -491,6 +504,7 @@ These are dynamically imported via `activateDeferredPlugins()`:
 ```
 
 ### Infrastructure (10 packages)
+
 ```
 @deepseek-ai/dsh-host-webserver
 @deepseek-ai/dsh-host-frontend-static
@@ -507,6 +521,7 @@ These are dynamically imported via `activateDeferredPlugins()`:
 ```
 
 ### Utilities/Internal (15 packages)
+
 ```
 @deepseek-ai/dsh-deque
 @deepseek-ai/dsh-error
@@ -597,12 +612,12 @@ These are dynamically imported via `activateDeferredPlugins()`:
 
 ## 📈 FINAL STATISTICS
 
-| Category | Count | % of 341 Installed |
-|----------|-------|-------------------|
-| **Eager Loaded** | ~70 | 20.5% |
-| **Deferred Loaded** | ~40 | 11.7% |
-| **Loaded (Eager + Deferred)** | **~110** | **32.3%** |
-| **Never Loaded (Installed Only)** | **~231** | **67.7%** |
+| Category                          | Count    | % of 341 Installed |
+| --------------------------------- | -------- | ------------------ |
+| **Eager Loaded**                  | ~70      | 20.5%              |
+| **Deferred Loaded**               | ~40      | 11.7%              |
+| **Loaded (Eager + Deferred)**     | **~110** | **32.3%**          |
+| **Never Loaded (Installed Only)** | **~231** | **67.7%**          |
 
 ### Why So Many Never Loaded?
 
@@ -623,19 +638,19 @@ These are dynamically imported via `activateDeferredPlugins()`:
 
 **lazydsh loads ~110 packages at runtime** (70 eager + 40 deferred), which provides:
 
-| Capability | Packages |
-|------------|----------|
-| **Core Agent** | agent, agent-loop, agent-default-model, subagent, subagent-spawn/fork |
-| **Session** | session, session-persistence-jsonl, session-title, session-title-llm, session-projection, session-query-sqlite |
-| **LLM** | llm, llm-pi-ai, llm-deepseek, llm-deepseek-account, llm-retry |
-| **Tools (Eager)** | tool-schedule, tool-ask-user, tool-present, tool-executor-native |
+| Capability           | Packages                                                                                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Core Agent**       | agent, agent-loop, agent-default-model, subagent, subagent-spawn/fork                                                                                                     |
+| **Session**          | session, session-persistence-jsonl, session-title, session-title-llm, session-projection, session-query-sqlite                                                            |
+| **LLM**              | llm, llm-pi-ai, llm-deepseek, llm-deepseek-account, llm-retry                                                                                                             |
+| **Tools (Eager)**    | tool-schedule, tool-ask-user, tool-present, tool-executor-native                                                                                                          |
 | **Tools (Deferred)** | tool-bash, tool-fs, tool-fs-search, tool-web, tool-subagent, tool-workflow, tool-todo, tool-goal, tool-skill, tool-agent-team, tool-jobs, tool-working-directory, present |
-| **MCP/LSP** | mcp-resources (deferred), skill, skill-filesystem |
-| **Workspace** | workspace, working-directory, storage, storage-json, storage-domain, file-reference-local, deliverable-file-references |
-| **Auth** | authorization, credentials, deepseek-account, connection, file-upload |
-| **Permissions** | permission, approval, user-questions, sandbox, sandbox-policy |
-| **Compaction** | compaction-basic, token-meter, spill, tool-result-pruner, image-offload, session-checkpoint-policy |
-| **Terminal** | subprocess, bash-sandbox/pwsh-sandbox, shell-env |
-| **System** | commands, plan-mode, system-prompt, agent-instructions, repeat-tool-reminder, timeout-policy, goal, goal-round-driver |
+| **MCP/LSP**          | mcp-resources (deferred), skill, skill-filesystem                                                                                                                         |
+| **Workspace**        | workspace, working-directory, storage, storage-json, storage-domain, file-reference-local, deliverable-file-references                                                    |
+| **Auth**             | authorization, credentials, deepseek-account, connection, file-upload                                                                                                     |
+| **Permissions**      | permission, approval, user-questions, sandbox, sandbox-policy                                                                                                             |
+| **Compaction**       | compaction-basic, token-meter, spill, tool-result-pruner, image-offload, session-checkpoint-policy                                                                        |
+| **Terminal**         | subprocess, bash-sandbox/pwsh-sandbox, shell-env                                                                                                                          |
+| **System**           | commands, plan-mode, system-prompt, agent-instructions, repeat-tool-reminder, timeout-policy, goal, goal-round-driver                                                     |
 
 **The other 231 installed packages are correctly NOT loaded** - they're alternative implementations, web UI, experimental, cloud, platform-specific, or testing code that has no place in a terminal TUI.
