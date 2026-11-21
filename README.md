@@ -268,7 +268,7 @@ Specialized terminal card for shell commands:
 - **Current marker** — ✓ shows active model
 - **Default badge** — "· default" for provider default
 - **Save default** — `Ctrl+S` persists to preferences
-- **Async refresh** — fetches catalog with progress indicator
+- **Catalog** — every model in the bundled table in one fuzzy list (no network fetch); `scoped` limits to providers you can authenticate against
 - **Error handling** — shows provider failures inline
 
 ## Session Selector (`/resume`)

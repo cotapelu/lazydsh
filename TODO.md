@@ -482,7 +482,7 @@ All features implemented, tested, and documented.
 
 | Component                                   | Status     | Effort  | Priority                                |
 | ------------------------------------------- | ---------- | ------- | --------------------------------------- |
-| `tui-renderer.ts`                           | ❌ Missing | 1 day   | **CRITICAL** - TUI abstraction layer    |
+| `tui-renderer.ts`                           | ✅ Wired (§8.11) | — | `ui.ts` builds the TUI via `createInteractiveTui` (search styling, URL open, select-to-copy) |
 | `interactive-mode.ts`                       | ❌ Missing | 5 days  | **CRITICAL** - Main orchestration class |
 | `interactive-mode.ts` - full feature parity | ❌         | 10 days | **CRITICAL** - Main orchestration class |
 
@@ -492,7 +492,7 @@ All features implemented, tested, and documented.
 | ---------------------- | -------- | ------ | ------------------------------------------------------ |
 | `oauth-selector.ts`    | ⚠️ Basic | 3 days | Provider status, brand animations, auth type selection |
 | `session-selector.ts`  | ⚠️ Basic | 4 days | Tree view, progress loading, delete/rename             |
-| `model-selector.ts`    | ⚠️ Basic | 3 days | Async refresh, save-as-default                         |
+| `model-selector.ts`    | ✅ Wired (§8.12) | — | `/model` opens the fuzzy selector (scoped/all, save default, current marker) |
 | `provider-brand.ts`    | ❌       | 2 days | Animated brand styles (Radius, OpenRouter)             |
 | `auth-url.ts`          | ⚠️       | 1 day  | OAuth URL display with copy/click                      |
 | `thinking-selector.ts` | ✅       | -      | Done                                                   |
@@ -667,9 +667,9 @@ All features implemented, tested, and documented.
 
 ## 🎯 IMMEDIATE NEXT STEPS (Priority Order)
 
-### 1. CRITICAL: Create `tui-renderer.ts` (1 day)
+### 1. ✅ DONE (§8.11): `tui-renderer.ts` wired
 
-Port from pi's `tui-renderer.js` - provides TUI abstraction layer with:
+Ported from pi's `tui-renderer.js` and now used by `ui.ts` — provides TUI abstraction with:
 
 - `createInteractiveTui()` - creates TuiAltScreen/TuiMainScreen
 - `createInteractiveTuiReference()` - stable reference for components
@@ -713,7 +713,7 @@ Main orchestration class `InteractiveMode` with:
 | ---------------------- | ------ | ------------------------------------------------------ |
 | `oauth-selector.ts`    | 3 days | Provider status, brand animations, auth type selection |
 | `session-selector.ts`  | 4 days | Tree view, progress loading, delete/rename             |
-| `model-selector.ts`    | 3 days | Async refresh, save-as-default                         |
+| ~~`model-selector.ts`~~ | done (§8.12) | Fuzzy picker wired: scoped/all, save-as-default      |
 | `provider-brand.ts`    | 2 days | Animated brand styles (Radius, OpenRouter)             |
 | `auth-url.ts`          | 1 day  | OAuth URL display with copy/click                      |
 | `thinking-selector.ts` | 2 days | Fuzzy search, save-as-default                          |
@@ -881,7 +881,7 @@ Main orchestration class `InteractiveMode` with:
 | `interactive-mode.ts`                                    | 5 days | **CRITICAL** |
 | `oauth-selector.ts` full parity                          | 3 days | **HIGH**     |
 | `session-selector.ts` tree view, progress, delete/rename | 4 days | **HIGH**     |
-| `model-selector.ts` async refresh, save-as-default       | 3 days | **HIGH**     |
+| ~~`model-selector.ts` async refresh, save-as-default~~   | done (§8.12) | —        |
 | `provider-brand.ts`                                      | 2 days | **HIGH**     |
 | `auth-url.ts`                                            | 1 day  | **HIGH**     |
 | `thinking-selector.ts`                                   | 2 days | **HIGH**     |
@@ -1022,6 +1022,21 @@ have both `tool-execution.ts` and the approval panel consume it.
 - [x] **Theme selector reachable** — `/settings` → Appearance → Theme now opens the real `ThemeSelectorComponent` (all built-in + user themes) with live preview; selecting persists through the theme controller, cancelling restores the persisted theme. `SettingsSelectorComponent` gained an `onActivate` hook plus injected `currentTheme`/`version` values (the About version row showed a stale `0.2.0`).
 - [x] **Thinking selector reachable** — `/effort` now opens `ThinkingSelectorComponent` (fuzzy search, current/default markers); Enter applies the level, Ctrl+S persists it as the route default (`saveDefaultEffort`).
 - [x] Tests: `test/settings-selector.test.ts` (theme row delegates, toggles keep working, real version) + `test/thinking-selector.test.ts` (list, select, save-default, filter). Suite: 118/118 passing.
+
+### 8.11 Wire the remaining orphans or delete them (2026-11-20)
+
+Follow-up to 8.10: the same dead-claim pattern covered the rest of the gap-analysis inventory.
+
+- [x] **Theme schema validation is real** — `theme-schema.ts` compiled its validator through a `require("typebox")` branch that cannot run in this ESM package (nothing ever called `setThemeJsonValidator`, and `validateTheme` would have crashed). The validator now compiles from the static `typebox/compile` import, and `loadThemeJson` validates **user-authored** themes (built-ins stay unvalidated for startup cost). A malformed `~/.config/lazydsh/themes/*.json` now fails loudly through `setTheme` → `{ success: false, error }` → the controller's "Failed to load theme … Fell back to the default theme." path, and the theme picker shows the error inline.
+- [x] **`tui-renderer.ts` is real** — `ui.ts` built `TuiAltScreen` inline with a bare `dim("↓ latest")` indicator, so the module was orphaned. It now constructs the TUI through `createInteractiveTui({ tuiMode: "fullscreen", mouse: true })`, which adds transcript search match styling, the shortcut-aware jump-to-latest pill, URL click-through (`openUrl`), and select-to-copy via the clipboard helper. `InteractiveTuiOptions` gained `mouse`, and the factory returns a typed `TUI` (`createInteractiveTuiReference` too).
+- [x] **Deleted dead code** — `ui-commands.ts` was a stale duplicate of `canRunDuringTurn`/`shouldQueueDuringTurn` (already defined in `ui.ts`, with a divergent regex nobody imported); `chat-viewport.ts` was superseded by the inline layout in `ui.ts`. Kept: `themed-text.ts` and `components/index.ts` (part of the component inventory; no current call site).
+- [x] Tests: `test/theme-schema.test.ts` (valid docs pass; bad color/appearance/extra keys rejected; an on-disk broken user theme fails loudly, falls back, and leaves the previous theme working). Suite: 121/121 passing.
+
+### 8.12 Wire `ModelSelectorComponent` (2026-11-20)
+
+- [x] **`/model` uses the real selector** — the interactive path still ran the two-step `SearchPicker` (provider → model), leaving the ported `ModelSelectorComponent` (fuzzy search across every provider at once, current marker, `· default` badge, Tab scoped/all, Ctrl+S save-as-default) orphaned. `pickModel` now opens the component and disposes it on select/cancel so its refresh timer cannot leak.
+- [x] **Adapter for the missing contract** — the component was ported against pi's `ModelRuntime` (`getAvailableSnapshot`/`getModel`/`refresh`), which the DSH `llm` service does not expose. `src/interactive-mode/model-catalog-runtime.ts` presents lazydsh's own catalog (the same table `--list` and route validation use) in that shape; with no live catalog service there is no `refresh`, which the coordinator treats as already fresh. Startup (`pickProviderModel` for a known provider) keeps the fast single-provider path.
+- [x] Tests: `test/model-catalog-runtime.test.ts` (snapshot, provider narrowing, lookup, absent refresh). Suite: 123/123 passing.
 
 ### Done criteria
 
