@@ -2,7 +2,12 @@ import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 import { stripVTControlCharacters } from "node:util";
 import { visibleWidth } from "@earendil-works/pi-tui";
-import { detailDiff, detailText, prettyArguments, readFileDiffs } from "../src/detail.ts";
+import {
+  detailDiff,
+  detailText,
+  prettyArguments,
+  readFileDiffs,
+} from "../src/interactive-mode/detail.ts";
 
 test("tool arguments pretty-print when valid and stay readable when partial", () => {
   assert.equal(

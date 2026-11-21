@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import { formatNotification, terminalColor } from "./theme.ts";
-import { packageVersion } from "./version.ts";
-import { loadModel, preferencesPath } from "./preferences.ts";
-import { normalizeProvider } from "./provider.ts";
+import { formatNotification, terminalColor } from "./interactive-mode/theme.ts";
+import { packageVersion } from "./utils/version.ts";
+import { loadModel, preferencesPath } from "./runtime/preferences.ts";
+import { normalizeProvider } from "./runtime/provider.ts";
 import type {} from "./plugin.ts";
 import { parseArgs } from "node:util";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
@@ -172,7 +172,7 @@ async function main() {
       )
     )
       throw new Error("upgrade does not accept flags other than --help.");
-    const { upgrade } = await import("./upgrade.ts");
+    const { upgrade } = await import("./runtime/upgrade.ts");
     await upgrade(fileURLToPath(new URL("..", import.meta.url)));
     return;
   }
@@ -187,7 +187,7 @@ async function main() {
   )
     throw new Error("Use login/logout [provider] with --home, --cwd, or --patch only.");
   if (values.list) {
-    const { providers, models } = await import("./catalog.ts");
+    const { providers, models } = await import("./runtime/catalog.ts");
     for (const id of providers)
       console.log(
         `${id}\n${models(id)
@@ -222,7 +222,7 @@ async function main() {
   // tables it imports) is needed; the app applies the provider patch after
   // the first frame instead.
   const catalogDeferred = command === undefined && values.resume === undefined;
-  const catalog = catalogDeferred ? undefined : await import("./catalog.ts");
+  const catalog = catalogDeferred ? undefined : await import("./runtime/catalog.ts");
   const saved =
     command === "login" || command === "logout"
       ? undefined
@@ -245,9 +245,9 @@ async function main() {
     catalog.validateRoute(provider, model, values.patch);
   if (command === "ask" && !model) throw new Error("Choose a model with --model before using ask.");
   const [{ ensureProfile, runProfile }, { loadLayeredEnv }, { pluginPatch }] = await Promise.all([
-    import("./dsh-boot.ts"),
+    import("./runtime/dsh-boot.ts"),
     import("@deepseek-ai/dsh-app-boot"),
-    import("./plugin-patch.ts"),
+    import("./runtime/plugin-patch.ts"),
   ]);
   const directory = await mkdtemp(join(tmpdir(), "lazydsh-"));
   try {

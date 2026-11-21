@@ -1,9 +1,9 @@
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
-import { validateRoute } from "../src/catalog.ts";
-import { isAuthFailure } from "../src/runtime.ts";
-import { canRunDuringTurn, shouldQueueDuringTurn } from "../src/ui.ts";
-import { formatNotification, safeText } from "../src/theme.ts";
+import { validateRoute } from "../src/runtime/catalog.ts";
+import { isAuthFailure } from "../src/runtime/runtime.ts";
+import { canRunDuringTurn, shouldQueueDuringTurn } from "../src/interactive-mode/ui.ts";
+import { formatNotification, safeText } from "../src/interactive-mode/theme.ts";
 
 test("route validation allows configured providers and rejects missing models", () => {
   assert.throws(() => validateRoute("typo", "model"));

@@ -1,7 +1,7 @@
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 import { stripVTControlCharacters } from "node:util";
-import { AssistantMessageComponent } from "../src/components/assistant-message.ts";
+import { AssistantMessageComponent } from "../src/interactive-mode/components/assistant-message.ts";
 
 const plain = (component: AssistantMessageComponent, width = 80) =>
   component.render(width).map(stripVTControlCharacters).join("\n");

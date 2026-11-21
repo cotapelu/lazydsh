@@ -1,7 +1,7 @@
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 import { stripVTControlCharacters } from "node:util";
-import { highlightCode } from "../src/highlight.ts";
+import { highlightCode } from "../src/interactive-mode/highlight.ts";
 
 test("code highlighting loads only the requested language and preserves source text", () => {
   for (const [language, source, colored] of [

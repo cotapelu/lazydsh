@@ -2,7 +2,7 @@ import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 import { stripVTControlCharacters } from "node:util";
 import { visibleWidth } from "@earendil-works/pi-tui";
-import { SearchPicker } from "../src/picker.ts";
+import { SearchPicker } from "../src/interactive-mode/picker.ts";
 
 const items = [
   { value: "deepseek-flash", label: "DeepSeek Flash", description: "Fast model" },

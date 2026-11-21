@@ -2,8 +2,8 @@ import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 import { Markdown, type MarkdownTheme } from "@earendil-works/pi-tui";
 import { stripVTControlCharacters } from "node:util";
-import { StreamScanner, StreamingMarkdown } from "../src/streaming.ts";
-import { highlightCode } from "../src/highlight.ts";
+import { StreamScanner, StreamingMarkdown } from "../src/interactive-mode/streaming.ts";
+import { highlightCode } from "../src/interactive-mode/highlight.ts";
 
 const identity = (text: string) => text;
 const theme: MarkdownTheme = {

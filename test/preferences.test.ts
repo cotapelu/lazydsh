@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadModel, saveModel } from "../src/preferences.ts";
+import { loadModel, saveModel } from "../src/runtime/preferences.ts";
 
 test("model preference survives reload and ignores malformed preferences", async () => {
   const directory = await mkdtemp(join(tmpdir(), "lazydsh-preference-"));

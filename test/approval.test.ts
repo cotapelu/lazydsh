@@ -2,7 +2,7 @@ import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 import { stripVTControlCharacters } from "node:util";
 import { visibleWidth } from "@earendil-works/pi-tui";
-import { ApprovalPanel, type ApprovalChoice } from "../src/approval.ts";
+import { ApprovalPanel, type ApprovalChoice } from "../src/interactive-mode/approval.ts";
 
 const plain = (panel: ApprovalPanel, width = 80) =>
   panel.render(width).map(stripVTControlCharacters).join("\n");

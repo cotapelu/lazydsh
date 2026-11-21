@@ -1,6 +1,6 @@
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
-import { Autocomplete } from "../src/autocomplete.ts";
+import { Autocomplete } from "../src/interactive-mode/autocomplete.ts";
 
 test("@ completion combines native references and preserves quoted paths, skills, and subagent text", async () => {
   const queries: string[] = [];

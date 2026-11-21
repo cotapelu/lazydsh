@@ -1,7 +1,10 @@
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
-import { highlightCode } from "../src/highlight.ts";
-import { IncrementalHighlighter, type HighlightFn } from "../src/stream-highlight.ts";
+import { highlightCode } from "../src/interactive-mode/highlight.ts";
+import {
+  IncrementalHighlighter,
+  type HighlightFn,
+} from "../src/interactive-mode/stream-highlight.ts";
 
 const TYPESCRIPT = [
   "/**",

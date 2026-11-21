@@ -8,17 +8,17 @@ import {
   VStack,
   matchesKey,
 } from "@earendil-works/pi-tui";
-import { selectionTheme } from "../src/picker.ts";
+import { selectionTheme } from "../src/interactive-mode/picker.ts";
 import {
   editorBorder,
   PromptEditor,
   SentMessage,
   StartupBanner,
   Transcript,
-} from "../src/presentation.ts";
-import { dim } from "../src/theme.ts";
-import { ToolRow } from "../src/tools.ts";
-import { markdownTheme } from "../src/ui.ts";
+} from "../src/interactive-mode/presentation.ts";
+import { dim } from "../src/interactive-mode/theme.ts";
+import { ToolRow } from "../src/interactive-mode/tools.ts";
+import { markdownTheme } from "../src/interactive-mode/ui.ts";
 
 const tui = new TuiAltScreen(new ProcessTerminal(), false, undefined, {
   mouse: true,

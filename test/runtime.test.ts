@@ -6,8 +6,8 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { providerPatch } from "../src/catalog.ts";
-import { profilePatch } from "../src/plugin-patch.ts";
+import { providerPatch } from "../src/runtime/catalog.ts";
+import { profilePatch } from "../src/runtime/plugin-patch.ts";
 
 const executable = process.execPath;
 
@@ -38,10 +38,10 @@ async function nativeTest(
       import assert from "node:assert/strict";
       import { writeFile, readFile, realpath, rm, mkdir } from "node:fs/promises";
       import { join } from "node:path";
-      import { ensureProfile, runProfile } from ${JSON.stringify(moduleUrl("src/dsh-boot.ts"))};
+      import { ensureProfile, runProfile } from ${JSON.stringify(moduleUrl("src/runtime/dsh-boot.ts"))};
       import { loadLayeredEnv } from ${JSON.stringify(import.meta.resolve("@deepseek-ai/dsh-app-boot"))};
-      import { models } from ${JSON.stringify(moduleUrl("src/catalog.ts"))};
-      import { historyRows } from ${JSON.stringify(moduleUrl("src/history.ts"))};
+      import { models } from ${JSON.stringify(moduleUrl("src/runtime/catalog.ts"))};
+      import { historyRows } from ${JSON.stringify(moduleUrl("src/interactive-mode/history.ts"))};
       const directory = ${JSON.stringify(directory)};
       ${preload ?? 'globalThis.fetch = async () => { throw new Error("Network disabled in test"); };'}
       ensureProfile("lazydsh", ["@deepseek-ai/dsh-base"]);

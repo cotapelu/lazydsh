@@ -1,7 +1,7 @@
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 import type { SessionEvent } from "@deepseek-ai/dsh-session";
-import { cacheHitRate, formatStats, latestRequestStats } from "../src/stats.ts";
+import { cacheHitRate, formatStats, latestRequestStats } from "../src/utils/stats.ts";
 
 const usage = {
   inputTokens: 70,

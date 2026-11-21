@@ -1,6 +1,6 @@
 import type { Context } from "@deepseek-ai/cordis";
 import type {} from "@deepseek-ai/dsh-cmdline";
-import type { Runtime as RuntimeInstance } from "./runtime.ts";
+import type { Runtime as RuntimeInstance } from "./runtime/runtime.ts";
 import type { RuntimeOptions } from "./interfaces.ts";
 import {
   activateDeferredPlugins,
@@ -8,9 +8,9 @@ import {
   RUNTIME_SERVICE_NAMES,
   waitForRuntimeServices,
   type DeferredPlan,
-} from "./deferred.ts";
-import { createPendingRuntime } from "./pending-runtime.ts";
-import { loadModel, preferencesPath } from "./preferences.ts";
+} from "./runtime/deferred.ts";
+import { createPendingRuntime } from "./runtime/pending-runtime.ts";
+import { loadModel, preferencesPath } from "./runtime/preferences.ts";
 import { resolve } from "node:path";
 
 export const name = "lazydsh";
@@ -50,7 +50,7 @@ async function createRuntime(
   effort?: string,
 ): Promise<RuntimeInstance> {
   const [{ Runtime }, { ReasoningEffortId }] = await Promise.all([
-    import("./runtime.ts"),
+    import("./runtime/runtime.ts"),
     import("@deepseek-ai/dsh-llm"),
   ]);
   let runtime: RuntimeInstance | undefined;
@@ -99,7 +99,7 @@ export function apply(ctx: Context, config: PluginOptions = {}) {
     if (pending === undefined) await waitForRuntimeServices(ctx);
     const runtime = pending?.runtime ?? (await createRuntime(ctx, options, effort));
     if (config.command) {
-      const { runCommand } = await import("./command-runner.ts");
+      const { runCommand } = await import("./runtime/command-runner.ts");
       await runCommand(
         runtime,
         {
@@ -116,25 +116,25 @@ export function apply(ctx: Context, config: PluginOptions = {}) {
     let resume = config.resume;
     let resumeDirectory: string | undefined;
     if (config.pickSession) {
-      const { selectSession } = await import("./session-select.ts");
+      const { selectSession } = await import("./interactive-mode/session-select.ts");
       const selection = await selectSession(runtime, lifetime.signal, options.cwd);
       resume = selection?.id;
       resumeDirectory = selection?.directory;
       if (!resume) return;
     } else if (resume) {
-      const { selectResumeDirectory } = await import("./session-select.ts");
+      const { selectResumeDirectory } = await import("./interactive-mode/session-select.ts");
       const selection = await selectResumeDirectory(runtime, resume, options.cwd, lifetime.signal);
       if (!selection) return;
       resumeDirectory = selection.directory;
     }
-    const { runUI } = await import("./ui.ts");
+    const { runUI } = await import("./interactive-mode/ui.ts");
     const deferred = plan?.rows ?? [];
     const afterFirstPaint =
       pending !== undefined
         ? async () => {
             let rows = deferred;
             if (config.catalogDeferred) {
-              const catalog = await import("./catalog.ts");
+              const catalog = await import("./runtime/catalog.ts");
               if (model !== undefined)
                 catalog.validateRoute(
                   provider,

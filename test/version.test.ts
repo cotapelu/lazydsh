@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { test, expect } from "vitest";
-import { packageVersion } from "../src/version.ts";
+import { packageVersion } from "../src/utils/version.ts";
 
 test("packageVersion reads the manifest version", () => {
   const manifest = JSON.parse(

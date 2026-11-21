@@ -5,7 +5,7 @@ import {
   canDeferEveryRow,
   selectAllDeferredPlugins,
   selectDeferredPlugins,
-} from "../src/deferred.ts";
+} from "../src/runtime/deferred.ts";
 
 test("deferred selection keeps enabled rows with their module and config", () => {
   const entries = [

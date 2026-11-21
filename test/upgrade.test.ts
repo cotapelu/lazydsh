@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile, rm, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { upgradeCommand, upgradePlan } from "../src/upgrade.ts";
+import { upgradeCommand, upgradePlan } from "../src/runtime/upgrade.ts";
 
 test("upgrade prints the exact command it executes", () => {
   assert.equal(

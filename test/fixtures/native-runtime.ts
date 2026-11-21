@@ -1,5 +1,5 @@
 import type { Context } from "@deepseek-ai/cordis";
-import { Runtime } from "../../src/runtime.ts";
+import { Runtime } from "../../src/runtime/runtime.ts";
 export const name = "lazydsh-test";
 export const inject = [
   "agents",

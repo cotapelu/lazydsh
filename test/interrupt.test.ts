@@ -1,6 +1,6 @@
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
-import { ctrlCAction } from "../src/interrupt.ts";
+import { ctrlCAction } from "../src/interactive-mode/interrupt.ts";
 
 test("Ctrl+C clears drafts, interrupts live turns, then exits", () => {
   // A draft always wins: the first press only discards unsent input.

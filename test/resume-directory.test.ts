@@ -7,7 +7,7 @@ import {
   resumeDirectoryOptions,
   resumeDirectoryTarget,
   sameDirectory,
-} from "../src/resume-directory.ts";
+} from "../src/interactive-mode/resume-directory.ts";
 
 test("resume directory choices expose the session and current directories", () => {
   const options = resumeDirectoryOptions("/work/session", "/work/current");

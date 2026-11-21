@@ -1,6 +1,6 @@
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
-import { commandMenu } from "../src/commands.ts";
+import { commandMenu } from "../src/interactive-mode/commands.ts";
 test("plugin descriptions survive and TUI command collisions have one accurate description", () => {
   const commands = commandMenu([
     { name: "plugin", description: "Plugin-provided help", input: { hint: "<value>" } },

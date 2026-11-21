@@ -1,10 +1,10 @@
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 import { stripVTControlCharacters } from "node:util";
-import { accent } from "../src/theme.ts";
+import { accent } from "../src/interactive-mode/theme.ts";
 import type { SessionEvent } from "@deepseek-ai/dsh-session";
-import { historyRows, continuationCommand } from "../src/history.ts";
-import { ToolRow } from "../src/tools.ts";
+import { historyRows, continuationCommand } from "../src/interactive-mode/history.ts";
+import { ToolRow } from "../src/interactive-mode/tools.ts";
 
 test("saved history restores prompts, replies and collapsed tool results in order", () => {
   const events = [

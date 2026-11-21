@@ -1,5 +1,5 @@
-import { AssistantMessageComponent } from "../src/components/assistant-message.ts";
-import { ToolRow } from "../src/tools.ts";
+import { AssistantMessageComponent } from "../src/interactive-mode/components/assistant-message.ts";
+import { ToolRow } from "../src/interactive-mode/tools.ts";
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 import { ProcessTerminal, TuiMainScreen, visibleWidth } from "@earendil-works/pi-tui";
@@ -14,7 +14,7 @@ import {
   Notification,
   Transcript,
   editorBorder,
-} from "../src/presentation.ts";
+} from "../src/interactive-mode/presentation.ts";
 
 const identity = (text: string) => text;
 const theme = {

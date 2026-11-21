@@ -1,8 +1,8 @@
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 import type { CredentialProvider } from "@deepseek-ai/dsh-credentials";
-import { parseLimits, parseProviderUsage, readLimits } from "../src/limits.ts";
-import { formatStats } from "../src/stats.ts";
+import { parseLimits, parseProviderUsage, readLimits } from "../src/utils/limits.ts";
+import { formatStats } from "../src/utils/stats.ts";
 
 test("account limits use actual window durations, remaining percentages, and credits", () => {
   const limits = parseLimits({

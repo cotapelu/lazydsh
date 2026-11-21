@@ -2,7 +2,7 @@ import { defineConfig } from "vite-plus";
 
 export default defineConfig({
   pack: {
-    entry: ["src/cli.ts", "src/plugin.ts", "src/dsh-boot.ts"],
+    entry: ["src/cli.ts", "src/plugin.ts", "src/runtime/dsh-boot.ts"],
     platform: "node",
     format: "esm",
     target: "node24",

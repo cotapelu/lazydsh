@@ -1,6 +1,6 @@
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
-import { withTelemetryExporterDisabled } from "../src/telemetry-patch.ts";
+import { withTelemetryExporterDisabled } from "../src/runtime/telemetry-patch.ts";
 
 test("telemetry opt-out also disables the otherwise unused OTel exporter", () => {
   const patches = [{ id: "session-telemetry-otel", disabled: true }, { id: "llm" }];

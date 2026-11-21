@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { captureConsole } from "../src/tui-console.ts";
+import { captureConsole } from "../src/interactive-mode/tui-console.ts";
 
 function currentConsole() {
   return {

@@ -1,6 +1,6 @@
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
-import { getAppKeybindings, KEYBINDINGS } from "../src/keybindings.ts";
+import { getAppKeybindings, KEYBINDINGS } from "../src/interactive-mode/keybindings.ts";
 
 test("the app keybindings manager resolves app-level actions", () => {
   // Regression: pi-tui's own getKeybindings() only knows tui.* actions, so app

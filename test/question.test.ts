@@ -2,7 +2,7 @@ import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 import { stripVTControlCharacters } from "node:util";
 import { visibleWidth } from "@earendil-works/pi-tui";
-import { QuestionPanel } from "../src/question.ts";
+import { QuestionPanel } from "../src/interactive-mode/question.ts";
 import type { AskUserQuestionAnswer } from "@deepseek-ai/dsh-user-questions";
 
 const question = {

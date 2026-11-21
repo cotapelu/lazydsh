@@ -1,9 +1,9 @@
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 import { visibleWidth } from "@earendil-works/pi-tui";
-import { ToolLog } from "../src/tools.ts";
+import { ToolLog } from "../src/interactive-mode/tools.ts";
 import type { SessionEvent } from "@deepseek-ai/dsh-session";
-import { eventText } from "../src/runtime.ts";
+import { eventText } from "../src/runtime/runtime.ts";
 
 function emit(log: ToolLog, type: string, data: unknown, sessionId = "root") {
   const output = eventText({

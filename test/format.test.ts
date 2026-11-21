@@ -1,6 +1,6 @@
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
-import { formatDuration } from "../src/format.ts";
+import { formatDuration } from "../src/utils/format.ts";
 
 test("durations use days, hours, minutes and seconds across boundaries", () => {
   for (const [seconds, expected] of [
