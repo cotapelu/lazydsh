@@ -1,6 +1,9 @@
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
-import { catalogModelRuntime, catalogModels } from "../src/interactive-mode/model-catalog-runtime.ts";
+import {
+  catalogModelRuntime,
+  catalogModels,
+} from "../src/interactive-mode/model-catalog-runtime.ts";
 import { providers } from "../src/runtime/catalog.ts";
 
 test("the adapter lists every catalog model and narrows by provider", () => {
