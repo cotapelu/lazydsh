@@ -99,7 +99,14 @@ const styled = theme.fg("accent", text); // ✅
 const styled = "\x1b[34m" + text; // ❌ Hardcoded
 ```
 
-### 4. Deferred Plugin Loading
+### 4. Layering (CAUTRUC.md)
+
+- `interactive-mode/` may import `interfaces.ts`, `runtime-events.ts`, `utils/*`, `runtime/*`
+- `runtime/` may import `interfaces.ts`, `runtime-events.ts`, `utils/*` — never `interactive-mode/`
+- `utils/*` and the contract files import nothing local
+- Root (`cli.ts`, `plugin.ts`, `types.ts`) is the wiring plane and may reference both layers
+
+### 5. Deferred Plugin Loading
 
 - 50+ tool plugins disabled at boot
 - Activated after first paint via `activateDeferredPlugins()`
@@ -107,69 +114,59 @@ const styled = "\x1b[34m" + text; // ❌ Hardcoded
 
 ## Code Organization
 
+Three layers plus a root wiring plane (see CAUTRUC.md for the full file map
+and the resolutions taken against its original inventory):
+
 ```
 src/
-├── cli.ts                 # Entry point, arg parsing
-├── dsh-boot.ts            # Profile boot, two-phase
-├── plugin.ts              # Main plugin, Runtime creation
-├── runtime.ts             # Runtime wrapper (DSH Agent → TUI API)
-├── ui.ts                  # Main TUI orchestration (1300+ lines)
-├── chat-viewport.ts       # Layout: Header/Chat/Pending/Status/Editor/Footer
-├── footer.ts              # Context footer component
-├── footer-data-provider.ts # Data provider for footer
-├── tool-execution.ts      # Rich tool cards
-├── bash-execution.ts      # Terminal streaming
-├── model-selector.ts      # Model picker
-├── session-selector.ts    # Session picker with tree
-├── session-selector-search.ts # Session search utilities
-├── keybindings.ts         # Configurable keybindings
-├── assistant-message.ts   # Assistant message with thinking
-├── user-message.ts        # User message component
-├── tool-presentation.ts   # DSH tool → UI component bridge
-├── visual-truncate.ts     # Visual line truncation
-├── keybinding-hints.ts    # Key hint formatting
-├── dynamic-border.ts      # Colored borders
-├── markdown-transform.ts  # Markdown transformers
-├── theme/
-│   ├── lazydsh.json       # Default theme (renamed from theme.json)
-│   ├── theme-tokens.ts    # Token definitions
-│   └── theme-controller.ts # Live reload, DA1 query
-├── presentation.ts        # Legacy message components (StartupBanner, etc.)
-├── streaming.ts           # StreamingMarkdown
-├── autocomplete.ts        # @ files, / commands
-├── catalog.ts             # Provider/model catalog
-├── deferred.ts            # Deferred plugin logic
-├── history.ts             # Event rendering
-├── commands.ts            # Slash commands
-├── diff.ts                # Word-level diff rendering
-├── format.ts              # Token/duration formatting
-├── highlight.ts           # Syntax highlighting
-├── limits.ts              # Account limits parsing
-├── native-commands.ts     # Native DSH commands
-├── open-url.ts            # OAuth URL opening
-├── picker.ts              # SearchPicker component
-├── plugin.ts              # Main plugin, Runtime creation
-├── preferences.ts         # Model preference persistence
-├── provider.ts            # Provider normalization
-├── question.ts            # QuestionPanel component
-├── approval.ts            # ApprovalPanel component
-├── resume-directory.ts    # Resume directory selection
-├── runtime-events.ts      # Runtime event types
-├── session-select.ts      # Session selection (standalone)
-├── stats.ts               # Session stats formatting
-├── stream-highlight.ts    # Incremental syntax highlighting
-├── streaming.ts           # StreamingMarkdown
-├── telemetry-patch.ts     # Telemetry opt-out
-├── terminal-login.ts      # Terminal-based auth
-├── tui-console.ts         # Console capture
-├── ui-commands.ts         # Command utilities
-├── upgrade.ts             # Self-upgrade logic
-├── types.ts               # Consolidated types
+├── cli.ts                 # Entry point, arg parsing (wiring)
+├── plugin.ts              # Main Cordis plugin, Runtime creation (wiring)
+├── types.ts               # Barrel re-export of the contracts
+├── interfaces.ts          # CONTRACT: boundary types (Route, Callbacks, ...)
+├── runtime-events.ts      # CONTRACT: runtime event types
+├── runtime/               # DSH bridge + boot (no pi-tui imports)
+│   ├── runtime.ts         # Runtime wrapper (DSH Agent → TUI API)
+│   ├── dsh-boot.ts        # Profile boot, two-phase
+│   ├── deferred.ts        # Deferred plugin logic (RUNTIME_SERVICE_NAMES)
+│   ├── plugin-patch.ts    # Profile patches (extra services)
+│   ├── telemetry-patch.ts # Telemetry opt-out patch
+│   ├── catalog.ts         # Provider/model catalog
+│   ├── provider.ts        # Provider normalization
+│   ├── native-commands.ts # Native DSH commands
+│   ├── preferences.ts     # Model preference persistence
+│   ├── command-runner.ts  # ask/login/logout CLI runner
+│   ├── pending-runtime.ts # Pre-attach Runtime proxy
+│   └── upgrade.ts         # Self-upgrade logic
+├── interactive-mode/      # FE: the TUI (imports contracts + utils + runtime)
+│   ├── ui.ts              # Main TUI orchestration (1300+ lines)
+│   ├── presentation.ts    # Message/status/editor components
+│   ├── tool-execution.ts  # Rich tool cards
+│   ├── tool-presentation.ts # DSH tool → UI component bridge
+│   ├── bash-execution.ts  # Terminal streaming
+│   ├── model-selector.ts  # Model picker
+│   ├── session-selector.ts # Session picker with tree
+│   ├── session-selector-search.ts # Session search utilities
+│   ├── session-select.ts  # Session selection (standalone)
+│   ├── picker.ts          # SearchPicker component
+│   ├── keybindings.ts     # Configurable keybindings
+│   ├── keybinding-hints.ts # Key hint formatting
+│   ├── assistant-message / user-message → components/
+│   ├── approval.ts, question.ts, interrupt.ts, detail.ts, diff.ts
+│   ├── history.ts, tools.ts, streaming.ts, stream-highlight.ts
+│   ├── footer.ts, footer-data-provider.ts, stats panel data
+│   ├── theme.ts           # Theme core facade (tokens + controller)
+│   ├── theme/             # theme-tokens, theme-controller, system-theme, JSONs
+│   ├── components/        # 32 UI components (header, status, dialogs, selectors)
+│   └── ...                # extensions, bug-report, clipboard, program-status, ...
+└── utils/                 # Shared pure helpers (no pi-tui, no dsh)
+    ├── ansi.ts, truncate.ts, format.ts, models-are-equal.ts
+    ├── version.ts         # package.json version lookup
+    ├── stats.ts, limits.ts # formatting used by both layers
 ```
 
 ## Key Interfaces
 
-### Runtime (src/runtime.ts)
+### Runtime (src/runtime/runtime.ts)
 
 ```typescript
 class Runtime {

@@ -91,7 +91,7 @@ npm run test       # Unit tests
 
 ## Current Layer Layout
 
-The `src/` tree is **flat** today; the 3-layer target (`interactive-mode/`, `runtime/`, `utils/` + `interfaces.ts`/`runtime-events.ts` contracts) is designed but **not applied** — see CAUTRUC.md for the plan and its remaining checklist.
+The 3-layer layout from CAUTRUC.md is **applied**: `interactive-mode/` (TUI, its `components/` and `theme/`), `runtime/` (DSH bridge + boot), `utils/` (shared pure helpers), with the contracts at the root (`interfaces.ts`, `runtime-events.ts`) and the wiring entries (`cli.ts`, `plugin.ts`, `types.ts`). See CAUTRUC.md for the final structure and the resolutions taken where its inventory double-listed files.
 
 ## Critical Files for Onboarding
 

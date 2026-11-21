@@ -296,16 +296,28 @@ utils/             ──imports──▶  (nothing)
 
 ## ✅ CHECKLIST REFACTOR (7 PHASES)
 
-- [ ] Tạo `src/interactive-mode/`, `src/interactive-mode/components/`, `src/runtime/`, `src/utils/`
-- [ ] Move 22 components → `interactive-mode/components/` (bao gồm 3 file mới: oauth-selector, provider-brand, auth-url)
-- [ ] Move 38 TUI files → `interactive-mode/` (flat)
-- [ ] Move 10 runtime files → `runtime/` (flat)
-- [ ] Move 4 utils → `utils/` (flat)
-- [ ] Tạo `interfaces.ts` (extract từ `runtime.ts`)
-- [ ] Move `runtime-events.ts` → root
-- [ ] Xóa duplicates + dead code + merge theme
-- [ ] Fix imports → `@/interfaces`, `@/runtime/*`, `@/interactive-mode/*`, `@/utils/*`
-- [ ] Chạy `npm run check` + `npm run test`
+- [x] Tạo `src/interactive-mode/`, `src/interactive-mode/components/`, `src/runtime/`, `src/utils/`
+- [x] Move components → `interactive-mode/components/` (32 files sau khi xóa dead code)
+- [x] Move TUI files → `interactive-mode/` (flat)
+- [x] Move runtime files → `runtime/` (flat)
+- [x] Move utils → `utils/` (flat: ansi, truncate, format, stats, limits, models-are-equal, version)
+- [x] Tạo `interfaces.ts` (extract types từ `runtime.ts`: Route, RuntimeOptions, Callbacks, RunResult, CredentialSource, ApprovalRequest, QuestionResult, ModelRuntime, AutocompleteItem)
+- [x] `runtime-events.ts` → root (contract)
+- [x] Xóa dead code (`components/session-selector.ts`, 748 lines, file-path based)
+- [x] Fix imports (relative, giữ nguyên style `.ts` specifier — không dùng alias `@/` vì tsconfig NodeNext + test resolve hook đang chạy tốt với relative)
+- [x] Chạy `npm run check` + `npm run test` (112/112 pass) + `npm run build` smoke
+
+### Các quyết định khác bản kế hoạch (vì inventory cũ liệt kê mâu thuẫn)
+
+| Vấn đề trong bản cũ                                                                | Quyết định đã áp dụng                                                                                                                                            |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plugin.ts` liệt kê cả ở root VÀ `runtime/`                                        | `plugin.ts` ở **root** (wiring entry, được phép gọi cả 2 lớp); `runtime/` chỉ chứa DSH bridge + boot                                                             |
+| `runtime-events.ts` liệt kê cả root VÀ `runtime/`                                  | **Root** (contract), như checklist ghi                                                                                                                           |
+| `history.ts` liệt kê cả `interactive-mode/` VÀ `runtime/`                          | `interactive-mode/history.ts` (nó render row UI, không thể ở BE không-UI)                                                                                        |
+| `stats.ts`, `limits.ts` liệt kê ở FE nhưng `runtime.ts` (BE) import chúng          | Chuyển về **`utils/`** (pure formatting, cả 2 lớp đều import được)                                                                                               |
+| Theme files "flat" trong `interactive-mode/`                                       | Giữ **`interactive-mode/theme/`** làm subdir — vì `src/theme.ts` (theme core) và `src/theme/` (tokens/controller/JSON) là 2 file khác nhau, flat sẽ bị trùng tên |
+| `dsh-boot.ts`, `deferred.ts`, `plugin-patch.ts`, `telemetry-patch.ts` liệt kê ở FE | Ở **`runtime/`** — không import pi-tui, thuộc boot plane; nếu để FE thì `dsh-boot.ts` (BE) sẽ vi phạm luật "runtime không import interactive-mode"               |
+| `keybinding-hints.ts` liệt kê 2 nơi                                                | Một nơi: `interactive-mode/keybinding-hints.ts` (components import qua `../keybinding-hints.ts`)                                                                 |
 
 ---
 

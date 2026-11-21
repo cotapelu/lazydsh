@@ -462,40 +462,35 @@ npm run test
 
 ## Architecture
 
+Three layers plus a root wiring plane (full map in `CAUTRUC.md`):
+
 ```
 src/
-├── cli.ts                    # Entry point
-├── dsh-boot.ts               # Two-phase DSH profile boot
-├── plugin.ts                 # Main Cordis plugin, Runtime creation
-├── runtime.ts                # Runtime wrapper (DSH Agent → TUI API)
-├── ui.ts                     # Main TUI orchestration
-├── chat-viewport.ts          # Layout: Header/Chat/Pending/Status/Widgets/Editor/Footer
-├── footer.ts                 # Footer component
-├── tool-execution.ts         # Rich tool cards
-├── bash-execution.ts         # Terminal streaming
-├── model-selector.ts         # Model picker with fuzzy search
-├── session-selector.ts       # Session picker with tree view
-├── keybindings.ts            # Configurable keybindings
-├── assistant-message.ts      # Assistant message with thinking
-├── user-message.ts           # User message component
-├── tool-presentation.ts      # DSH tool → UI component bridge
-├── theme/                    # Theme system
-│   ├── lazydsh.json          # Default theme
-│   ├── theme-tokens.ts       # Token definitions
-│   └── theme-controller.ts   # Live reload, DA1 query
-├── components/
-│   ├── header.ts             # Header with logo/key hints
-│   ├── status-indicator.ts   # Working/Retry/Compaction/Idle
-│   ├── login-dialog.ts       # OAuth/API key login
-│   └── ...
-├── external-editor.ts        # Ctrl+G editor integration
-├── clipboard.ts              # Ctrl+X copy with fallbacks
-├── program-status.ts         # OSC 7501
-├── session-share.ts          # /share command
-├── changelog.ts              # /changelog command
-├── settings-selector.ts      # /settings command
-├── extensions.ts             # Widget registry
-├── ...                       # Other utilities
+├── cli.ts                    # Entry point (wiring)
+├── plugin.ts                 # Main Cordis plugin, Runtime creation (wiring)
+├── interfaces.ts             # CONTRACT: boundary types (Route, Callbacks, RunResult, ...)
+├── runtime-events.ts         # CONTRACT: runtime event types
+├── types.ts                  # Barrel re-export of the contracts
+├── runtime/                  # DSH bridge + boot (no pi-tui imports)
+│   ├── runtime.ts            # Runtime wrapper (DSH Agent → TUI API)
+│   ├── dsh-boot.ts           # Two-phase DSH profile boot
+│   ├── deferred.ts           # Deferred plugin loading
+│   ├── plugin-patch.ts       # Profile patches (extra services)
+│   ├── catalog.ts            # Provider/model catalog
+│   └── ...                   # provider, native-commands, preferences, upgrade, ...
+├── interactive-mode/         # FE: the TUI
+│   ├── ui.ts                 # Main TUI orchestration
+│   ├── tool-execution.ts     # Rich tool cards
+│   ├── tool-presentation.ts  # DSH tool → UI component bridge
+│   ├── bash-execution.ts     # Terminal streaming
+│   ├── model-selector.ts     # Model picker with fuzzy search
+│   ├── session-selector.ts   # Session picker with tree view
+│   ├── keybindings.ts        # Configurable keybindings
+│   ├── theme.ts              # Theme core facade
+│   ├── theme/                # Theme system (tokens, controller, JSONs)
+│   ├── components/           # header, status-indicator, login-dialog, selectors, ...
+│   └── ...                   # approval, question, history, footer, extensions, ...
+└── utils/                    # Shared pure helpers (ansi, truncate, format, version, ...)
 ```
 
 ## License

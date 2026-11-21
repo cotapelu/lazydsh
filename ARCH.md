@@ -89,7 +89,7 @@
 
 ### 2. lazydsh UI Orchestration
 
-**Location**: `src/ui.ts`, `src/chat-viewport.ts`, `src/footer.ts`, `src/components/*`
+**Location**: `src/interactive-mode/ui.ts`, `src/interactive-mode/footer.ts`, `src/interactive-mode/components/*`
 
 ```
 ui.ts (Main Orchestrator, 1300+ lines)
@@ -120,7 +120,7 @@ ui.ts (Main Orchestrator, 1300+ lines)
     └── Bash mode (! prefix)
 ```
 
-### 3. Runtime Wrapper (`src/runtime.ts`)
+### 3. Runtime Wrapper (`src/runtime/runtime.ts`)
 
 **Purpose**: Bridge DSH Agent → TUI-consumable API
 
