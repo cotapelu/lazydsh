@@ -73,7 +73,7 @@ async function nativeTest(
   }
 }
 
-test("providers, commands and lifecycle", async () => {
+test.concurrent("providers, commands and lifecycle", async () => {
   await nativeTest(
     executable,
     `
@@ -134,7 +134,7 @@ test("providers, commands and lifecycle", async () => {
   );
 });
 
-test("streaming, authentication and history", async () => {
+test.concurrent("streaming, authentication and history", async () => {
   const patches = [
     {
       id: "llm-pi-ai",
@@ -315,7 +315,7 @@ test("streaming, authentication and history", async () => {
   );
 });
 
-test("sessions, jobs and file references", async () => {
+test.concurrent("sessions, jobs and file references", async () => {
   await nativeTest(
     executable,
     `
@@ -382,7 +382,7 @@ test("sessions, jobs and file references", async () => {
   );
 });
 
-test("sending without credentials asks for /login", async () => {
+test.concurrent("sending without credentials asks for /login", async () => {
   await nativeTest(
     executable,
     `
@@ -416,7 +416,7 @@ test("sending without credentials asks for /login", async () => {
   );
 });
 
-test("reports credentials read from the environment", async () => {
+test.concurrent("reports credentials read from the environment", async () => {
   await nativeTest(
     executable,
     `
@@ -436,7 +436,7 @@ test("reports credentials read from the environment", async () => {
   );
 });
 
-test("login and logout", async () => {
+test.concurrent("login and logout", async () => {
   await nativeTest(
     executable,
     `

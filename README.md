@@ -290,12 +290,12 @@ Specialized terminal card for shell commands:
 
 The status area (above editor) shows:
 
-| State          | Indicator                           |
-| -------------- | ----------------------------------- |
-| **Working**    | Spinner + "Working" (or tool name)  |
-| **Retry**      | Retry count + message               |
-| **Compaction** | Progress bar + "Compacting context" |
-| **Idle**       | "Ready"                             |
+| State          | Indicator                                                                                                              |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Working**    | Spinner + "Working" (or "Stopping" while a turn cancels)                                                               |
+| **Retry**      | `Retrying (attempt/max) in Ns…` with a live countdown — DSH emits `llm/retry` backoff events and this row mirrors them |
+| **Compaction** | Spinner + "Compacting context…" / "Auto-compacting…" — driven by DSH's `compaction/start`/`compaction/end` events      |
+| **Idle**       | "Ready" (plus "· N queued" while follow-ups wait)                                                                      |
 
 ## Header
 

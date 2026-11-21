@@ -16,6 +16,8 @@ import {
 export interface StatusOptions {
   message?: string;
   retryCount?: number;
+  /** Attempt ceiling shown in the retry label; DSH's policy supplies it. */
+  maxAttempts?: number;
   delayMs?: number;
   reason?: "manual" | "overflow";
 }
@@ -56,7 +58,7 @@ export class StatusIndicatorContainer extends Container {
         this.currentIndicator = new RetryStatusIndicator(
           this.tui,
           options.retryCount ?? 1,
-          3,
+          options.maxAttempts ?? 3,
           options.delayMs ?? 1000,
         );
         break;

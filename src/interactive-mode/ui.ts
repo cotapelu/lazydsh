@@ -1197,7 +1197,9 @@ export async function runUI(
     if (stopping) return;
     const queued = queue.length;
     stopping = true;
-    statusContainer.show("retry", { message: "Stopping" });
+    // The retry indicator renders its own countdown text, so "Stopping" needs
+    // the working row; using retry here showed a bogus "Retrying (1/3)".
+    statusContainer.show("working", { message: "Stopping" });
     programStatus.working("Stopping");
     update();
     void runtime
@@ -1659,6 +1661,24 @@ export async function runUI(
                 transcript.removeChild(liveAssistant);
                 liveAssistant = undefined;
                 liveText = "";
+              }
+              // DSH surfaces backoff and compaction as session events; mirror
+              // them in the status row instead of leaving a silent spinner. The
+              // event union only names the base types, so compare as a string.
+              const eventType: string = event.type;
+              const data = (event as { data?: Record<string, unknown> }).data;
+              if (eventType === "llm/retry") {
+                statusContainer.show("retry", {
+                  retryCount: typeof data?.retry === "number" ? data.retry : 1,
+                  ...(typeof data?.maxRetries === "number" ? { maxAttempts: data.maxRetries } : {}),
+                  ...(typeof data?.delayMs === "number" ? { delayMs: data.delayMs } : {}),
+                });
+              } else if (eventType === "llm/retry-started" || eventType === "step/start") {
+                if (running) statusContainer.show("working", { message: "Working" });
+              } else if (eventType === "compaction/start") {
+                statusContainer.show("compaction", { reason: "overflow" });
+              } else if (eventType === "compaction/end") {
+                if (running) statusContainer.show("working", { message: "Working" });
               }
             }
             const output = eventText(notification);

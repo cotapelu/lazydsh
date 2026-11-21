@@ -41,7 +41,7 @@ function cli(executable: string, args: string[], input = "", env: NodeJS.Process
   );
 }
 
-test("CLI help and validation", async () => {
+test.concurrent("CLI help and validation", async () => {
   const help = await cli(executable, ["--help"]);
   assert.equal(help.code, 0);
   for (const name of [
@@ -88,7 +88,7 @@ test("CLI help and validation", async () => {
   assert.match(upgrade.stderr, /Source\/link installations/);
 });
 
-test("subcommand help", async () => {
+test.concurrent("subcommand help", async () => {
   for (const command of ["ask", "resume", "login", "logout", "upgrade"]) {
     const result = await cli(executable, [command, "--help"]);
     assert.equal(result.code, 0, result.stderr);
@@ -107,7 +107,7 @@ test("subcommand help", async () => {
   assert.equal(unknown.code, 1);
 });
 
-test("ask, stdin, authentication and logout", async () => {
+test.concurrent("ask, stdin, authentication and logout", async () => {
   const directory = await mkdtemp(join(tmpdir(), "lazydsh-cli-"));
   try {
     const patch = join(directory, "patch.json");
