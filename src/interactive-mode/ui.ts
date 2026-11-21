@@ -1360,6 +1360,20 @@ export async function runUI(
       showChangelog(tui, showPanel, dismissPanel);
       return;
     }
+    if (text === "/debug") {
+      const width = tui.terminal.columns;
+      const allLines = tui.render(width);
+      const debugText = [
+        `Debug output at ${new Date().toISOString()}`,
+        `Terminal: ${width}x${tui.terminal.rows}`,
+        `Total lines: ${allLines.length}`,
+        "",
+        ...allLines.map((line, idx) => `[${idx}] ${line}`),
+      ].join("\n");
+      add("Debug", `Debug log: ${allLines.length} lines rendered`);
+      console.log(debugText);
+      return;
+    }
     if (text === "/copy") {
       void copyLastMessage();
       return;
