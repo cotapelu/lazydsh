@@ -17,6 +17,7 @@ import { ToolLog, ToolRow } from "./tools.ts";
 import { SessionSelector } from "./session-selector.ts";
 import { LoginDialog } from "./components/login-dialog.ts";
 import { AssistantMessageComponent } from "./components/assistant-message.ts";
+import { createMermaidMarkdownTransformer } from "./components/mermaid.ts";
 import { UserMessageComponent } from "./components/user-message.ts";
 import { OAuthSelectorComponent, type ProviderOption } from "./components/oauth-selector.ts";
 import { editInExternalEditor, editorCommand } from "./external-editor.ts";
@@ -67,6 +68,7 @@ import { ThemeController } from "./theme/theme-controller.ts";
 import { readThemeSetting, writeThemeSetting } from "./theme/theme-settings.ts";
 import { readUiSettings, writeUiSettings, type UiSettings } from "./settings-store.ts";
 import { safeText, accent, dim } from "./theme.ts";
+import { theme as themeProxy } from "./theme/theme.ts";
 import { currentThemeName_ } from "./theme/theme.ts";
 
 const identity = (text: string) => text;
@@ -88,6 +90,12 @@ export const markdownTheme = {
   strikethrough: identity,
   underline: identity,
 };
+
+/** Mermaid diagram transformer for assistant/user messages. */
+const mermaidTransformer = createMermaidMarkdownTransformer({
+  getMode: () => "final",
+  theme: themeProxy,
+});
 
 export function canRunDuringTurn(text: string) {
   return (
@@ -385,7 +393,9 @@ export async function runUI(
     reasoning?: string,
   ) {
     if (label === "You") {
-      transcript.addChild(new UserMessageComponent(String(text)));
+      transcript.addChild(
+        new UserMessageComponent(String(text), markdownTheme, 1, [mermaidTransformer]),
+      );
       tui.requestRender();
       return;
     }
@@ -405,6 +415,8 @@ export async function runUI(
           hideThinkingBlock,
           markdownTheme,
           "Thinking…",
+          1,
+          [mermaidTransformer],
         ),
       );
       tui.requestRender();
@@ -1732,6 +1744,8 @@ export async function runUI(
             hideThinkingBlock,
             markdownTheme,
             "Thinking…",
+            1,
+            [mermaidTransformer],
           );
           transcript.addChild(liveAssistant);
         }
