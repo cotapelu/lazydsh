@@ -177,30 +177,7 @@ export async function runUI(
   // Context footer: pwd/git branch • session name, then tokens, cache hit
   // rate, cost, context %, model and thinking level. Data comes from the
   // provider (git/cwd) and from the session manager + projections.
-  const footerDataProvider = createFooterDataProvider(
-    options.cwd,
-    () => {
-      // The runtime is a lazy proxy until the deferred plugins attach, so every
-      // read here must tolerate an unstarted runtime rather than throw during
-      // the first paint.
-      try {
-        const name = runtime.sessionManager?.getSessionName?.();
-        return typeof name === "string" ? name : undefined;
-      } catch {
-        return undefined;
-      }
-    },
-    () => ({
-      getAvailableSnapshot: () => [],
-      getProviders: () => {
-        try {
-          return runtime.authProviders();
-        } catch {
-          return [];
-        }
-      },
-    }),
-  );
+  const footerDataProvider = createFooterDataProvider(options.cwd);
   footerDataProvider.onBranchChange(() => tui.requestRender());
   const footerContainer = new Container();
 
@@ -371,6 +348,19 @@ export async function runUI(
       );
     } else {
       programStatus.idle(`${route.provider}/${route.model ?? "no model"} · ${displayDirectory}`);
+    }
+    // Extension widgets may contribute a one-line footer status; a widget
+    // without one (or one that stopped reporting) drops out of the row.
+    for (const widget of extensionWidgets.getAll()) {
+      let text: string | undefined;
+      try {
+        text = widget.status?.();
+      } catch {
+        text = undefined;
+      }
+      if (text === undefined || text.trim() === "")
+        footerDataProvider.removeExtensionStatus(widget.id);
+      else footerDataProvider.setExtensionStatus(widget.id, text);
     }
     editor.disableSubmit = (busy || starting || startupFailed || stopping) && !decision;
     tui.requestRender();

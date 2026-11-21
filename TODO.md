@@ -571,6 +571,12 @@ Upgrade lazydsh from basic single-column TUI to pi-coding-agent-level interactiv
 - [x] README's status table corrected (no progress bar; countdown + cancel hint documented).
 - [x] Tests: `test/status-container.test.ts` — 141/141 passing
 
+### 8.18 Footer extension-status row is live ✅
+
+- [x] The footer's extension status registry was unreachable — `setExtensionStatus` had no caller, so the row always rendered empty and README's "extensions" footer claim was fiction. `ExtensionWidget` gained an optional `status?: () => string | undefined` hook; `ui.ts`'s `update()` syncs every registered widget (widgets that stop reporting drop out), and the footer filters empty statuses.
+- [x] Dead parameters removed: `createFooterDataProvider` took `_getSessionName`/`_getModelRuntime` callbacks nothing consumed (ui.ts built throwaway adapters for them).
+- [x] Tests: `test/footer-data-provider.test.ts` (set/sanitize/remove/clear, footer row rendering + empty filtering, provider count, token/cwd formatting) — 145/145 passing
+
 ---
 
 ## ✅ FINAL VERIFICATION CHECKLIST

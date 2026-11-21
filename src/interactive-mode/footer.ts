@@ -295,9 +295,12 @@ export class FooterComponent {
     if (extensionStatuses.size > 0) {
       const sortedStatuses = Array.from(extensionStatuses.entries())
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([, text]) => sanitizeStatusText(text));
-      const statusLine = sortedStatuses.join(" ");
-      lines.push(truncateToWidth(statusLine, width, theme.fg("dim", "...")));
+        .map(([, text]) => sanitizeStatusText(text))
+        .filter((text) => text !== "");
+      if (sortedStatuses.length > 0) {
+        const statusLine = sortedStatuses.join(" ");
+        lines.push(truncateToWidth(statusLine, width, theme.fg("dim", "...")));
+      }
     }
 
     return lines;

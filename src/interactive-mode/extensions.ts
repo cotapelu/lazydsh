@@ -13,6 +13,11 @@ export interface ExtensionWidget {
   position: "above" | "below";
   /** Optional priority for ordering (lower = first). */
   priority?: number;
+  /**
+   * Optional one-line status for the footer's extension row. Returning
+   * undefined (or omitting the hook) removes the widget's status.
+   */
+  status?: () => string | undefined;
 }
 
 /** Registry of extension widgets. */

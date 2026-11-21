@@ -47,6 +47,7 @@ export interface FooterDataProvider {
   getGitBranch(): string | undefined;
   getExtensionStatuses(): Map<string, string>;
   setExtensionStatus(key: string, text: string): void;
+  removeExtensionStatus(key: string): void;
   clearExtensionStatuses(): void;
   getAvailableProviderCount(): number;
   setAvailableProviderCount(count: number): void;
@@ -58,11 +59,7 @@ export interface FooterDataProvider {
 /**
  * Creates a footer data provider with git branch watching and extension status management.
  */
-export function createFooterDataProvider(
-  initialCwd: string,
-  _getSessionName: () => string | undefined,
-  _getModelRuntime: () => { getAvailableSnapshot(): any[]; getProviders(): any[] } | undefined,
-): FooterDataProvider {
+export function createFooterDataProvider(initialCwd: string): FooterDataProvider {
   let cwd = initialCwd;
   let gitBranch: string | undefined;
   let branchChangeCallbacks: (() => void)[] = [];
@@ -109,6 +106,10 @@ export function createFooterDataProvider(
 
     setExtensionStatus(key: string, text: string): void {
       extensionStatuses.set(key, sanitizeStatusText(text));
+    },
+
+    removeExtensionStatus(key: string): void {
+      extensionStatuses.delete(key);
     },
 
     clearExtensionStatuses(): void {

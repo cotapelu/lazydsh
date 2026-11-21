@@ -43,7 +43,7 @@ lazydsh implements the full interactive experience of pi-coding-agent:
 | Feature               | Status                                                                |
 | --------------------- | --------------------------------------------------------------------- |
 | **Layout**            | ✅ Header / Transcript / Pending / Status / Widgets / Editor / Footer |
-| **Footer**            | ✅ Tokens, cost, context%, model, git, extensions, responsive         |
+| **Footer**            | ✅ Tokens, cost, context%, model, git, extension statuses, responsive |
 | **Tool Cards**        | ✅ Live streaming, diffs, expandable, images, duration                |
 | **Bash Execution**    | ✅ ANSI strip, exit code pill, truncation warning                     |
 | **Model Selector**    | ✅ Fuzzy search, async refresh, save default, scoped/all              |
@@ -383,6 +383,10 @@ widgetRegistry.register({
 ```
 
 Widgets are sorted by priority (higher = closer to editor).
+
+A widget may also expose `status: () => string | undefined` — a one-line
+footer status, refreshed with the rest of the UI and dropped when it stops
+reporting.
 
 ## Configuration Files
 
