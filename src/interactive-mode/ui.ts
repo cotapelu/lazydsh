@@ -4,7 +4,7 @@ import { historyRows, continuationCommand } from "./history.ts";
 import { openAuthUrl } from "./open-url.ts";
 import { homedir } from "node:os";
 import { sep } from "node:path";
-import { preferencesPath, saveModel } from "../runtime/preferences.ts";
+import { loadModel, preferencesPath, saveModel } from "../runtime/preferences.ts";
 import { normalizeProvider } from "../runtime/provider.ts";
 import { SearchPicker, selectionTheme } from "./picker.ts";
 import { highlightCode } from "./highlight.ts";
@@ -30,15 +30,15 @@ import { createFooterDataProvider } from "./footer-data-provider.ts";
 import { getAppKeybindings } from "./keybindings.ts";
 import type { SessionRecord } from "./components/session-selector-search.ts";
 import {
-  TuiAltScreen,
   ScrollView,
   VStack,
-  ProcessTerminal,
   Text,
   Container,
   type Component,
   type OverlayHandle,
 } from "@earendil-works/pi-tui";
+import { createInteractiveTui } from "./tui-renderer.ts";
+import type { TuiAltScreen } from "@earendil-works/pi-tui";
 import { eventText, isAuthFailure } from "../runtime-events.ts";
 import { AuthorizationDeclinedError } from "@deepseek-ai/dsh-authorization";
 import type { Runtime } from "../runtime/runtime.ts";
@@ -160,10 +160,9 @@ export async function runUI(
   runtime: Runtime,
   hooks: { afterFirstPaint?: () => Promise<void> } = {},
 ) {
-  const tui = new TuiAltScreen(new ProcessTerminal(), false, undefined, {
-    mouse: true,
-    scrollToEndIndicator: () => dim("↓ latest"),
-  });
+  // The launcher always runs fullscreen; the alt-screen surface (search,
+  // selection, URL support) is what the cast below exposes.
+  const tui = createInteractiveTui({ tuiMode: "fullscreen", mouse: true }) as TuiAltScreen;
   const header = new HeaderComponent();
   const transcript = new Transcript();
   // Prompts typed during a running turn wait below the transcript; drainQueue sends
@@ -818,18 +817,65 @@ export async function runUI(
   }
 
   async function pickModel(sessionId = runtime.session?.id ?? resume) {
-    const { providers } = await import("../runtime/catalog.ts");
-    select(
-      providers.map((id) => ({ value: id, label: id })),
-      "Providers",
-      (provider) => {
-        // Close provider picker before opening model picker
+    const [{ ModelSelectorComponent }, { catalogModelRuntime, catalogModels }] = await Promise.all([
+      import("./model-selector.ts"),
+      import("./model-catalog-runtime.ts"),
+    ]);
+    const selection = runtime.selection();
+    const current =
+      selection === undefined
+        ? undefined
+        : { provider: selection.provider, id: selection.model, name: selection.model };
+    // "scoped" keeps the providers the user can actually authenticate against.
+    const authenticated = new Set(runtime.authProviders().map((provider) => provider.value));
+    const scoped = catalogModels([...authenticated]);
+    const saved = await loadModel(preferencesPath(options.dshHome));
+    const defaultModel =
+      saved === undefined
+        ? undefined
+        : { provider: saved.provider, id: saved.model, name: saved.model };
+    const picker = new ModelSelectorComponent(
+      tui,
+      current,
+      catalogModelRuntime(),
+      scoped.map((model) => ({ model })),
+      (model) => {
         dismissPanel();
-        void pickProviderModel(provider, sessionId);
+        picker.dispose();
+        void connect({ provider: model.provider, model: model.id }, sessionId, true);
       },
-      undefined,
-      true,
+      () => {
+        dismissPanel();
+        picker.dispose();
+      },
+      "",
+      (model) => {
+        dismissPanel();
+        picker.dispose();
+        void saveModelDefault(model);
+      },
+      defaultModel,
     );
+    showPanel(picker);
+  }
+
+  /** Persist a provider/model pair as the startup default (Ctrl+S in the picker). */
+  async function saveModelDefault(model: { provider: string; id: string }) {
+    const selection = runtime.selection();
+    const sameRoute =
+      selection !== undefined &&
+      selection.provider === model.provider &&
+      selection.model === model.id;
+    try {
+      await saveModel(preferencesPath(options.dshHome), {
+        provider: model.provider,
+        model: model.id,
+        ...(sameRoute && selection.effort !== undefined ? { effort: selection.effort } : {}),
+      });
+      add("Model", `Default: ${model.provider}/${model.id}`);
+    } catch (error) {
+      add("Error", error instanceof Error ? error.message : String(error));
+    }
   }
 
   async function pickProviderModel(provider: string, sessionId?: string, _parent?: SearchPicker) {

@@ -22,6 +22,7 @@ import {
   styleTextWithAnsi,
 } from "@earendil-works/pi-tui";
 import { THEME_TOKENS, type ThemeTokenName } from "./theme-tokens.ts";
+import { validateTheme } from "./theme-schema.ts";
 import {
   terminalColors,
   _terminalColorsPending,
@@ -282,7 +283,13 @@ function loadThemeJson(name: string): unknown {
   const builtIn = path.join(themesDir(), `${name}.json`);
   if (fs.existsSync(builtIn)) return JSON.parse(fs.readFileSync(builtIn, "utf-8"));
   const custom = path.join(customThemesDir(), `${name}.json`);
-  if (fs.existsSync(custom)) return JSON.parse(fs.readFileSync(custom, "utf-8"));
+  if (fs.existsSync(custom)) {
+    // Built-ins ship with the app and stay unvalidated for startup cost;
+    // user-authored documents are the ones that need the schema check.
+    const doc = JSON.parse(fs.readFileSync(custom, "utf-8"));
+    validateTheme(doc);
+    return doc;
+  }
   throw new Error(`Theme not found: ${name}`);
 }
 

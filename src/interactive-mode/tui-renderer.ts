@@ -8,7 +8,7 @@
  * Ported from pi-coding-agent's `tui-renderer.js`.
  */
 
-import { ProcessTerminal, TuiAltScreen, TuiMainScreen } from "@earendil-works/pi-tui";
+import { ProcessTerminal, TuiAltScreen, TuiMainScreen, type TUI } from "@earendil-works/pi-tui";
 import { keyDisplayText } from "./keybinding-hints.ts";
 import { theme } from "./theme/theme.ts";
 
@@ -22,7 +22,9 @@ export interface InteractiveTuiOptions {
   tuiMode?: "fullscreen" | "regular";
   showHardwareCursor?: boolean;
   logDirectory?: string;
-  terminal?: any;
+  terminal?: ProcessTerminal;
+  /** Capture mouse events (clicks, wheel, selection); off by default. */
+  mouse?: boolean;
   onRightClickPaste?: () => void;
   fullscreenCopyOnSelect?: boolean;
   fullscreenWheelScrollLines?: number | "auto";
@@ -32,7 +34,7 @@ export interface InteractiveTuiOptions {
  * Creates the interactive TUI for the requested mode. Fullscreen gets the
  * alt-screen renderer with transcript search, selection copy, and URL support.
  */
-export function createInteractiveTui(options: InteractiveTuiOptions = {}): any {
+export function createInteractiveTui(options: InteractiveTuiOptions = {}): TUI {
   const terminal = options.terminal ?? new ProcessTerminal();
   if (options.tuiMode === "fullscreen") {
     const styleSearchMatch = (text: string) =>
@@ -47,6 +49,7 @@ export function createInteractiveTui(options: InteractiveTuiOptions = {}): any {
         const label = ` ↓ Jump to latest message${shortcut ? ` · ${shortcut}` : ""} `;
         return theme.bg("selectedBg", theme.fg("text", label));
       },
+      ...(options.mouse === undefined ? {} : { mouse: options.mouse }),
       openUrl: openBrowser,
       onRightClickPaste: options.onRightClickPaste,
       copyOnSelect: options.fullscreenCopyOnSelect,
@@ -70,35 +73,32 @@ export function createInteractiveTui(options: InteractiveTuiOptions = {}): any {
  * renderer. Methods re-resolve against the current renderer on every call, so a
  * component holding this reference survives a fullscreen↔regular mode switch.
  */
-export function createInteractiveTuiReference(getTui: () => any): any {
-  return new Proxy(
-    {},
-    {
-      get: (_target, property) => {
-        const tui = getTui();
-        const value = Reflect.get(tui, property, tui);
-        if (typeof value !== "function") return value;
-        let methodTui = tui;
-        let method = value as (...args: unknown[]) => unknown;
-        return (...args: unknown[]) => {
-          const currentTui = getTui();
-          if (currentTui !== methodTui) {
-            const currentMethod = Reflect.get(currentTui, property, currentTui);
-            if (typeof currentMethod !== "function") {
-              throw new TypeError(`TUI property ${String(property)} is not callable`);
-            }
-            methodTui = currentTui;
-            method = currentMethod as (...args: unknown[]) => unknown;
+export function createInteractiveTuiReference(getTui: () => TUI): TUI {
+  return new Proxy({} as TUI, {
+    get: (_target, property) => {
+      const tui = getTui();
+      const value = Reflect.get(tui, property, tui);
+      if (typeof value !== "function") return value;
+      let methodTui = tui;
+      let method = value as (...args: unknown[]) => unknown;
+      return (...args: unknown[]) => {
+        const currentTui = getTui();
+        if (currentTui !== methodTui) {
+          const currentMethod = Reflect.get(currentTui, property, currentTui);
+          if (typeof currentMethod !== "function") {
+            throw new TypeError(`TUI property ${String(property)} is not callable`);
           }
-          return Reflect.apply(method, methodTui, args);
-        };
-      },
-      set: (_target, property, value) => {
-        const tui = getTui();
-        return Reflect.set(tui, property, value, tui);
-      },
-      has: (_target, property) => Reflect.has(getTui(), property),
-      getPrototypeOf: () => Reflect.getPrototypeOf(getTui()),
+          methodTui = currentTui;
+          method = currentMethod as (...args: unknown[]) => unknown;
+        }
+        return Reflect.apply(method, methodTui, args);
+      };
     },
-  );
+    set: (_target, property, value) => {
+      const tui = getTui();
+      return Reflect.set(tui, property, value, tui);
+    },
+    has: (_target, property) => Reflect.has(getTui(), property),
+    getPrototypeOf: () => Reflect.getPrototypeOf(getTui()),
+  });
 }

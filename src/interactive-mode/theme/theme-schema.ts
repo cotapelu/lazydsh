@@ -58,25 +58,14 @@ const ThemeSchema = {
 let themeValidator: ReturnType<typeof Compile> | undefined;
 
 /**
- * Install full theme validation. Without it, documents are accepted as-is.
- * Validating user-authored JSON needs typebox, and a presentation that only uses
- * built-in themes should not pay ~17 MB of module graph for it.
- */
-export function setThemeJsonValidator(validator: ReturnType<typeof Compile>): void {
-  themeValidator = validator;
-}
-
-/**
  * Validate a theme JSON object. Throws on invalid theme.
+ *
+ * The validator compiles lazily on first use: built-in themes load without
+ * paying for the typebox module graph, which only user-authored themes need.
  */
 export function validateTheme(json: unknown): asserts json is ThemeJson {
-  if (!themeValidator) {
-    // Lazy compile - only when validation is actually needed
-    const { TypeBoxTypeProvider } = require("typebox");
-    themeValidator = Compile(TypeBoxTypeProvider, ThemeSchema);
-  }
-  const result = themeValidator.Check(json);
-  if (!result) {
+  themeValidator ??= Compile(ThemeSchema);
+  if (!themeValidator.Check(json)) {
     const errors = [...themeValidator.Errors(json)];
     throw new Error(`Invalid theme: ${errors.map((e) => e.message).join(", ")}`);
   }
