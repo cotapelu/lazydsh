@@ -1363,61 +1363,10 @@ export async function runUI(
       | "unpin"
       | undefined;
     if (sessionAction) {
-      const title = {
-        archive: "Archive conversation",
-        restore: "Restore conversation",
-        pin: "Pin conversation",
-        unpin: "Unpin conversation",
-      }[sessionAction];
-      const picker: SearchPicker = select([], title, (id) => {
-        void runBusy(async () => {
-          await runtime.manageSession(id, sessionAction);
-          if (sessionAction === "archive" && runtime.session?.id === id)
-            await connect(route as Route);
-          const label = {
-            archive: "Archived",
-            restore: "Restored",
-            pin: "Pinned",
-            unpin: "Unpinned",
-          }[sessionAction];
-          add(label, records.find((record) => record.id === id)?.title ?? id);
-        });
-      });
-      picker.setLoading();
-      let records: Awaited<ReturnType<Runtime["sessions"]>> = [];
-      void runtime
-        .sessions()
-        .then((next) => {
-          records = next.filter((record) =>
-            sessionAction === "restore"
-              ? record.archived
-              : !record.archived &&
-                (sessionAction === "pin"
-                  ? !record.pinned
-                  : sessionAction === "unpin"
-                    ? record.pinned
-                    : true),
-          );
-          // `selecting` is true while a picker panel is open, so the items are
-          // filled in only then; a dismissed picker is left untouched.
-          if (!selecting) return;
-          picker.setItems(
-            records.map((record) => ({
-              value: record.id,
-              label: record.title,
-              description: [record.id === runtime.session?.id ? "Current" : "", record.directory]
-                .filter(Boolean)
-                .join(" · "),
-            })),
-          );
-          tui.requestRender();
-        })
-        .catch((error) => {
-          if (selecting) dismissPanel();
-          add("Error", error instanceof Error ? error.message : String(error));
-        });
+      openSessionActionPicker(sessionAction);
       return;
     }
+
     const jobCommand = /^\/(ps|stop)(?:\s+(\S+))?$/.exec(text);
     if (jobCommand) {
       const stopping = jobCommand[1] === "stop";
@@ -1466,18 +1415,8 @@ export async function runUI(
       const argument = choiceCommand[2]?.trim();
       const kind = name === "resume" ? "sessions" : name === "cd" ? "directories" : "permissions";
       const apply = async (value: string) => {
-        if (name === "resume") {
-          if (!route.model) throw new Error("Select a model first with /model.");
-          const directory = await chooseResumeDirectory(value);
-          if (directory === null) return;
-          await connect(
-            { provider: route.provider, model: route.model },
-            value,
-            false,
-            false,
-            directory,
-          );
-        } else if (name === "cd") {
+        if (name === "resume") return applyResume(value);
+        if (name === "cd") {
           options.cwd = await runtime.cd(value);
           setAutocomplete();
           add("Directory", options.cwd);
@@ -1488,35 +1427,8 @@ export async function runUI(
       };
       void runBusy(async () => {
         if (argument) await apply(argument);
-        else if (name === "resume") {
-          const selector = new SessionSelector({
-            currentSessionId: runtime.session?.id,
-            currentDirectory: options.cwd,
-            onSelect: (id) => {
-              dismissPanel();
-              void runBusy(() => apply(id));
-            },
-            onCancel: () => dismissPanel(),
-            requestRender: () => tui.requestRender(),
-          });
-          showPanel(selector as unknown as Component);
-          selector.setLoading();
-          void runtime
-            .sessions()
-            .then((records) => {
-              selector.setSessions(toSessionRecords(records, options.cwd));
-              tui.requestRender();
-            })
-            .catch((error) => {
-              selector.setStatus(
-                {
-                  type: "error",
-                  message: error instanceof Error ? error.message : String(error),
-                },
-                4000,
-              );
-            });
-        } else {
+        else if (name === "resume") openSessionPicker();
+        else {
           const picker: SearchPicker = select(
             [],
             name === "cd" ? "Directories" : "Permissions",
@@ -1877,8 +1789,216 @@ export async function runUI(
     update();
   }
 
+  /** Open the DSH-native session picker (shared by /resume and its keybinding). */
+  function openSessionPicker() {
+    const selector = new SessionSelector({
+      currentSessionId: runtime.session?.id,
+      currentDirectory: options.cwd,
+      onSelect: (id) => {
+        dismissPanel();
+        void runBusy(() => applyResume(id));
+      },
+      onCancel: () => dismissPanel(),
+      requestRender: () => tui.requestRender(),
+    });
+    showPanel(selector as unknown as Component);
+    selector.setLoading();
+    void runtime
+      .sessions()
+      .then((records) => {
+        selector.setSessions(toSessionRecords(records, options.cwd));
+        tui.requestRender();
+      })
+      .catch((error) => {
+        selector.setStatus(
+          {
+            type: "error",
+            message: error instanceof Error ? error.message : String(error),
+          },
+          4000,
+        );
+      });
+  }
+
+  /** Resume the chosen session (kept beside the picker it belongs to). */
+  async function applyResume(value: string) {
+    if (!route.model) throw new Error("Select a model first with /model.");
+    const directory = await chooseResumeDirectory(value);
+    if (directory === null) return;
+    await connect({ provider: route.provider, model: route.model }, value, false, false, directory);
+  }
+
+  /**
+   * Suspend to the shell: leave the alt screen, hand the terminal back with
+   * SIGTSTP, and take it again on SIGCONT. Mid-turn suspension would restart
+   * the TUI under a live stream, so it waits for an idle editor.
+   */
+  function suspendToBackground() {
+    if (busy || running) {
+      add("Suspend", "Wait for the current turn to finish before suspending.");
+      return;
+    }
+    const resumed = () => {
+      process.off("SIGCONT", resumed);
+      themeController.applyFromSettings();
+      tui.start();
+      update();
+    };
+    process.on("SIGCONT", resumed);
+    tui.stop({ preserveScreen: false });
+    process.kill(process.pid, "SIGTSTP");
+  }
+
+  /**
+   * Cycle the route among providers the user can actually authenticate
+   * against, preferring the saved model for the next provider when there is
+   * one. Mid-turn switches would race the running request, so they are
+   * refused with a notice.
+   */
+  async function cycleModel(direction: 1 | -1) {
+    if (busy || running) {
+      add("Model", "Wait for the current turn to finish before switching models.");
+      return;
+    }
+    const [{ providers, models }, { nextProvider }] = await Promise.all([
+      import("../runtime/catalog.ts"),
+      import("./model-cycle.ts"),
+    ]);
+    const authenticated = runtime.authProviders().map((provider) => provider.value);
+    const order = authenticated.filter((provider) => providers.includes(provider));
+    const selection = runtime.selection();
+    const current = selection?.provider ?? route.provider;
+    const next = nextProvider(order, current, direction);
+    if (next === undefined) {
+      add("Model", "No logged-in providers to cycle. Run /login first.");
+      return;
+    }
+    const saved = await loadModel(preferencesPath(options.dshHome));
+    const model = saved?.provider === next ? saved.model : (models(next)[0]?.id ?? undefined);
+    if (model === undefined) {
+      add("Model", `${next} has no models in the catalog.`);
+      return;
+    }
+    add("Model", `${current} → ${next}/${model}`);
+    await connect({ provider: next, model });
+  }
+
+  /** Session management picker (archive/restore/pin/unpin), shared by the slash commands and Ctrl+Backspace. */
+  function openSessionActionPicker(sessionAction: "archive" | "restore" | "pin" | "unpin"): void {
+    const title = {
+      archive: "Archive conversation",
+      restore: "Restore conversation",
+      pin: "Pin conversation",
+      unpin: "Unpin conversation",
+    }[sessionAction];
+    let records: Awaited<ReturnType<Runtime["sessions"]>> = [];
+    const picker: SearchPicker = select([], title, (id) => {
+      void runBusy(async () => {
+        await runtime.manageSession(id, sessionAction);
+        if (sessionAction === "archive" && runtime.session?.id === id)
+          await connect(route as Route);
+        const label = {
+          archive: "Archived",
+          restore: "Restored",
+          pin: "Pinned",
+          unpin: "Unpinned",
+        }[sessionAction];
+        add(label, records.find((record) => record.id === id)?.title ?? id);
+      });
+    });
+    picker.setLoading();
+    void runtime
+      .sessions()
+      .then((next) => {
+        records = next.filter((record) =>
+          sessionAction === "restore"
+            ? record.archived
+            : !record.archived &&
+              (sessionAction === "pin"
+                ? !record.pinned
+                : sessionAction === "unpin"
+                  ? record.pinned
+                  : true),
+        );
+        // `selecting` is true while a picker panel is open, so the items are
+        // filled in only then; a dismissed picker is left untouched.
+        if (!selecting) return;
+        picker.setItems(
+          records.map((record) => ({
+            value: record.id,
+            label: record.title,
+            description: [record.id === runtime.session?.id ? "Current" : "", record.directory]
+              .filter(Boolean)
+              .join(" · "),
+          })),
+        );
+        tui.requestRender();
+      })
+      .catch((error) => {
+        if (selecting) dismissPanel();
+        add("Error", error instanceof Error ? error.message : String(error));
+      });
+  }
+
+  /** Alt+Up: pull the oldest queued message back into the editor. */
+  function dequeueToEditor() {
+    if (!queue.length) {
+      add("Queue", "No queued messages.");
+      return;
+    }
+    const restored = queue.shift()!;
+    queueView.removeChild(restored.view);
+    const draft = editor.getText();
+    editor.setText(draft ? `${draft}\n${restored.text}` : restored.text);
+    update();
+  }
+
   tui.addInputListener((data) => {
     const kb = keybindings;
+    if (kb.matches(data, "app.model.select")) {
+      void pickModel();
+      return { consume: true };
+    }
+    if (kb.matches(data, "app.model.cycleForward")) {
+      void cycleModel(1);
+      return { consume: true };
+    }
+    if (kb.matches(data, "app.model.cycleBackward")) {
+      void cycleModel(-1);
+      return { consume: true };
+    }
+    if (kb.matches(data, "app.message.followUp")) {
+      // Alt+Enter queues the current draft instead of sending it now.
+      const text = editor.getText();
+      if (text.trim()) enqueue(text);
+      return { consume: true };
+    }
+    if (kb.matches(data, "app.message.dequeue")) {
+      dequeueToEditor();
+      return { consume: true };
+    }
+    // Unbound by default; users who map them get the same flows as the commands.
+    if (kb.matches(data, "app.session.resume")) {
+      openSessionPicker();
+      return { consume: true };
+    }
+    if (kb.matches(data, "app.session.new")) {
+      void startNewConversation(false);
+      return { consume: true };
+    }
+    if (kb.matches(data, "app.suspend")) {
+      suspendToBackground();
+      return { consume: true };
+    }
+    // "Delete session when query is empty": the archive picker, straight in.
+    if (kb.matches(data, "app.session.deleteNoninvasive") && editor.getText().length === 0) {
+      openSessionActionPicker("archive");
+      return { consume: true };
+    }
+    if (kb.matches(data, "app.exit") && editor.getText().length === 0) {
+      void stop();
+      return { consume: true };
+    }
     if (kb.matches(data, "app.clear")) {
       // Ctrl+C follows the agent-CLI convention: a draft is discarded first, a
       // live turn is interrupted (never exits mid-answer), a second press while
