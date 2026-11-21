@@ -82,33 +82,34 @@ verification.
 
 ### Phase 8 — Upstream Parity & Follow-ups ✅
 
-| §    | Item                                                                                                                 |
-| ---- | -------------------------------------------------------------------------------------------------------------------- |
-| 8.0  | Housekeeping (debug writer removed)                                                                                  |
-| 8.1  | `-v/--version`, complete `runtime.cancel()`                                                                          |
-| 8.2  | Ctrl+C state machine (`interrupt.ts`): clear / interrupt / force-exit / exit                                         |
-| 8.3  | `/new` keeps transcript, `/clear` wipes                                                                              |
-| 8.4  | QuestionPanel height budget for short terminals                                                                      |
-| 8.5  | History shows reasoning rows (lifecycle by `attemptId`)                                                              |
-| 8.6  | Tool meta plumbing end-to-end                                                                                        |
-| 8.7  | `detail.ts` — one detail engine for approval + history                                                               |
-| 8.8  | Deps `0.2.2-rc.4` (all 36 packages, old sessions still resume)                                                       |
-| 8.9  | Overlay lifecycle: `/model` two-level picker, inverted `selecting` guards, login-dialog dismiss, real header version |
-| 8.10 | Theme selector + thinking selector wired into `/settings` and `/effort`                                              |
-| 8.11 | 3-layer restructure (CAUTRUC.md), `theme-schema` validation real, `tui-renderer` wired, dead files deleted           |
-| 8.12 | `ModelSelectorComponent` wired (`model-catalog-runtime.ts` adapter)                                                  |
-| 8.13 | Auto light/dark pair setting in the theme picker                                                                     |
-| 8.14 | All 27 keybindings audited and handled (6 advertised-but-dead keys wired; Ctrl+Z suspend; model cycling)             |
-| 8.15 | Theme setting persists to `~/.config/lazydsh/theme.json`                                                             |
-| 8.16 | Confirm-on-exit real + persisted; cosmetic toggles became honest info rows                                           |
-| 8.17 | Retry/compaction status rows wired to DSH session events                                                             |
-| 8.18 | Footer extension-status row live (`ExtensionWidget.status()`), dead provider params removed                          |
-| 8.19 | Documentation pass: every claim re-verified against code (this file, README, AGENTS, ARCH, GOAL, CAUTRUC)            |
-| 8.20 | Bash mode (`!` / `!!`): `Runtime.shell()` via DSH's executor + pure parser + card + next-prompt context              |
-| 8.21 | Fixed `messageCount: 0` bug — now counts user messages from session events                                           |
-| 8.22 | Fixed `footer.ts` inline `homedir()` — now imports from `node:os`                                                    |
-| 8.23 | Fixed `getSessionPathKey` — now canonicalizes + case-insensitive on Windows                                          |
-| 8.24 | Fixed `ScopedModel` missing `thinkingLevel` — added optional field                                                   |
+| §    | Item                                                                                                                  |
+| ---- | --------------------------------------------------------------------------------------------------------------------- |
+| 8.0  | Housekeeping (debug writer removed)                                                                                   |
+| 8.1  | `-v/--version`, complete `runtime.cancel()`                                                                           |
+| 8.2  | Ctrl+C state machine (`interrupt.ts`): clear / interrupt / force-exit / exit                                          |
+| 8.3  | `/new` keeps transcript, `/clear` wipes                                                                               |
+| 8.4  | QuestionPanel height budget for short terminals                                                                       |
+| 8.5  | History shows reasoning rows (lifecycle by `attemptId`)                                                               |
+| 8.6  | Tool meta plumbing end-to-end                                                                                         |
+| 8.7  | `detail.ts` — one detail engine for approval + history                                                                |
+| 8.8  | Deps `0.2.2-rc.4` (all 36 packages, old sessions still resume)                                                        |
+| 8.9  | Overlay lifecycle: `/model` two-level picker, inverted `selecting` guards, login-dialog dismiss, real header version  |
+| 8.10 | Theme selector + thinking selector wired into `/settings` and `/effort`                                               |
+| 8.11 | 3-layer restructure (CAUTRUC.md), `theme-schema` validation real, `tui-renderer` wired, dead files deleted            |
+| 8.12 | `ModelSelectorComponent` wired (`model-catalog-runtime.ts` adapter)                                                   |
+| 8.13 | Auto light/dark pair setting in the theme picker                                                                      |
+| 8.14 | All 27 keybindings audited and handled (6 advertised-but-dead keys wired; Ctrl+Z suspend; model cycling)              |
+| 8.15 | Theme setting persists to `~/.config/lazydsh/theme.json`                                                              |
+| 8.16 | Confirm-on-exit real + persisted; cosmetic toggles became honest info rows                                            |
+| 8.17 | Retry/compaction status rows wired to DSH session events                                                              |
+| 8.18 | Footer extension-status row live (`ExtensionWidget.status()`), dead provider params removed                           |
+| 8.19 | Documentation pass: every claim re-verified against code (this file, README, AGENTS, ARCH, GOAL, CAUTRUC)             |
+| 8.20 | Bash mode (`!` / `!!`): `Runtime.shell()` via DSH's executor + pure parser + card + next-prompt context               |
+| 8.21 | Fixed `messageCount: 0` bug — now counts user messages from session events                                            |
+| 8.22 | Fixed `footer.ts` inline `homedir()` — now imports from `node:os`                                                     |
+| 8.23 | Fixed `getSessionPathKey` — now canonicalizes + case-insensitive on Windows                                           |
+| 8.24 | Fixed `ScopedModel` missing `thinkingLevel` — added optional field                                                    |
+| 8.25 | Mermaid rendering: `createMermaidMarkdownTransformer` using `lovely-mermaid`, wired into AssistantMessage/UserMessage |
 
 ### 8.20 Bash mode ✅
 
