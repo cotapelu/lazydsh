@@ -7,6 +7,7 @@
  */
 
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { homedir } from "node:os";
 import { theme } from "./theme/theme.ts";
 import { formatTokens, formatCwdForFooter, FooterDataProvider } from "./footer-data-provider.ts";
 import type { AccountLimits } from "../utils/limits.ts";
@@ -305,11 +306,6 @@ export class FooterComponent {
 
     return lines;
   }
-}
-
-// Helper for homedir (inline to avoid circular import)
-function homedir(): string {
-  return process.env.HOME || process.env.USERPROFILE || "";
 }
 
 function sanitizeStatusText(text: string): string {

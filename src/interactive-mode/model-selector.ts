@@ -32,6 +32,7 @@ interface ModelItem {
 
 interface ScopedModel {
   model: ModelItem;
+  thinkingLevel?: string;
 }
 
 /**

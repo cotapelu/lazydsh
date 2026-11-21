@@ -97,9 +97,20 @@ export function filterAndSortSessions(
 }
 
 /** Comparison key for a session file path; follows symlinks and ignores case on Windows. */
+import { realpathSync } from "node:fs";
+
 export function getSessionPathKey(path: string): string {
-  // Simple implementation - in pi-coding-agent this uses canonicalizePath and getPathComparisonKey
-  return path;
+  // Follow symlinks and ignore case on Windows, matching pi-coding-agent's behavior.
+  let canonical = path;
+  try {
+    canonical = realpathSync.native(path);
+  } catch {
+    // Path doesn't exist or can't be resolved — use as-is.
+  }
+  if (process.platform === "win32") {
+    return canonical.toLowerCase();
+  }
+  return canonical;
 }
 
 /**

@@ -351,6 +351,23 @@ export class Runtime {
     const current = this.session;
     const liveTitle = current ? this.ctx.get("sessionTitle")?.get(current)?.title : undefined;
     if (current && liveTitle) titles.set(current.id, liveTitle);
+
+    // Count user messages per session from the event log.
+    const messageCounts = new Map<string, number>();
+    await Promise.all(
+      records.map(async (record) => {
+        try {
+          const snapshot = await query.readSession(record.header.id);
+          const count = snapshot.events.filter(
+            (event) => event.type === "user/message" && event.data?.source?.kind === "user",
+          ).length;
+          messageCounts.set(record.header.id, count);
+        } catch {
+          messageCounts.set(record.header.id, 0);
+        }
+      }),
+    );
+
     return records.map((record) => ({
       id: record.header.id,
       title: titles.get(record.header.id) ?? record.header.id,
@@ -358,7 +375,7 @@ export class Runtime {
       archived: workspace?.archivedSessionIds.includes(record.header.id) ?? false,
       pinned: workspace?.pinnedSessionIds.includes(record.header.id) ?? false,
       modified: record.header.createdAt,
-      messageCount: 0,
+      messageCount: messageCounts.get(record.header.id) ?? 0,
     }));
   }
   /** The effective directory recorded by a saved session, including later `/cd` changes. */

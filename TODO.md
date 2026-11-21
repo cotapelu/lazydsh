@@ -47,7 +47,8 @@ superseded by the inline layout and deleted (§8.11); the "delete `tools.ts` /
 `detail.ts` detail engine (arguments / diff / output), `ToolRow` history rows with
 mouse expansion, approval panel with operation preview, `tool-presentation.ts`
 bridge for DSH's render intents. _Note: the row path now renders through
-`tools.ts`/`detail.ts`; see REMAINING for the unwired `tool-execution.ts`._
+`tools.ts`/`detail.ts`; `tool-execution.ts` is an alternative renderer (see
+REMAINING)._
 
 ### Phase 3 — Selectors ✅
 
@@ -104,6 +105,10 @@ verification.
 | 8.18 | Footer extension-status row live (`ExtensionWidget.status()`), dead provider params removed                          |
 | 8.19 | Documentation pass: every claim re-verified against code (this file, README, AGENTS, ARCH, GOAL, CAUTRUC)            |
 | 8.20 | Bash mode (`!` / `!!`): `Runtime.shell()` via DSH's executor + pure parser + card + next-prompt context              |
+| 8.21 | Fixed `messageCount: 0` bug — now counts user messages from session events                                           |
+| 8.22 | Fixed `footer.ts` inline `homedir()` — now imports from `node:os`                                                    |
+| 8.23 | Fixed `getSessionPathKey` — now canonicalizes + case-insensitive on Windows                                          |
+| 8.24 | Fixed `ScopedModel` missing `thinkingLevel` — added optional field                                                   |
 
 ### 8.20 Bash mode ✅
 
@@ -121,146 +126,188 @@ verification.
       it on `/clear` + `/new`.
 - [x] Tests: `test/bash-mode.test.ts` — suite now 150/150.
 
+### 8.21–8.24 Bug fixes & code smell fixes ✅
+
+- [x] `messageCount: 0` → now reads session events and counts `user/message` events
+- [x] `footer.ts` inline `homedir()` → imported from `node:os`
+- [x] `getSessionPathKey` → canonicalizes via `realpathSync` + case-insensitive on Windows
+- [x] `ScopedModel` interface → added `thinkingLevel?: string`
+
 ---
 
 ## REMAINING
 
 ### A. Bugs (functional issues)
 
-1. **`messageCount: 0` in `runtime.ts` `sessions()`** — Session selector shows "0 msg" for all sessions.
-   - **File:** `runtime/runtime.ts`, function `sessions()`
-   - **Fix:** Implement actual message counting from session records.
-   - **Severity:** Medium — visible to users in session selector.
-
-2. **`safeSessionName` always returns undefined** — `runtime.sessionManager` has no `getSessionName()` method.
+1. **`safeSessionName` always returns undefined** — `runtime.sessionManager` has no `getSessionName()` method.
    - **File:** `interactive-mode/ui.ts` (line 129), `runtime/runtime.ts` (line 186)
    - **Fix:** Remove dead code or implement `getSessionName()` on sessionManager.
    - **Severity:** Low — no user-visible impact.
 
-3. **`components/session-selector-search.ts` `getSessionPathKey` no canonicalization** — Doesn't follow symlinks or handle case-insensitivity on Windows.
-   - **File:** `interactive-mode/components/session-selector-search.ts`
-   - **Fix:** Implement `canonicalizePath` and case-insensitive comparison like reference.
-   - **Severity:** Low — only affects Windows users with symlinks.
-
 ### B. Code smells / technical debt
 
-4. **`footer.ts` inline `homedir()` function** — Should import from `node:os`.
-   - **File:** `interactive-mode/footer.ts` (bottom of file)
-   - **Fix:** `import { homedir } from "node:os"` and remove local function.
-   - **Severity:** Low.
-
-5. **`theme/theme.ts` uses deprecated `stripVTControlCharacters` from `node:util`** — Deprecated in Node 22+.
-   - **File:** `interactive-mode/theme/theme.ts`
-   - **Fix:** Import from `@earendil-works/pi-tui` instead.
-   - **Severity:** Low.
-
-6. **`session-selector.ts` `widthForLabel` hoisting** — Function defined 200 lines after first use.
+2. **`session-selector.ts` `widthForLabel` hoisting** — Function defined 200 lines after first use.
    - **File:** `interactive-mode/session-selector.ts`
    - **Fix:** Move function definition to top of file.
    - **Severity:** Low.
 
-7. **`ui.ts` 2211 lines — single function** — Could benefit from further decomposition.
+3. **`ui.ts` 2211 lines — single function** — Could benefit from further decomposition.
    - **File:** `interactive-mode/ui.ts`
    - **Fix:** Extract `signIn()`, `signOut()`, `pickModel()` into separate files.
    - **Severity:** Low — maintainability.
 
-8. **`ui.ts` `connect()` many parameters** — 6+ positional params.
+4. **`ui.ts` `connect()` many parameters** — 6+ positional params.
    - **File:** `interactive-mode/ui.ts`
    - **Fix:** Refactor to use options object.
    - **Severity:** Low.
 
-9. **`ui.ts` `ask()` / `select()` potential race condition** — No queueing; concurrent calls reject.
+5. **`ui.ts` `ask()` / `select()` potential race condition** — No queueing; concurrent calls reject.
    - **File:** `interactive-mode/ui.ts`
    - **Fix:** Add queueing or document the contract.
    - **Severity:** Low.
 
-10. **`runtime/runtime.ts` `sessionManager` getter fallback** — `ctx.get("sessionManager") ?? ctx.get("sessionPersistence")` might mask missing service.
-    - **File:** `runtime/runtime.ts`
-    - **Fix:** Use explicit check with warning.
-    - **Severity:** Low.
+6. **`runtime/runtime.ts` `sessionManager` getter fallback** — `ctx.get("sessionManager") ?? ctx.get("sessionPersistence")` might mask missing service.
+   - **File:** `runtime/runtime.ts`
+   - **Fix:** Use explicit check with warning.
+   - **Severity:** Low.
 
-11. **`model-selector.ts` `ScopedModel` missing `thinkingLevel`** — Reference has per-model thinking level.
-    - **File:** `interactive-mode/model-selector.ts`
-    - **Fix:** Add `thinkingLevel?: string` to `ScopedModel` interface.
-    - **Severity:** Low.
+7. **`settings-selector.ts` simplified** — Only 10 settings items vs reference's 40+.
+   - **File:** `interactive-mode/settings-selector.ts`
+   - **Fix:** Add missing settings (transport, cache warming, mermaid rendering, etc.) or document as DSH-delegated.
+   - **Severity:** Medium — users miss settings.
 
-12. **`settings-selector.ts` simplified** — Only 10 settings items vs reference's 40+.
-    - **File:** `interactive-mode/settings-selector.ts`
-    - **Fix:** Add missing settings (transport, cache warming, mermaid rendering, etc.) or document as DSH-delegated.
-    - **Severity:** Medium — users miss settings.
+8. **`components/session-selector-search.ts` simplified** — Loses tiered fuzzy search (TIER_NAME, TIER_TEXT, TIER_FUZZY), regex mode, phrase matching.
+   - **File:** `interactive-mode/components/session-selector-search.ts`
+   - **Fix:** Merge tiered search from top-level `session-selector-search.ts` (330 lines, currently orphan).
+   - **Severity:** Medium — search quality degraded.
 
-13. **`components/session-selector-search.ts` simplified** — Loses tiered fuzzy search (TIER_NAME, TIER_TEXT, TIER_FUZZY), regex mode, phrase matching.
-    - **File:** `interactive-mode/components/session-selector-search.ts`
-    - **Fix:** Merge tiered search from top-level `session-selector-search.ts` (330 lines, currently orphan).
-    - **Severity:** Medium — search quality degraded.
+### C. Orphan files (ported, typechecked, no call site — need product decision)
 
-14. **`tool-execution.ts` `formatToolCallWithArgs` simplified** — Different from reference's `render-utils`.
-    - **File:** `interactive-mode/tool-execution.ts`
-    - **Fix:** Align with reference's implementation.
-    - **Severity:** Low (file is orphan).
+These files are **complete implementations** ported from pi-coding-agent. They are NOT dead code — they represent features that DSH provides and the TUI needs to display. They should be **wired, not deleted**.
 
-### C. Orphan files (dead code — typecheck pass, no call sites)
+#### C1. Need wiring (DSH provides the feature, TUI needs to display it)
 
-15. **`tool-execution.ts` (438 lines)** — orphan. Live transcript uses `tools.ts`/`detail.ts`.
-    - **Action:** Wire or delete. Keep one renderer for tool activity.
+9. **`branch-summary-message.ts` (105 lines)** — Renders branch summary messages.
+   - DSH provides `branch_summary` events. lazydsh **does not** render branch summaries currently.
+   - **Action:** Wire into transcript rendering.
 
-16. **`tool-presentation.ts` (432 lines)** — orphan. Bridge for DSH render intents not used.
-    - **Action:** Wire or delete. DSH render intents superseded by `detail.ts` + tool meta.
+10. **`compaction-summary-message.ts` (107 lines)** — Renders compaction summary messages.
+    - DSH provides compaction events. lazydsh **does not** render compaction summaries currently.
+    - **Action:** Wire into transcript rendering.
 
-17. **`session-selector-search.ts` top-level (330 lines)** — orphan. Tiered fuzzy search not used.
-    - **Action:** Merge into component version or delete.
+11. **`trust-selector.ts` (151 lines)** — Project trust decision UI.
+    - DSH has `ProjectTrustStore` and trust management. lazydsh has no trust UI.
+    - **Action:** Wire into `/trust` command or settings.
 
-18. **Orphan components (12+)** — ported, typechecked, no call site:
-    - `custom-editor`, `custom-entry`, `custom-message`
-    - `extension-editor`, `extension-input`, `extension-selector`
-    - `first-time-setup`, `settings-submenu`, `show-images-selector`
-    - `trust-selector`, `user-message-selector`
-    - `branch-summary-message`, `compaction-summary-message`
-    - `bordered-loader`, `themed-text` (unwired by design), `countdown-timer`
-    - `components/index.ts` (barrel)
-    - **Action:** Wire or delete per component. None blocks shipping.
+12. **`user-message-selector.ts` (176 lines)** — Fork from message selector.
+    - DSH supports fork from message. lazydsh has `/fork` but uses `forkPoints()` + `select()` instead of this component.
+    - **Action:** Wire into `/fork` command.
+
+13. **`custom-entry.ts` (85 lines)** — Renders custom session entries from extensions.
+    - DSH provides custom entries via extension system.
+    - **Action:** Wire when extension system is implemented.
+
+14. **`custom-message.ts` (152 lines)** — Renders custom messages from extensions.
+    - DSH provides custom messages via extension system.
+    - **Action:** Wire when extension system is implemented.
+
+15. **`extension-editor.ts` (136 lines)** — Multi-line editor for extensions.
+    - DSH extension system needs this.
+    - **Action:** Wire when extension system is implemented.
+
+16. **`extension-input.ts` (101 lines)** — Text input for extensions.
+    - DSH extension system needs this.
+    - **Action:** Wire when extension system is implemented.
+
+17. **`extension-selector.ts` (131 lines)** — Generic selector for extensions.
+    - DSH extension system needs this.
+    - **Action:** Wire when extension system is implemented.
+
+18. **`first-time-setup.ts` (155 lines)** — First-time setup dialog (theme + analytics).
+    - DSH onboarding. lazydsh has no first-time setup.
+    - **Action:** Wire into startup flow.
+
+19. **`settings-submenu.ts` (251 lines)** — SelectSubmenu, SteppedSubmenu for complex settings.
+    - DSH settings with submenus. lazydsh settings selector is simplified.
+    - **Action:** Wire into settings selector.
+
+20. **`show-images-selector.ts` (55 lines)** — Show images yes/no selector.
+    - DSH settings. lazydsh settings selector is simplified.
+    - **Action:** Wire into settings selector.
+
+21. **`bordered-loader.ts` (50 lines)** — Loader with borders for extension UI.
+    - Utility component. Used by bug-report in reference.
+    - **Action:** Wire when needed.
+
+22. **`countdown-timer.ts` (41 lines)** — Countdown timer for dialogs.
+    - Utility component. Used by extension-input and RetryStatusIndicator.
+    - **Action:** Wire when needed.
+
+#### C2. Quality improvements (merge or wire)
+
+23. **`session-selector-search.ts` top-level (330 lines)** — Tiered fuzzy search with message text, regex, phrases.
+    - Better search quality than component version (190 lines).
+    - **Action:** Merge tiered search into component version.
+
+24. **`tool-execution.ts` (438 lines)** — Rich tool card with live streaming, custom renderers, images, duration.
+    - Alternative renderer to `tools.ts`/`detail.ts`. Complete implementation.
+    - **Action:** Decide: wire as alternative or delete. Keep one renderer.
+
+25. **`tool-presentation.ts` (432 lines)** — Maps DSH render intents to pi-tui components.
+    - DSH-specific approach. Complete implementation.
+    - **Action:** Decide: wire as alternative or delete. DSH render intents superseded by `detail.ts` + tool meta.
+
+#### C3. Truly unnecessary (could delete)
+
+26. **`themed-text.ts` (41 lines)** — Orphan by design. `TUI.invalidate()` cascades to all children.
+    - pi-coding-agent itself marks it "unwired by design".
+    - **Action:** Could delete (truly unnecessary).
+
+27. **`custom-editor.ts` (167 lines)** — Extends `Container`, not `Editor`. lazydsh uses `PromptEditor` (extends `Editor`) instead.
+    - Different approach, same goal. Keybinding handling in `ui.ts`.
+    - **Action:** Could delete (different approach, not needed).
 
 ### D. Missing features (gaps vs reference)
 
-19. **Mermaid rendering** — `mermaid.js` (Unicode diagrams, settings mode off/final/streaming).
+28. **Mermaid rendering** — `mermaid.js` (Unicode diagrams, settings mode off/final/streaming).
     - **Action:** Implement `createMermaidMarkdownTransformer` equivalent.
 
-20. **Session tree view** — `tree-selector.js` (1246 lines, navigation, folding, filtering, labeling, copying, branch summarization).
+29. **Session tree view** — `tree-selector.js` (1246 lines, navigation, folding, filtering, labeling, copying, branch summarization).
     - **Action:** Implement tree selector component.
 
-21. **Scoped models** — `scoped-models-selector.js` (toggle models for Ctrl+P, enable/disable all, reorder, persist).
+30. **Scoped models** — `scoped-models-selector.js` (toggle models for Ctrl+P, enable/disable all, reorder, persist).
     - **Action:** Implement scoped models selector.
 
-22. **Skill invocation UI** — `skill-invocation-message.js` (render skill blocks with expand/collapse).
+31. **Skill invocation UI** — `skill-invocation-message.js` (render skill blocks with expand/collapse).
     - **Action:** Implement skill invocation message component.
 
-23. **Config selector** — `config-selector.js` (resource management: enable/disable extensions/skills/prompts/themes, project overrides).
+32. **Config selector** — `config-selector.js` (resource management: enable/disable extensions/skills/prompts/themes, project overrides).
     - **Action:** Implement config selector.
 
-24. **Radius MCP** — `radius-login-selector.js` (Radius MCP integration with animated shimmer).
+33. **Radius MCP** — `radius-login-selector.js` (Radius MCP integration with animated shimmer).
     - **Action:** Implement Radius login selector (niche).
 
-25. **Easter eggs / mascot** — `armin.js`, `easter-egg-3d.js`, `earendil-announcement.js` (cosmetic).
+34. **Easter eggs / mascot** — `armin.js`, `easter-egg-3d.js`, `earendil-announcement.js` (cosmetic).
     - **Action:** Implement or skip (cosmetic).
 
-26. **Pi logo** — `pi-logo.js` (half-block logo with Apple Terminal fallback).
+35. **Pi logo** — `pi-logo.js` (half-block logo with Apple Terminal fallback).
     - **Action:** Implement or keep provider-brand (cosmetic).
 
-27. **Custom editor component** — `custom-editor.js` (extends Editor with app keybindings).
+36. **Custom editor component** — `custom-editor.js` (extends Editor with app keybindings).
     - **Action:** Implement or keep PromptEditor approach.
 
-28. **Extension system** — Full extension API (custom editors, widgets, dialogs, shortcuts, commands, tools, resources, RPC, MCP).
+37. **Extension system** — Full extension API (custom editors, widgets, dialogs, shortcuts, commands, tools, resources, RPC, MCP).
     - **Action:** Design real extension API (intentionally out of scope).
 
-29. **Commands missing** — `/clone`, `/import`, `/reload`, `/debug`, `/hotkeys`, `/tree`, `/scoped`, `/trust`, `/skill:*`.
+38. **Commands missing** — `/clone`, `/import`, `/reload`, `/debug`, `/hotkeys`, `/tree`, `/scoped`, `/trust`, `/skill:*`.
     - **Action:** Implement each command.
 
 ### E. Docs / parity
 
-30. **README translations outdated** — `README.ja.md`, `README.zh-CN.md` describe pre-refactor layout.
+39. **README translations outdated** — `README.ja.md`, `README.zh-CN.md` describe pre-refactor layout.
     - **Action:** Refresh when next touched.
 
-31. **Extension system API** — Needs real API design, beyond "lazy" TUI.
+40. **Extension system API** — Needs real API design, beyond "lazy" TUI.
     - **Action:** Design and implement extension API.
 
 ---
@@ -281,6 +328,10 @@ verification.
 - [x] Footer shows git branch, provider count, extension statuses
 - [x] Suite 150/150; `check` clean; `build` clean; dist boots
 - [x] Bash mode (`!` / `!!`) wired and working
+- [x] `messageCount` shows actual count (not 0)
+- [x] `footer.ts` imports `homedir` from `node:os`
+- [x] `getSessionPathKey` canonicalizes + case-insensitive on Windows
+- [x] `ScopedModel` has `thinkingLevel` field
 
 **Suite: 150/150 passing** (51/95 at the start of Phase 8).
 
@@ -291,12 +342,11 @@ verification.
 
 ## Next Actions (priority order)
 
-1. **Fix `messageCount: 0`** — implement actual message counting in `runtime.ts` (functional bug).
-2. **Update TODO.md** — bash mode is wired (§8.20), not broken.
-3. **Clean up orphan files** — delete or wire `tool-execution.ts`, `tool-presentation.ts`, `session-selector-search.ts` (top-level), and 12 orphan components.
-4. **Fix code smells** — inline `homedir()`, deprecated `stripVTControlCharacters`, `widthForLabel` hoisting, `ScopedModel` missing `thinkingLevel`, `getSessionPathKey` no canonicalization.
-5. **Fix `settings-selector.ts`** — add missing settings or document as DSH-delegated.
-6. **Merge tiered search** — into `components/session-selector-search.ts`.
-7. **Implement missing features** (mermaid, tree view, scoped models, skill invocation, config selector, radius, easter eggs, pi logo, custom editor, extension system, 9 commands) — defer to v0.3.0.
-8. **Refresh README translations** — when next touched.
-9. **Design extension API** — needs real API design (intentionally out of scope).
+1. **Fix `safeSessionName` dead code** (low priority).
+2. **Fix `session-selector.ts` `widthForLabel` hoisting** (low priority, cosmetic).
+3. **Fix `components/session-selector-search.ts` simplified search** (medium priority — merge tiered search).
+4. **Wire orphan components** that DSH needs: `branch-summary-message`, `compaction-summary-message`, `trust-selector`, `user-message-selector` (medium priority).
+5. **Wire extension system components** when extension API is designed (low priority).
+6. **Implement missing features** (mermaid, tree view, scoped models, skill invocation, config selector, radius, easter eggs, pi logo, custom editor, 9 commands) — defer to v0.3.0.
+7. **Refresh README translations** — when next touched.
+8. **Design extension API** — needs real API design (intentionally out of scope).
