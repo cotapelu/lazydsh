@@ -31,6 +31,7 @@ imports contracts, `utils/` only; root files may reference both.
 ## Phase History
 
 ### Phase 1 — Layout & Footer ✅
+
 Chat layout (header → transcript → pending → status → widgets → editor → footer),
 footer data provider (git branch, provider count, cwd), footer component
 (tokens ↑↓/R/W, cache hit %, cost, context %, model + thinking, routed model,
@@ -42,26 +43,31 @@ superseded by the inline layout and deleted (§8.11); the "delete `tools.ts` /
 (`interactive-mode/tools.ts`, `runtime/plugin-patch.ts`).
 
 ### Phase 2 — Tool Cards ✅
+
 `detail.ts` detail engine (arguments / diff / output), `ToolRow` history rows with
 mouse expansion, approval panel with operation preview, `tool-presentation.ts`
 bridge for DSH's render intents. _Note: the row path now renders through
 `tools.ts`/`detail.ts`; see REMAINING for the unwired `tool-execution.ts`._
 
 ### Phase 3 — Selectors ✅
+
 Model selector (fuzzy, scoped/all, current marker, default badge, Ctrl+S save),
 session selector (DSH-native: tree view, search with `re:`/`"exact"`, scope/sort/
 name/path toggles, archive/rename), search utilities.
 
 ### Phase 4 — Keybindings & Theme ✅
+
 27 configurable actions with platform defaults, hot reload, legacy migration,
 hint text everywhere. Theme system: tokens, DA1 terminal query, system light/dark
 auto-sync, live reload, validated user themes, persisted selection.
 
 ### Phase 5 — Message Components ✅
+
 Assistant/user message components: markdown, thinking blocks (toggle + live
 streaming of real reasoning), OSC 133 zones, stop reasons, streaming updates.
 
 ### Phase 6 — Polish ✅
+
 Status indicators (working/retry/compaction/idle — compaction/retry wired in
 §8.17), header (logo, version from package.json, key hints, changelog), login
 dialog (OAuth notice + device code, secret, select), external editor (Ctrl+G),
@@ -69,33 +75,34 @@ copy (Ctrl+X), thinking selector (§8.10), bug report, OSC 7501 program status,
 session share, changelog, settings panel, extension widget registry.
 
 ### Phase 7 — Docs & Verification ✅
+
 README/architecture docs, performance audit (~122 ms cold start), integration
 verification.
 
 ### Phase 8 — Upstream Parity & Follow-ups ✅
 
-| §   | Item |
-| --- | ---- |
-| 8.0 | Housekeeping (debug writer removed) |
-| 8.1 | `-v/--version`, complete `runtime.cancel()` |
-| 8.2 | Ctrl+C state machine (`interrupt.ts`): clear / interrupt / force-exit / exit |
-| 8.3 | `/new` keeps transcript, `/clear` wipes |
-| 8.4 | QuestionPanel height budget for short terminals |
-| 8.5 | History shows reasoning rows (lifecycle by `attemptId`) |
-| 8.6 | Tool meta plumbing end-to-end |
-| 8.7 | `detail.ts` — one detail engine for approval + history |
-| 8.8 | Deps `0.2.2-rc.4` (all 36 packages, old sessions still resume) |
-| 8.9 | Overlay lifecycle: `/model` two-level picker, inverted `selecting` guards, login-dialog dismiss, real header version |
-| 8.10 | Theme selector + thinking selector wired into `/settings` and `/effort` |
-| 8.11 | 3-layer restructure (CAUTRUC.md), `theme-schema` validation real, `tui-renderer` wired, dead files deleted |
-| 8.12 | `ModelSelectorComponent` wired (`model-catalog-runtime.ts` adapter) |
-| 8.13 | Auto light/dark pair setting in the theme picker |
-| 8.14 | All 27 keybindings audited and handled (6 advertised-but-dead keys wired; Ctrl+Z suspend; model cycling) |
-| 8.15 | Theme setting persists to `~/.config/lazydsh/theme.json` |
-| 8.16 | Confirm-on-exit real + persisted; cosmetic toggles became honest info rows |
-| 8.17 | Retry/compaction status rows wired to DSH session events |
-| 8.18 | Footer extension-status row live (`ExtensionWidget.status()`), dead provider params removed |
-| 8.19 | Documentation pass: every claim re-verified against code (this file, README, AGENTS, ARCH, GOAL, CAUTRUC) |
+| §    | Item                                                                                                                 |
+| ---- | -------------------------------------------------------------------------------------------------------------------- |
+| 8.0  | Housekeeping (debug writer removed)                                                                                  |
+| 8.1  | `-v/--version`, complete `runtime.cancel()`                                                                          |
+| 8.2  | Ctrl+C state machine (`interrupt.ts`): clear / interrupt / force-exit / exit                                         |
+| 8.3  | `/new` keeps transcript, `/clear` wipes                                                                              |
+| 8.4  | QuestionPanel height budget for short terminals                                                                      |
+| 8.5  | History shows reasoning rows (lifecycle by `attemptId`)                                                              |
+| 8.6  | Tool meta plumbing end-to-end                                                                                        |
+| 8.7  | `detail.ts` — one detail engine for approval + history                                                               |
+| 8.8  | Deps `0.2.2-rc.4` (all 36 packages, old sessions still resume)                                                       |
+| 8.9  | Overlay lifecycle: `/model` two-level picker, inverted `selecting` guards, login-dialog dismiss, real header version |
+| 8.10 | Theme selector + thinking selector wired into `/settings` and `/effort`                                              |
+| 8.11 | 3-layer restructure (CAUTRUC.md), `theme-schema` validation real, `tui-renderer` wired, dead files deleted           |
+| 8.12 | `ModelSelectorComponent` wired (`model-catalog-runtime.ts` adapter)                                                  |
+| 8.13 | Auto light/dark pair setting in the theme picker                                                                     |
+| 8.14 | All 27 keybindings audited and handled (6 advertised-but-dead keys wired; Ctrl+Z suspend; model cycling)             |
+| 8.15 | Theme setting persists to `~/.config/lazydsh/theme.json`                                                             |
+| 8.16 | Confirm-on-exit real + persisted; cosmetic toggles became honest info rows                                           |
+| 8.17 | Retry/compaction status rows wired to DSH session events                                                             |
+| 8.18 | Footer extension-status row live (`ExtensionWidget.status()`), dead provider params removed                          |
+| 8.19 | Documentation pass: every claim re-verified against code (this file, README, AGENTS, ARCH, GOAL, CAUTRUC)            |
 
 ---
 

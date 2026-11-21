@@ -113,14 +113,14 @@ covered by `test/runtime.test.ts` (real profile, temp home).
 
 ## Configuration Files
 
-| File | Purpose |
-| ---- | ------- |
-| `~/.config/lazydsh/keybindings.json` | 27 actions, hot-reloaded |
-| `~/.config/lazydsh/theme.json` | Selected theme (`{"theme":"dark"}` or `"light/dark"`) |
-| `~/.config/lazydsh/themes/<name>.json` | User themes (validated on load) |
-| `~/.config/lazydsh/settings.json` | UI prefs (`confirmExit`) |
-| `$DSH_HOME/lazydsh-model.json` | Last provider/model/effort |
-| `$DSH_HOME/cache/lazydsh/tui.log` | Captured console output |
+| File                                   | Purpose                                               |
+| -------------------------------------- | ----------------------------------------------------- |
+| `~/.config/lazydsh/keybindings.json`   | 27 actions, hot-reloaded                              |
+| `~/.config/lazydsh/theme.json`         | Selected theme (`{"theme":"dark"}` or `"light/dark"`) |
+| `~/.config/lazydsh/themes/<name>.json` | User themes (validated on load)                       |
+| `~/.config/lazydsh/settings.json`      | UI prefs (`confirmExit`)                              |
+| `$DSH_HOME/lazydsh-model.json`         | Last provider/model/effort                            |
+| `$DSH_HOME/cache/lazydsh/tui.log`      | Captured console output                               |
 
 ## Common Pitfalls
 
@@ -135,12 +135,12 @@ covered by `test/runtime.test.ts` (real profile, temp home).
 
 ## Performance Targets
 
-| Metric | Target | Measured |
-| ------ | ------ | -------- |
-| Time to first frame | < 500 ms | ~122 ms |
-| Idle frame | < 16 ms | ~2 ms |
-| Streaming frame | < 33 ms | ~5 ms |
-| Memory (idle) | < 100 MB | ~80 MB |
+| Metric              | Target   | Measured |
+| ------------------- | -------- | -------- |
+| Time to first frame | < 500 ms | ~122 ms  |
+| Idle frame          | < 16 ms  | ~2 ms    |
+| Streaming frame     | < 33 ms  | ~5 ms    |
+| Memory (idle)       | < 100 MB | ~80 MB   |
 
 ## Debugging
 

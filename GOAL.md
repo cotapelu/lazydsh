@@ -18,12 +18,12 @@ Goals, in order:
 
 ## Stack
 
-| Layer | Technology |
-| ----- | ---------- |
-| Runtime | `@deepseek-ai/dsh-base` profile (101 rows) + 11 extra services |
-| UI | `@earendil-works/pi-tui`, token-based theming with DA1 sync |
+| Layer    | Technology                                                       |
+| -------- | ---------------------------------------------------------------- |
+| Runtime  | `@deepseek-ai/dsh-base` profile (101 rows) + 11 extra services   |
+| UI       | `@earendil-works/pi-tui`, token-based theming with DA1 sync      |
 | Language | TypeScript ESM (Node ≥ 24.9), single-file bundle via `vite-plus` |
-| Tests | vitest — 145/145 |
+| Tests    | vitest — 145/145                                                 |
 
 ## Design Principles
 

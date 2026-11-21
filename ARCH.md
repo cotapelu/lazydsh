@@ -88,14 +88,14 @@ Status states: working (spinner + message), retry (attempt/max + countdown, from
 
 ## Configuration
 
-| File | Owner |
-| ---- | ----- |
-| `~/.config/lazydsh/keybindings.json` | 27 actions, hot reload |
-| `~/.config/lazydsh/theme.json` | selected theme / auto pair |
-| `~/.config/lazydsh/themes/*.json` | user themes (validated) |
-| `~/.config/lazydsh/settings.json` | `confirmExit` |
-| `$DSH_HOME/lazydsh-model.json` | model preference |
-| `$DSH_HOME/cache/lazydsh/tui.log` | console capture |
+| File                                 | Owner                      |
+| ------------------------------------ | -------------------------- |
+| `~/.config/lazydsh/keybindings.json` | 27 actions, hot reload     |
+| `~/.config/lazydsh/theme.json`       | selected theme / auto pair |
+| `~/.config/lazydsh/themes/*.json`    | user themes (validated)    |
+| `~/.config/lazydsh/settings.json`    | `confirmExit`              |
+| `$DSH_HOME/lazydsh-model.json`       | model preference           |
+| `$DSH_HOME/cache/lazydsh/tui.log`    | console capture            |
 
 DSH's own configuration (credentials, permission presets, sandbox policy)
 belongs to the profile: `$DSH_HOME/.credentials.yaml`, `settings`, env vars.
