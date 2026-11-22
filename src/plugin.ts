@@ -147,12 +147,17 @@ export function apply(ctx: Context, config: PluginOptions = {}) {
             if (packages === undefined)
               throw new Error("lazydsh: package resolution is unavailable");
             await packages.refresh();
-            await activateDeferredPlugins(ctx, rows);
+            await activateDeferredPlugins(ctx, rows, (loaded, total, id) => {
+              process.emit("lazydsh:boot-progress", loaded, total, id);
+            });
             await waitForRuntimeServices(ctx);
             pending.attach(await createRuntime(ctx, options, effort));
           }
         : deferred.length > 0
-          ? () => activateDeferredPlugins(ctx, deferred)
+          ? () =>
+              activateDeferredPlugins(ctx, deferred, (loaded, total, id) => {
+                process.emit("lazydsh:boot-progress", loaded, total, id);
+              })
           : undefined;
     await runUI(
       options,

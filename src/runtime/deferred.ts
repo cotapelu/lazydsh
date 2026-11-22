@@ -280,15 +280,20 @@ async function withinTimeout<T>(promise: PromiseLike<T>, id: string): Promise<T>
 export async function activateDeferredPlugins(
   ctx: Context,
   plugins: readonly DeferredPlugin[],
+  onProgress?: (loaded: number, total: number, id: string) => void,
 ): Promise<void> {
   if (plugins.length === 0) return;
   const root = ctx.root;
+  const total = plugins.length;
+  let loaded = 0;
   const results = await Promise.allSettled(
     plugins.map(async (plugin) => {
       const namespace = await import(plugin.name);
       const module = (namespace as { default?: Plugin }).default ?? (namespace as Plugin);
       const pluginModule = withRowInject(module, plugin.inject);
       await withinTimeout(root.plugin(pluginModule, interpolate(root, plugin.config)), plugin.id);
+      loaded += 1;
+      onProgress?.(loaded, total, plugin.id);
     }),
   );
   results.forEach((result, index) => {

@@ -719,25 +719,6 @@ export async function runUI(
     if (selection) await saveModel(preferencesPath(options.dshHome), selection);
   }
 
-  /**
-   * Persist a reasoning level as the default for the active route (Ctrl+S in
-   * the thinking picker). Requires a selection to attach it to; the level
-   * still applies in-session even when nothing can be saved.
-   */
-  async function saveDefaultEffort(level: string) {
-    const selection = runtime.selection();
-    if (!selection) {
-      add("Thinking", `${level} applies to this session; pick a model to save it as default.`);
-      return;
-    }
-    try {
-      await saveModel(preferencesPath(options.dshHome), { ...selection, effort: level });
-      add("Thinking", `Default effort for ${selection.provider}/${selection.model}: ${level}`);
-    } catch (error) {
-      add("Error", error instanceof Error ? error.message : String(error));
-    }
-  }
-
   async function connect(nextRoute: Route, connection: ConnectOptions = {}) {
     const {
       sessionId,
@@ -2093,7 +2074,13 @@ export async function runUI(
       // Paint the startup screen before optional plugins are imported, then
       // keep submit disabled until their tools are registered.
       starting = true;
+      statusContainer.show("working", { message: "Loading plugins…" });
       update();
+      const onBootProgress = (loaded: number, total: number, id: string) => {
+        statusContainer.show("working", { message: `Loading plugins ${loaded}/${total}: ${id}` });
+        tui.requestRender();
+      };
+      process.on("lazydsh:boot-progress", onBootProgress);
       tui.renderNow();
       try {
         await hooks.afterFirstPaint();
@@ -2101,7 +2088,9 @@ export async function runUI(
         startupFailed = true;
         add("Error", error instanceof Error ? error.message : String(error));
       } finally {
+        process.off("lazydsh:boot-progress", onBootProgress);
         starting = false;
+        statusContainer.show("idle", { message: "Ready" });
         update();
       }
     }
