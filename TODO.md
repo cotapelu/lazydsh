@@ -306,7 +306,7 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 - [x] P2: Approval "always allow" option
 - [x] P2: Model selector test connection
 - [x] P3: History search/filter
-- [ ] P3: Footer cost breakdown
+- [x] P3: Footer cost breakdown
 - [ ] P3: Session selector multi-delete
 - [ ] P3: Theme creator UI
 
