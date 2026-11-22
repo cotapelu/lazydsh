@@ -146,10 +146,7 @@ verification.
 
 2. **`session-selector.ts` `widthForLabel` hoisting** — ✅ FIXED (defined above first use).
 
-3. **`ui.ts` 2211 lines — single function** — Could benefit from further decomposition.
-   - **File:** `interactive-mode/ui.ts`
-   - **Fix:** Extract `signIn()`, `signOut()`, `pickModel()` into separate files.
-   - **Severity:** Low — maintainability.
+3. **`ui.ts` decomposition** — 🔄 IN PROGRESS: auth cluster (`signIn`, `signOut`, provider options, logout) extracted to `auth-flow.ts` with an explicit `AuthHost` interface; duplicated oauth/api-key login branches merged into one `authenticateProvider`. Next: `pickModel` cluster.
 
 4. **`ui.ts` `connect()` many parameters** — ✅ FIXED: options object (`ConnectOptions`: sessionId, notifyModel, startup, directory, keepTranscript); param renamed `connection` to avoid shadowing the outer `options`.
 

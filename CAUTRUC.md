@@ -48,7 +48,7 @@ root (cli, plugin, types, contracts) → may reference both layers
 | `presentation.ts`                                                                          | editor, status panel, queue view, transcript, notifications                 |
 | `tui-renderer.ts`                                                                          | `createInteractiveTui` (search styling, URL open, select-to-copy)           |
 | `tools.ts`, `detail.ts`                                                                    | tool rows + the one render engine                                           |
-| `bash-execution.ts`                                                                        | bash card (`!`/`!!` mode) — wired                                          |
+| `bash-execution.ts`                                                                        | bash card (`!`/`!!` mode) — wired                                           |
 | `history.ts`                                                                               | session-log replay into rows                                                |
 | `approval.ts`, `question.ts`, `interrupt.ts`                                               | approval/question panels, Ctrl+C state machine                              |
 | `model-*.ts`                                                                               | model selector, catalog adapter, cycle, search, refresh                     |

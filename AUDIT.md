@@ -166,7 +166,7 @@
 - `enqueue(text)` → `QueuedMessage` in `QueueView` + history.
 - `drainQueue()` called after each turn ends → `editor.onSubmit(queuedText)`.
 
-#### Branch C: Slash Commands (40+)
+#### Branch C: Slash Commands (~35)
 
 | Command                               | Flow                                                               |
 | ------------------------------------- | ------------------------------------------------------------------ |
@@ -288,7 +288,7 @@
    - `search` → matches by file
    - `web` → sources / fetch summary
    - `generic` → fallback
-4. **Rich Card** (`tool-execution.ts:ToolExecutionComponent`): **Orphan** — self-rendering, streaming args/result, images, duration. **Not wired** into main transcript flow.
+4. **Rich Card** (`tool-execution.ts:ToolExecutionComponent`): **Dùng cho Bash mode** (`bash-execution.ts:BashExecutionComponent`), nhưng **chưa wired vào main transcript flow** cho tool calls thường.
 
 **Missing Wire**: `tool_execution_update` event listener in `runtime.ts` only has comment — **no live streaming args/result** in `ToolRow`.
 
@@ -566,7 +566,7 @@ tui.onTerminalColorSchemeChange(scheme):
 ### 5.2 Technical Debt (Needs refactor)
 
 - **Login**: 3 code paths → should unify to single `OAuthSelectorComponent` + `LoginDialog`.
-- **Tool Rendering**: `tool-execution.ts` orphan → wire `tool_execution_update` + use `ToolExecutionComponent` in transcript.
+- **Tool Rendering**: `tool-execution.ts` dùng cho Bash mode nhưng **chưa dùng cho tool calls thường** → wire `tool_execution_update` + dùng `ToolExecutionComponent` trong transcript.
 - **History**: Needs virtualization (render only visible window).
 - **Boot**: Needs async progress indicator during deferred plugin activation.
 

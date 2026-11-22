@@ -20,7 +20,6 @@ import { AssistantMessageComponent } from "./components/assistant-message.ts";
 import { createMermaidMarkdownTransformer } from "./components/mermaid.ts";
 import { UserMessageComponent } from "./components/user-message.ts";
 import { CompactionSummaryMessageComponent } from "./components/compaction-summary-message.ts";
-import { OAuthSelectorComponent, type ProviderOption } from "./components/oauth-selector.ts";
 import { editInExternalEditor, editorCommand } from "./external-editor.ts";
 import { reportBug } from "./bug-report.ts";
 import { showChangelog } from "./show-changelog.ts";
@@ -42,7 +41,7 @@ import {
 import { createInteractiveTui } from "./tui-renderer.ts";
 import type { TuiAltScreen } from "@earendil-works/pi-tui";
 import { eventText, isAuthFailure } from "../runtime-events.ts";
-import { AuthorizationDeclinedError } from "@deepseek-ai/dsh-authorization";
+import { signIn as signInFlow, signOut as signOutFlow, type AuthHost } from "./auth-flow.ts";
 import type { Runtime } from "../runtime/runtime.ts";
 import type { Route, Callbacks, CredentialSource } from "../interfaces.ts";
 import {
@@ -1078,188 +1077,37 @@ export async function runUI(
   }
 
   /** Show the OAuth selector for login, with auth type selection per provider. */
+  /**
+   * Host services for the extracted `/login` and `/logout` flows. Built once
+   * so `auth-flow.ts` stays free of orchestrator state.
+   */
+  const authHost: AuthHost = {
+    runtime,
+    callbacks,
+    signal: options.signal,
+    tui,
+    add,
+    runBusy,
+    showPanel,
+    dismissPanel,
+    isClosing: () => closing,
+    editor,
+    forgetAnnounced: (provider) => announcedAuth.delete(provider),
+    takeBlockedPrompt: () => {
+      const prompt = blockedPrompt;
+      blockedPrompt = undefined;
+      return prompt;
+    },
+    requestRender: () => update(),
+    refreshStats,
+  };
+
   async function signIn(provider?: string) {
-    await runBusy(async () => {
-      if (provider === undefined) {
-        // Show OAuth selector with all providers and auth types
-        const providerOptions = await buildLoginProviderOptions();
-        const selector = new OAuthSelectorComponent(
-          "login",
-          providerOptions,
-          async (providerId, authType) => {
-            dismissPanel();
-            await startProviderLogin(providerId, authType);
-          },
-          () => dismissPanel(),
-          undefined,
-          tui,
-        );
-        showPanel(selector);
-        return;
-      }
-      // Direct provider specified
-      try {
-        const notice = await runtime.authenticate(options.signal, {
-          provider,
-          onAuth: callbacks.onAuth,
-        });
-        if (notice !== undefined) {
-          add("Login", notice);
-          return;
-        }
-      } catch (error) {
-        if (closing) return;
-        if (error instanceof AuthorizationDeclinedError) {
-          add("Login", "Cancelled.");
-          return;
-        }
-        throw error;
-      }
-      if (closing) return;
-      announcedAuth.delete(provider);
-      add("Logged in", provider);
-      if (blockedPrompt !== undefined) {
-        if (editor.getText().length === 0) editor.setText(blockedPrompt);
-        blockedPrompt = undefined;
-        update();
-      }
-    }, "Error");
-  }
-
-  async function buildLoginProviderOptions(): Promise<ProviderOption[]> {
-    const options: ProviderOption[] = [];
-    for (const provider of runtime.authProviders()) {
-      const providerId = provider.value;
-      const authStatus: CredentialSource = await runtime.credentialSource(providerId);
-      const status =
-        authStatus.kind !== "none"
-          ? {
-              type: (authStatus.kind === "keyless" ? "oauth" : "api_key") as "oauth" | "api_key",
-              source: authStatus.label,
-            }
-          : undefined;
-
-      options.push({
-        id: providerId,
-        name: provider.label,
-        authType: "oauth",
-        status,
-        subscription: false,
-      });
-      options.push({
-        id: providerId,
-        name: provider.label,
-        authType: "api_key",
-        status,
-        subscription: false,
-      });
-    }
-    return options.sort((a: ProviderOption, b: ProviderOption) => a.name.localeCompare(b.name));
-  }
-
-  /** Start the provider login flow based on auth type. */
-  async function startProviderLogin(providerId: string, authType: "oauth" | "api_key") {
-    if (authType === "oauth") {
-      // OAuth flow handled via callbacks.onAuth
-      try {
-        const notice = await runtime.authenticate(options.signal, {
-          provider: providerId,
-          onAuth: callbacks.onAuth,
-        });
-        if (notice !== undefined) add("Login", notice);
-      } catch (error) {
-        if (closing) return;
-        if (error instanceof AuthorizationDeclinedError) {
-          add("Login", "Cancelled.");
-        } else {
-          throw error;
-        }
-      }
-      if (closing) return;
-      announcedAuth.delete(providerId);
-      add("Logged in", providerId);
-    } else {
-      // API key flow
-      try {
-        const notice = await runtime.authenticate(options.signal, {
-          provider: providerId,
-          onAuth: callbacks.onAuth,
-        });
-        if (notice !== undefined) add("Login", notice);
-      } catch (error) {
-        if (closing) return;
-        if (error instanceof AuthorizationDeclinedError) {
-          add("Login", "Cancelled.");
-        } else {
-          throw error;
-        }
-      }
-      if (closing) return;
-      announcedAuth.delete(providerId);
-      add("Logged in", providerId);
-    }
+    await signInFlow(authHost, provider);
   }
 
   async function signOut(provider?: string) {
-    await runBusy(async () => {
-      if (provider === undefined) {
-        // Show OAuth selector for logout
-        const logoutOptions = await buildLogoutProviderOptions();
-        if (logoutOptions.length === 0) {
-          add(
-            "Logout",
-            "No stored credentials to remove. /logout only removes credentials saved by /login; environment variables and models.json config are unchanged.",
-          );
-          return;
-        }
-        const selector = new OAuthSelectorComponent(
-          "logout",
-          logoutOptions,
-          async (providerId) => {
-            dismissPanel();
-            await performLogout(providerId);
-          },
-          () => dismissPanel(),
-          undefined,
-          tui,
-        );
-        showPanel(selector);
-        return;
-      }
-      await performLogout(provider);
-    }, "Error");
-  }
-
-  async function buildLogoutProviderOptions(): Promise<ProviderOption[]> {
-    const providers = runtime.authProviders();
-    const options: ProviderOption[] = [];
-    for (const provider of providers) {
-      const providerId = provider.value;
-      const hasCreds = await runtime.hasCredentials(providerId);
-      if (hasCreds) {
-        // Determine auth type from the provider description
-        const isOAuth = provider.description.includes("OAuth");
-        options.push({
-          id: providerId,
-          name: providerId,
-          authType: isOAuth ? "oauth" : "api_key",
-          status: { type: isOAuth ? "oauth" : "api_key", source: "stored credential" },
-          subscription: false,
-        });
-      }
-    }
-    return options.sort((a: ProviderOption, b: ProviderOption) => a.name.localeCompare(b.name));
-  }
-
-  async function performLogout(providerId: string) {
-    try {
-      await runtime.logout(providerId);
-      await refreshStats();
-      add("Logged out", providerId);
-    } catch (error) {
-      if (closing) return;
-      add("Logout failed", error instanceof Error ? error.message : String(error));
-    }
+    await signOutFlow(authHost, provider);
   }
 
   /**
