@@ -225,7 +225,7 @@ npm run build    # bundle → dist/
 ```
 
 Docs: `AGENTS.md` (patterns) · `ARCH.md` (architecture) · `CAUTRUC.md` (file map) ·
-`TODO.md` (history + remaining work) · `DSH-BASE.md` (the DSH bundle).
+`TODO.md` (history + remaining work).
 
 ## Bash mode
 
@@ -242,12 +242,14 @@ path when the output is truncated) and works while a turn is running.
 
 ## Known gaps
 
-See `TODO.md` REMAINING + `AUDIT.md` §4 for full list. Key gaps:
+See `TODO.md` REMAINING + `AUDIT.md` §4 for full list. Implemented gaps removed; remaining:
 
-- **P0 Critical (4):** Boot no progress indicator; history no virtualization; login 3 entry points with bugs; tool streaming missing.
-- **P1 High (6):** Footer git polling 5s; Theme DA1 blocks first paint; Ctrl+C 4-state confusing; `!!cmd` drops output; queue no visual indicator; silent retry in auth.
-- **P2 Medium (5):** Nested panels no global ESC; mermaid disabled during stream; BashExecutionComponent unused for tool calls; approval no "always allow"; model selector no test connection.
-- **P3 Low (4):** History no search/filter; footer no cost breakdown; session selector no multi-delete; theme no creator UI.
+- **P0:** Login unification (CLI still uses terminal-login/command-runner).
+- **P1:** `!!cmd` output dropped (notice only); queue visual indicator (basic "N queued" only).
+- **P2:** BashExecutionComponent for tool calls; approval "always allow"; model selector test connection.
+- **P3:** History search/filter; footer cost breakdown; session selector multi-delete; theme creator UI.
+
+Implemented: boot progress, history virtualization, fake OAuth fix, tool streaming, footer git watcher, DA1 async, Ctrl+C simplify, auth silent retry, global ESC, mermaid streaming.
 
 Full comparison: `GOAL.md` "Comparison with pi-coding-agent interactive mode".
 

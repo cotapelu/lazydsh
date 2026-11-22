@@ -4,7 +4,7 @@
 
 lazydsh is a standalone TUI client for **DeepSeek Harness (DSH)** — a headless
 Cordis-based agent platform. It is **not** a DSH plugin: it boots the DSH
-`@deepseek-ai/dsh-base` profile (101 plugin rows, see `DSH-BASE.md`) inside its
+`@deepseek-ai/dsh-base` profile (101 plugin rows) inside its
 own process and wraps the Agent in a `Runtime` class for the TUI.
 
 - Runtime: DSH via `@deepseek-ai/dsh-base` (+ 11 extra services from
@@ -38,7 +38,7 @@ src/
 │   ├── model-*.ts, session-*.ts,       #   selectors + search
 │   │   picker.ts, autocomplete.ts
 │   ├── theme.ts, theme/                #   tokens, controller, JSON themes
-│   └── components/ (32)                #   header, dialogs, selectors, messages (16 orphan)
+│   └── components/ (31)                #   header, dialogs, selectors, messages (15 orphan)
 └── utils/ (7)                          # pure: ansi, truncate, format, stats,
                                         # limits, models-are-equal, version
 ```
@@ -157,5 +157,4 @@ node dist/cli.mjs --list    # providers/models without a session
 
 ## Status
 
-Core complete; UX gaps remain (see AUDIT.md §4). See `TODO.md` for phase history.
-Remaining: P0 boot progress / history virtualization / login unification / tool streaming; P1 git poll / DA1 blocking / Ctrl+C / !!cmd / queue indicator / silent retry.
+Core complete. Many UX gaps fixed (see AUDIT.md §4). Remaining: login unification (CLI), !!cmd output, queue indicator, bash execution for tools, approval always-allow, model test connection, history search, footer cost breakdown, session multi-delete, theme creator UI.

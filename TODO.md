@@ -2,9 +2,9 @@
 
 ## Current State
 
-**Version 0.2.3** · Suite **150/150 passing** (41 test files) · `npm run check` clean · `npm run build` clean · dist boots.
+**Version 0.2.3** · Suite **150/150 passing** (42 test files) · `npm run check` clean · `npm run build` clean · dist boots.
 
-**Core complete; UX gaps remain** (see AUDIT.md §4). The pi-coding-agent interactive-mode port is **functionally complete** — every advertised keybinding fires, every advertised panel opens, theme/settings persist, retry + compaction states are live, and the DSH bridge loads the full `@deepseek-ai/dsh-base` profile (101 plugin rows — see `DSH-BASE.md`) with only the 14 services the TUI actually needs mounted eagerly. However, **19 UX gaps remain** (see AUDIT.md §4: 4 P0, 6 P1, 5 P2, 4 P3).
+**Core complete.** The pi-coding-agent interactive-mode port is **functionally complete** — every advertised keybinding fires, every advertised panel opens, theme/settings persist, retry + compaction states are live, and the DSH bridge loads the full `@deepseek-ai/dsh-base` profile (101 plugin rows) with only the 14 services the TUI actually needs mounted eagerly. Most P0/P1/P2 gaps fixed; 10 UX gaps remain (see AUDIT.md §4).
 
 **Layout** (applied in §8.0 / CAUTRUC.md — three layers + root contracts):
 
@@ -41,10 +41,8 @@ superseded by the inline layout and deleted (§8.11); the "delete `tools.ts` /
 ### Phase 2 — Tool Cards ✅
 
 `detail.ts` detail engine (arguments / diff / output), `ToolRow` history rows with
-mouse expansion, approval panel with operation preview, `tool-presentation.ts`
-bridge for DSH's render intents. _Note: the row path now renders through
-`tools.ts`/`detail.ts`; `tool-execution.ts` is an alternative renderer (see
-REMAINING)._
+mouse expansion, approval panel with operation preview. The row path renders through
+`tools.ts`/`detail.ts`.
 
 ### Phase 3 — Selectors ✅
 
@@ -219,30 +217,31 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 
 23. **`session-selector-search.ts` top-level (330 lines)** — ✅ DELETED: content merged into `components/session-selector-search.ts`; keeping both would duplicate the search engine.
 
-24. **`tool-execution.ts` (438 lines)** — **NEVER EXISTED**; `bash-execution.ts` (210L) is the actual Bash mode renderer; `detail.ts` owns all tool pixels.
+### D. Remaining UX gaps (aligned with AUDIT.md §4 priorities)
 
-25. **`tool-presentation.ts` (432 lines)** — ✅ DELETED: `detail.ts` + tool meta already turn DSH render intents into rows; this was a parallel implementation of the same mapping.
+Implemented (code exists) — removed from remaining list:
+- P0#1 Boot progress indicator during deferred plugin activation ✓
+- P0#2 History virtualization (max 500 rows) ✓
+- P0#3 (partial) Fake OAuth options fixed (buildLoginProviderOptions queries authorization) ✓
+- P0#4 Tool streaming (`tool_execution_update` wired) ✓
+- P1#5 Footer git watcher (FSWatcher on .git/HEAD) ✓
+- P1#6 Theme DA1 async (non-blocking first paint) ✓
+- P1#7 Ctrl+C simplified (clear/interrupt/exit) ✓
+- P1#10 Auth silent retry fixed (goingBack guard) ✓
+- P2#11 Nested panels global ESC (dismissPanel(true) on ESC) ✓
+- P2#12 Mermaid streaming enabled (mode "streaming") ✓
 
-#### C3. Truly unnecessary (could delete)
-
-26. **`themed-text.ts` (41 lines)** — ✅ DELETED (truly unnecessary, TUI.invalidate() cascades).
-
-27. **`custom-editor.ts` (167 lines)** — ✅ DELETED (different approach, PromptEditor used instead).
-
-### D. Missing features & UX gaps (aligned with AUDIT.md §4 priorities)
-
-**P0 Critical (blocks core workflow):**
-
-1. **Boot progress indicator** — Editor disabled 2–5s during deferred plugin activation, no visual feedback.
-2. **History virtualization** — `historyRows()` creates one component per user-facing event; 10k events = lag/OOM.
-3. **Login unification** — 3 entry points (CLI, TUI `/login`, auto-reauth) with duplicate code, fake OAuth options, broken notice dialog.
-4. **Tool streaming** — `tool_execution_update` event type exists but never emitted; no live arg/result streaming.
-
-**P1 High (degrades experience significantly):** 5. **Footer git polling** — `spawnSync` every 5s; switch to file watcher. 6. **Theme DA1 blocking** — 100ms+ blocking first paint; make async. 7. **Ctrl+C simplification** — 4-state behavior (clear/interrupt/force-exit/exit) confuses users; reduce to 2 states. 8. **`!!cmd` output dropped** — Excluded from transcript; user loses context. 9. **Queue indicator** — No visual distinction for queued vs sent messages. 10. **Silent retry in auth** — `goingBack=true` restarts login loop silently on cancel.
-
-**P2 Medium (polish gaps):** 11. **Nested panels ESC** — No global ESC to dismiss all overlays. 12. **Mermaid streaming** — Disabled during stream; raw markdown shown until completion. 13. **BashExecutionComponent unused for tools** — Rich renderer exists but only used for `!cmd`/`!!cmd`. 14. **Approval "always allow"** — Missing option in ApprovalPanel. 15. **Model selector test connection** — No "test connection" button.
-
-**P3 Low (nice to have):** 16. History search/filter. 17. Footer cost breakdown per model. 18. Session selector multi-delete. 19. Theme creator UI.
+Still remaining (not implemented in code):
+- [ ] P0: Login unification — CLI still uses terminal-login.ts/command-runner.ts (not routed through TUI signIn)
+- [ ] P1: `!!cmd` output in transcript — only a notice added, output still dropped
+- [ ] P1: Queue visual indicator — only basic "N queued" status, no distinct transcript style
+- [ ] P2: BashExecutionComponent for tool calls — only used for bash mode
+- [ ] P2: Approval "always allow" option
+- [ ] P2: Model selector test connection
+- [ ] P3: History search/filter
+- [ ] P3: Footer cost breakdown per model
+- [ ] P3: Session selector multi-delete
+- [ ] P3: Theme creator UI
 
 ### E. Missing features (gaps vs pi-coding-agent reference)
 
@@ -290,32 +289,36 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 
 **UX Gaps (see AUDIT.md §4):**
 
+Implemented (code exists):
 - [x] P0: Boot progress indicator during deferred plugin activation
 - [x] P0: History virtualization (lazy render visible window)
-- [x] P0: Login unification (3 entry points → 1)
+- [x] P0: Login — fake OAuth options fixed (buildLoginProviderOptions queries authorization)
 - [x] P0: Tool streaming (`tool_execution_update` wired)
-- [x] P1: Footer git watcher (replace 5s polling)
+- [x] P1: Footer git watcher (FSWatcher on .git/HEAD)
 - [x] P1: Theme DA1 async (non-blocking first paint)
-- [x] P1: Ctrl+C simplified to 2 states
-- [x] P1: `!!cmd` output in transcript
-- [x] P1: Queue visual indicator
-- [x] P1: Auth silent retry fixed
-- [x] P2: Nested panels global ESC
-- [x] P2: Mermaid streaming enabled
-- [x] P2: BashExecutionComponent for tool calls
-- [x] P2: Approval "always allow" option
-- [x] P2: Model selector test connection
-- [x] P3: History search/filter
-- [x] P3: Footer cost breakdown
-- [x] P3: Session selector multi-delete
-- [x] P3: Theme creator UI
+- [x] P1: Ctrl+C simplified (clear/interrupt/exit)
+- [x] P1: Auth silent retry fixed (goingBack guard)
+- [x] P2: Nested panels global ESC (dismissPanel(true) on ESC)
+- [x] P2: Mermaid streaming enabled (mode "streaming")
 
-**Suite: 150/150 passing** (51/95 at the start of Phase 8).
+Remaining (not implemented in code):
+- [ ] P0: Login unification — CLI still uses terminal-login.ts/command-runner.ts (not routed through TUI signIn)
+- [ ] P1: `!!cmd` output in transcript — only a notice added, output still dropped
+- [ ] P1: Queue visual indicator — only basic "N queued" status, no distinct transcript style
+- [ ] P2: BashExecutionComponent for tool calls — only used for bash mode
+- [ ] P2: Approval "always allow" option
+- [ ] P2: Model selector test connection
+- [ ] P3: History search/filter
+- [ ] P3: Footer cost breakdown per model
+- [ ] P3: Session selector multi-delete
+- [ ] P3: Theme creator UI
+
+**Suite: 150/150 passing** (42 test files).
 
 ## Dependencies
 
 `diff`, `highlight.js`, `open`, `typebox`, `zod` (direct); DSH packages per
-`DSH-BASE.md`; UI on `@earendil-works/pi-tui`.
+UI on `@earendil-works/pi-tui`.
 
 ## Next Actions (priority order per AUDIT.md §6)
 

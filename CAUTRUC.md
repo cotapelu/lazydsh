@@ -69,7 +69,7 @@ root (cli, plugin, types, contracts) → may reference both layers
 
 header · assistant-message · user-message · login-dialog · oauth-selector ·
 auth-url · provider-brand · status-indicator · status-container · dynamic-border ·
-bordered-loader* · visual-truncate · themed-text* · countdown-timer ·
+bordered-loader* · visual-truncate · countdown-timer ·
 model-selector · session-selector · session-selector-search · thinking-selector ·
 theme-selector · settings-submenu* · show-images-selector* · trust-selector* ·
 user-message-selector* · custom-entry* · custom-message* ·

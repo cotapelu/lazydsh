@@ -51,10 +51,16 @@ Goals, in order:
 
 **Known UX gaps (see AUDIT.md §4):**
 
-- **P0 Critical (4):** Boot no progress indicator; history no virtualization; login 3 entry points with bugs; tool streaming missing (`tool_execution_update` not wired).
-- **P1 High (6):** Footer git polling 5s; Theme DA1 blocks first paint; Ctrl+C 4-state confusing; `!!cmd` drops output; queue no visual indicator; silent retry in auth.
-- **P2 Medium (5):** Nested panels no global ESC; mermaid disabled during stream; BashExecutionComponent unused for tool calls; approval no "always allow"; model selector no test connection.
-- **P3 Low (4):** History no search/filter; footer no cost breakdown; session selector no multi-delete; theme no creator UI.
+Implemented (code exists):
+- P0: Boot progress indicator; history virtualization; fake OAuth options fixed; tool streaming wired.
+- P1: Footer git watcher (FSWatcher); Theme DA1 async; Ctrl+C simplified; auth silent retry fixed.
+- P2: Nested panels global ESC; Mermaid streaming enabled.
+
+Remaining (not implemented in code):
+- P0: Login unification (CLI still uses terminal-login/command-runner).
+- P1: `!!cmd` output dropped (only notice added); queue visual indicator (basic "N queued" only).
+- P2: BashExecutionComponent for tool calls; approval "always allow"; model selector test connection.
+- P3: History search/filter; footer cost breakdown; session selector multi-delete; theme creator UI.
 
 ## Layer Layout
 
@@ -184,19 +190,11 @@ display. They should be **wired, not deleted**.
 
 #### Quality improvements (merge or wire)
 
-15. `session-selector-search.ts` (330L) — Tiered fuzzy search, better than component version (190L)
-16. `bash-execution.ts` (210L) — Bash mode renderer, could replace `tools.ts`/`detail.ts` for tool calls too
-17. `tool-presentation.ts` (432L) — DSH render intent bridge (dup of `detail.ts` + tool meta)
-
-#### Truly unnecessary / not ported
-
-- `themed-text.ts` — not ported (orphan by design; TUI.invalidate() cascades)
-- `custom-editor.ts` — not ported (different approach: PromptEditor extends Editor)
-- `tool-execution.ts` — does not exist; `bash-execution.ts` is the actual implementation
-- `tool-presentation.ts` — does not exist; `detail.ts` covers render intent
+15. `session-selector-search.ts` (330L) — Tiered fuzzy search, merged into component version
+16. `bash-execution.ts` (210L) — Bash mode renderer (used for `!cmd`/`!!cmd`)
 
 ## Onboarding Files
 
 `AGENTS.md` (patterns + runtime API) · `ARCH.md` (architecture) ·
-`CAUTRUC.md` (file map) · `TODO.md` (history + remaining) · `DSH-BASE.md`
+`CAUTRUC.md` (file map) · `TODO.md` (history + remaining)
 (the 101-row DSH bundle this app boots).

@@ -281,14 +281,7 @@
 
 1. **Log** (`tools.ts:ToolLog`): `record(output)` → creates/updates `ToolRow` keyed by `[sessionId, callId]`.
 2. **Detail** (`detail.ts`): `toolDetails(args, result, meta, width)` → args (pretty JSON), result, diffs (intra-line).
-3. **Presenter** (`tool-presentation.ts`): `presentCall/presentResult` — maps DSH `ToolCallView`/`ToolResultView` → pi-tui components:
-   - `terminal` → command + output + exit pill
-   - `diff` → unified diff + intra-line highlight
-   - `read` → line-numbered, syntax-highlighted
-   - `search` → matches by file
-   - `web` → sources / fetch summary
-   - `generic` → fallback
-4. **Rich Card** (`bash-execution.ts:BashExecutionComponent`): **Dùng cho Bash mode** (`!cmd`/`!!cmd`), nhưng **chưa wired vào main transcript flow** cho tool calls thường. File `tool-execution.ts` không tồn tại.
+3. **Rich Card** (`bash-execution.ts:BashExecutionComponent`): used for Bash mode (`!cmd`/`!!cmd`), not wired into main transcript flow for regular tool calls.
 
 **Missing Wire**: `tool_execution_update` event listener in `runtime.ts` only has comment — **no live streaming args/result** in `ToolRow`.
 
@@ -514,37 +507,43 @@ tui.onTerminalColorSchemeChange(scheme):
 
 ## 4. UX PROBLEMS INVENTORY (Prioritized)
 
-### P0 — Critical (Blocks core workflow)
+### Implemented (code exists — removed from remaining list)
+
+- Boot progress indicator during deferred plugin activation (statusContainer "Loading plugins x/y")
+- History virtualization (max 500 rows + omitted marker)
+- Login: fake OAuth options fixed (buildLoginProviderOptions queries authorization flow methods)
+- Tool streaming (`tool_execution_update` wired → ToolRow.updateArgs/updateResult)
+- Footer git watcher (FSWatcher on .git/HEAD; updateGitBranch still uses spawnSync 1s)
+- Theme DA1 async (non-blocking first paint, `void waitForTerminalColors()`)
+- Ctrl+C simplified (clear/interrupt/exit, 3 states)
+- Auth silent retry fixed (goingBack guard throws on cancel)
+- Nested panels global ESC (dismissPanel(true) on ESC when selecting)
+- Mermaid streaming enabled (mode "streaming")
+
+### Remaining (not implemented in code)
+
+### P0 — Critical
 
 | #   | Flow                       | Problem                                                      | Impact                                           |
 | --- | -------------------------- | ------------------------------------------------------------ | ------------------------------------------------ |
-| 1   | Boot (`afterFirstPaint`)   | Editor disabled 2–5s, **no progress indicator**              | User sees UI but cannot type; thinks frozen      |
-| 2   | History Replay (`connect`) | **No virtualization** — 1 component per user-facing event    | 10k raw events → ~1-2k components = lag/OOM      |
-| 3   | Login (3 entry points)     | **Duplicate code**, fake OAuth options, broken notice dialog | Confusing, broken auth UX                        |
-| 4   | Tool Streaming             | `tool_execution_update` **not wired**                        | No live args/result; ToolRow only updates on end |
+| 3   | Login (CLI entry)          | CLI still uses terminal-login.ts/command-runner.ts (not unified with TUI signIn) | Duplicate auth code path |
 
-### P1 — High (Degrades experience significantly)
+### P1 — High
 
 | #   | Flow         | Problem                                                | Impact                               |
 | --- | ------------ | ------------------------------------------------------ | ------------------------------------ |
-| 5   | Footer Git   | **Polling 5s**                                         | Branch changes not realtime          |
-| 6   | Theme DA1    | **Blocking first paint** (100ms+)                      | Delay before connect                 |
-| 7   | Ctrl+C       | **4-state behavior** (clear/interrupt/force-exit/exit) | User confusion                       |
-| 8   | `!!cmd`      | Output **dropped from transcript**                     | User forgets context                 |
-| 9   | Queue        | **No visual indicator** for queued vs sent             | Unclear message state                |
-| 10  | Silent Retry | `authenticate()` `goingBack` loop restarts silently    | User thinks cancelled, flow restarts |
+| 8   | `!!cmd`      | Output dropped from transcript (only notice added)      | User loses context                   |
+| 9   | Queue        | No distinct visual indicator for queued vs sent         | Unclear message state                |
 
-### P2 — Medium (Polish gaps)
+### P2 — Medium
 
 | #   | Flow                   | Problem                                             |
 | --- | ---------------------- | --------------------------------------------------- |
-| 11  | Nested Panels          | No global ESC — must dismiss each                   |
-| 12  | Mermaid Streaming      | Disabled during stream — raw markdown shown         |
-| 13  | BashExecutionComponent | Dùng cho Bash mode, chưa dùng cho tool calls thường |
+| 13  | BashExecutionComponent | Only used for bash mode, not for tool calls          |
 | 14  | ApprovalPanel          | No "Always allow" option                            |
 | 15  | ModelSelector          | No "test connection" button                         |
 
-### P3 — Low (Nice to have)
+### P3 — Low
 
 | #   | Flow            | Problem                        |
 | --- | --------------- | ------------------------------ |
@@ -565,10 +564,10 @@ tui.onTerminalColorSchemeChange(scheme):
 
 ### 5.2 Technical Debt (Needs refactor)
 
-- **Login**: 3 code paths → should unify to single `OAuthSelectorComponent` + `LoginDialog`.
-- **Tool Rendering**: `bash-execution.ts:BashExecutionComponent` dùng cho Bash mode nhưng **chưa dùng cho tool calls thường** → wire `tool_execution_update` + dùng `BashExecutionComponent` trong transcript.
-- **History**: Needs virtualization (render only visible window).
-- **Boot**: Needs async progress indicator during deferred plugin activation.
+- **Login**: 3 code paths → should unify CLI entry through TUI `signIn()` (terminal-login.ts/command-runner.ts still separate).
+- **Tool Rendering**: `bash-execution.ts:BashExecutionComponent` used for Bash mode only; `tool_execution_update` already wired to ToolRow.
+- **History**: Virtualized (max 500 rows). Search/filter still missing.
+- **Boot**: Progress indicator implemented.
 
 ### 5.3 Performance Risks
 
@@ -580,16 +579,29 @@ tui.onTerminalColorSchemeChange(scheme):
 
 ## 6. RECOMMENDED FIX ORDER
 
-1. **Unify Login** (P0#3) — delete `terminal-login.ts`, `command-runner.ts` login; route CLI `lazydsh login` through main TUI `signIn()`.
-2. **Fix Fake OAuth Options** (P0#3) — `buildLoginProviderOptions()` → query `flow.methods` from `authorization`.
-3. **Redesign LoginDialog Notice** (P0#3) — add progress, buttons, auto-close.
-4. **Virtualize History** (P0#2) — render only visible transcript window + sentinel.
-5. **Wire Tool Streaming** (P0#4) — implement `tool_execution_update` → `ToolRow.updateArgs()` / partial result.
-6. **Boot Progress** (P0#1) — show deferred plugin activation progress in status area.
-7. **Footer Git** (P1#5) — switch to file watcher (`.git/HEAD`) or async spawn.
-8. **Ctrl+C Simplify** (P1#7) — 2 states: clear draft / interrupt turn.
-9. **Fix Silent Retry** (P1#10) — throw on cancel, show "Cancelled" notice.
-10. **Queue Indicator** (P1#9) — distinct style for queued messages.
+Completed:
+- [x] Fix Fake OAuth Options (P0#3) — buildLoginProviderOptions queries authorization flow methods
+- [x] Virtualize History (P0#2) — max 500 rows + omitted marker
+- [x] Wire Tool Streaming (P0#4) — tool_execution_update → ToolRow.updateArgs/updateResult
+- [x] Boot Progress (P0#1) — statusContainer "Loading plugins x/y"
+- [x] Footer Git (P1#5) — FSWatcher on .git/HEAD
+- [x] Ctrl+C Simplify (P1#7) — clear/interrupt/exit
+- [x] Fix Silent Retry (P1#10) — goingBack guard
+- [x] Global ESC (P2#11) — dismissPanel(true) on ESC
+- [x] Mermaid Streaming (P2#12) — mode "streaming"
+
+Remaining (priority order):
+1. **Unify Login** (P0) — route CLI `lazydsh login` through main TUI `signIn()`; delete terminal-login.ts/command-runner.ts login.
+2. **Redesign LoginDialog Notice** (P0) — add progress, buttons, auto-close.
+3. **`!!cmd` output** (P1) — add output to transcript, not just notice.
+4. **Queue Indicator** (P1) — distinct style for queued vs sent.
+5. **BashExecutionComponent for tools** (P2) — use rich renderer for tool calls.
+6. **Approval "always allow"** (P2).
+7. **Model selector test connection** (P2).
+8. **History search/filter** (P3).
+9. **Footer cost breakdown** (P3).
+10. **Session selector multi-delete** (P3).
+11. **Theme creator UI** (P3).
 
 ---
 
@@ -602,7 +614,7 @@ tui.onTerminalColorSchemeChange(scheme):
 | Input/Submit | `ui.ts` (1112–1755)                                                                                                                                    |
 | Streaming    | `ui.ts` (1738–1915), `streaming.ts`, `stream-highlight.ts`                                                                                             |
 | Auth         | `ui.ts` (1035–1156), `auth-flow.ts`, `runtime/runtime.ts` (712–834), `components/login-dialog.ts`, `components/oauth-selector.ts`, `terminal-login.ts` |
-| Tools        | `tools.ts`, `detail.ts`, `tool-presentation.ts`, `bash-execution.ts`                                                                                   |
+| Tools        | `tools.ts`, `detail.ts`, `bash-execution.ts`                                                                                   |
 | Panels       | `ui.ts` (766–810), `components/*.ts`                                                                                                                   |
 | Sessions     | `ui.ts` (2020–2060), `session-selector.ts`, `session-select.ts`                                                                                        |
 | Models       | `ui.ts` (904–991), `model-selector.ts`, `model-cycle.ts`                                                                                               |

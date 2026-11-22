@@ -155,6 +155,17 @@ Flags:
 | Z.AI                          | `zai`                           | API 密钥                    |
 | Z.AI Coding CN                | `zai-coding-cn`                 | API 密钥                    |
 
+## 已知限制
+
+详情见 `TODO.md` REMAINING 和 `AUDIT.md` §4。剩余限制：
+
+- **P0:** 登录统一 (CLI 仍使用 terminal-login/command-runner)
+- **P1:** `!!cmd` 输出未进入 transcript (仅通知); 队列视觉指示 (仅基本 "N queued")
+- **P2:** 工具调用用 BashExecutionComponent; 审批 "always allow"; 模型选择器连接测试
+- **P3:** 历史搜索/过滤; 页脚成本明细; 会话选择器多删除; 主题创建 UI
+
+已实现：启动进度、历史虚拟化、伪 OAuth 修复、工具流式传输、页脚 git 监视器、DA1 异步、Ctrl+C 简化、认证静默重试、全局 ESC、Mermaid 流式传输。
+
 ## 许可证
 
 lazydsh 遵循 [MIT 许可证](LICENSE) 开源。
