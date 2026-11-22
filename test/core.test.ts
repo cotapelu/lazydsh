@@ -42,6 +42,7 @@ test("terminal control sequences are removed from displayed text", () => {
 test("running turns allow inspection and settings while rejecting concurrent messages and session switches", () => {
   for (const command of [
     "/status",
+    "/model",
     "/ps",
     "/stop",
     "/stop bash-test",
@@ -57,7 +58,6 @@ test("running turns allow inspection and settings while rejecting concurrent mes
     assert.equal(canRunDuringTurn(command), true, command);
   for (const input of [
     "hello",
-    "/model",
     "/new",
     "/resume",
     "/sessions",

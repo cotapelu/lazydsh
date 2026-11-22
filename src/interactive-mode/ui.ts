@@ -118,7 +118,7 @@ const mermaidTransformer = createMermaidMarkdownTransformer({
 export function canRunDuringTurn(text: string) {
   return (
     /^\/plan(?:\s+off)?$/.test(text.trim()) ||
-    /^\/(?:status|session|ps|stop|effort|permission|cd|file|quit)(?:\s|$)/.test(text.trim())
+    /^\/(?:status|session|ps|stop|effort|permission|cd|file|quit|model)(?:\s|$)/.test(text.trim())
   );
 }
 
@@ -808,6 +808,48 @@ export async function runUI(
     }
   }
 
+  /**
+   * Switch model/provider without rebuilding the transcript or dropping queued
+   * prompts/attachments. Used by `/model` so a model change applies at the
+   * next LLM step instead of wiping the live turn. Falls back to a full connect
+   * when the session actually changes.
+   */
+  async function switchModel(nextRoute: Route, connection: ConnectOptions = {}) {
+    const { sessionId, notifyModel = false } = connection;
+    const targetSession = sessionId ?? runtime.session?.id;
+    // Only the light path is safe when a session already exists. Startup/no-session
+    // switches keep the full connect flow (pending startup connection, history, …).
+    if (runtime.session?.id === undefined || targetSession !== runtime.session.id) {
+      await connect(nextRoute, connection);
+      return;
+    }
+    busy = true;
+    update();
+    try {
+      await runtime.open(nextRoute, { resume: targetSession });
+      if (closing) return;
+      await persistSelection();
+      try {
+        footerDataProvider.setAvailableProviderCount(runtime.authProviders().length);
+        footerDataProvider.setCwd(options.cwd);
+        const footer = ensureFooter();
+        footer.setSession(footerSession());
+        footer.invalidate();
+      } catch {
+        // cosmetic only
+      }
+      route = nextRoute;
+      if (notifyModel) add("Model", `${nextRoute.provider} / ${nextRoute.model}`);
+      stats = undefined;
+      await refreshStats();
+    } catch (error) {
+      if (!closing) add("Error", error instanceof Error ? error.message : String(error));
+    } finally {
+      busy = false;
+      if (!closing) update();
+    }
+  }
+
   function dismissPanel(clearAll = false) {
     if (clearAll) {
       // Close all nested overlays (e.g., provider -> model picker)
@@ -956,6 +998,7 @@ export async function runUI(
     dismissPanel,
     hasOverlays: () => overlayHandles.length > 0,
     connect: (route, options) => connect(route, options),
+    switchModel: (route, options) => switchModel(route, options),
     select,
   };
 
@@ -1910,8 +1953,8 @@ export async function runUI(
    * refused with a notice.
    */
   async function cycleModel(direction: 1 | -1) {
-    if (busy || running) {
-      add("Model", "Wait for the current turn to finish before switching models.");
+    if (busy) {
+      add("Model", "Wait for the current operation to finish before switching models.");
       return;
     }
     const [{ providers, models }, { nextProvider }] = await Promise.all([
@@ -1934,7 +1977,10 @@ export async function runUI(
       return;
     }
     add("Model", `${current} → ${next}/${model}`);
-    await connect({ provider: next, model });
+    await switchModel(
+      { provider: next, model },
+      { sessionId: runtime.session?.id, notifyModel: false },
+    );
   }
 
   /** Session management picker (archive/restore/pin/unpin), shared by the slash commands and Ctrl+Backspace. */

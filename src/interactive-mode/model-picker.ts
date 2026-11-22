@@ -27,6 +27,8 @@ export interface ModelPickerHost {
   hasOverlays(): boolean;
   /** Open (or resume) a session on a route; owns all transcript state. */
   connect(route: Route, options?: { sessionId?: string; notifyModel?: boolean }): Promise<void>;
+  /** Switch model/provider without clearing transcript/queue state. */
+  switchModel(route: Route, options?: { sessionId?: string; notifyModel?: boolean }): Promise<void>;
   /** Search picker for the provider-scoped model list. */
   select(
     items: SelectItem[],
@@ -89,7 +91,7 @@ export async function pickModel(
     (model) => {
       host.dismissPanel();
       picker.dispose();
-      void host.connect(
+      void host.switchModel(
         { provider: model.provider, model: model.id },
         { sessionId, notifyModel: true },
       );
@@ -126,7 +128,7 @@ export async function pickProviderModel(
     (model) => {
       // Close all overlays (provider + model picker) before connecting.
       host.dismissPanel(true);
-      void host.connect({ provider, model }, { sessionId, notifyModel: true });
+      void host.switchModel({ provider, model }, { sessionId, notifyModel: true });
     },
     undefined,
     true,
