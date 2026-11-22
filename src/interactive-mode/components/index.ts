@@ -66,7 +66,6 @@ export { ShowImagesSelectorComponent } from "./show-images-selector.ts";
 export { ExtensionSelectorComponent } from "./extension-selector.ts";
 export { ExtensionInputComponent } from "./extension-input.ts";
 export { ExtensionEditorComponent } from "./extension-editor.ts";
-export { CustomEditor } from "./custom-editor.ts";
 export { CustomEntryComponent } from "./custom-entry.ts";
 export { TrustSelectorComponent } from "./trust-selector.ts";
 export { FirstTimeSetupComponent } from "./first-time-setup.ts";

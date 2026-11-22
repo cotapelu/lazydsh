@@ -259,13 +259,9 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 
 #### C3. Truly unnecessary (could delete)
 
-26. **`themed-text.ts` (41 lines)** — Orphan by design. `TUI.invalidate()` cascades to all children.
-    - pi-coding-agent itself marks it "unwired by design".
-    - **Action:** Could delete (truly unnecessary).
+26. **`themed-text.ts` (41 lines)** — ✅ DELETED (truly unnecessary, TUI.invalidate() cascades).
 
-27. **`custom-editor.ts` (167 lines)** — Extends `Container`, not `Editor`. lazydsh uses `PromptEditor` (extends `Editor`) instead.
-    - Different approach, same goal. Keybinding handling in `ui.ts`.
-    - **Action:** Could delete (different approach, not needed).
+27. **`custom-editor.ts` (167 lines)** — ✅ DELETED (different approach, PromptEditor used instead).
 
 ### D. Missing features (gaps vs reference)
 
