@@ -286,6 +286,20 @@ export async function runUI(
   let submittingQueued = false;
   let continuationId: string | undefined;
   let pendingStartupConnection: { route: Route; sessionId?: string } | undefined;
+
+  /** Options for {@link connect} — keeps the signature to a single route argument. */
+  interface ConnectOptions {
+    /** Resume an existing session instead of starting a new one. */
+    sessionId?: string;
+    /** Announce the model in the transcript after connecting. */
+    notifyModel?: boolean;
+    /** Connecting during startup — an auth failure defers the retry. */
+    startup?: boolean;
+    /** Directory to switch to when resuming. */
+    directory?: string;
+    /** Keep the current transcript instead of clearing it. */
+    keepTranscript?: boolean;
+  }
   let decision: ((value: string | null) => void) | undefined;
   let selecting = false;
   /** Stack of overlay handles for nested panels (e.g., provider -> model picker). */
@@ -673,14 +687,14 @@ export async function runUI(
     }
   }
 
-  async function connect(
-    nextRoute: Route,
-    sessionId?: string,
-    notifyModel = false,
-    startup = false,
-    directory?: string,
-    connectionOptions: { keepTranscript?: boolean } = {},
-  ) {
+  async function connect(nextRoute: Route, connection: ConnectOptions = {}) {
+    const {
+      sessionId,
+      notifyModel = false,
+      startup = false,
+      directory,
+      keepTranscript = false,
+    } = connection;
     pendingStartupConnection = undefined;
     busy = true;
     update();
@@ -711,7 +725,7 @@ export async function runUI(
       pendingFiles = [];
       toolLog.entries.clear();
       clearQueue();
-      if (!connectionOptions.keepTranscript) transcript.clear();
+      if (!keepTranscript) transcript.clear();
       if (sessionId) {
         for (const row of historyRows(await runtime.history(), id)) {
           if (row instanceof ToolRow) transcript.addChild(row);
@@ -913,7 +927,10 @@ export async function runUI(
       (model) => {
         dismissPanel();
         picker.dispose();
-        void connect({ provider: model.provider, model: model.id }, sessionId, true);
+        void connect(
+          { provider: model.provider, model: model.id },
+          { sessionId, notifyModel: true },
+        );
       },
       () => {
         dismissPanel();
@@ -961,7 +978,7 @@ export async function runUI(
       (model) => {
         // Close all overlays (provider + model picker) before connecting
         dismissPanel(true);
-        void connect({ provider, model }, sessionId, true);
+        void connect({ provider, model }, { sessionId, notifyModel: true });
       },
       undefined,
       true,
@@ -990,14 +1007,7 @@ export async function runUI(
       void pickModel();
       return;
     }
-    await connect(
-      { provider: route.provider, model: route.model },
-      undefined,
-      false,
-      false,
-      undefined,
-      { keepTranscript: true },
-    );
+    await connect({ provider: route.provider, model: route.model }, { keepTranscript: true });
     if (closing || !runtime.session) return;
     add("New conversation", runtime.session.id);
     scroll.scrollToEnd();
@@ -1298,7 +1308,10 @@ export async function runUI(
       !/^\/(?:model|new|clear|quit)(?:\s|$)/.test(text)
     ) {
       const pending = pendingStartupConnection;
-      void connect(pending.route, pending.sessionId).then(() => {
+      void connect(pending.route, {
+        sessionId: pending.sessionId,
+        startup: true,
+      }).then(() => {
         if (!closing && runtime.session) editor.onSubmit?.(text);
       });
       return;
@@ -1443,7 +1456,7 @@ export async function runUI(
       }
       void runBusy(async () => {
         const childId = await runtime.forkSession(Number(runtime.forkPoints().at(-1)?.value ?? 0));
-        await connect(route as Route, childId);
+        await connect(route as Route, { sessionId: childId });
         add("Cloned", childId);
       });
       return;
@@ -1525,7 +1538,7 @@ export async function runUI(
       select(points, "Fork at turn", (boundary) => {
         void runBusy(async () => {
           const childId = await runtime.forkSession(Number(boundary));
-          await connect(route as Route, childId);
+          await connect(route as Route, { sessionId: childId });
           add("Forked", childId);
         });
       });
@@ -2040,7 +2053,10 @@ export async function runUI(
     if (!route.model) throw new Error("Select a model first with /model.");
     const directory = await chooseResumeDirectory(value);
     if (directory === null) return;
-    await connect({ provider: route.provider, model: route.model }, value, false, false, directory);
+    await connect(
+      { provider: route.provider, model: route.model },
+      { sessionId: value, directory },
+    );
   }
 
   /**
@@ -2294,7 +2310,10 @@ export async function runUI(
 
     if (!startupFailed) {
       if (route.model)
-        await connect({ provider: route.provider, model: route.model }, resume, false, true);
+        await connect(
+          { provider: route.provider, model: route.model },
+          { sessionId: resume, startup: true },
+        );
       else {
         const { providers } = await import("../runtime/catalog.ts");
         if (providers.includes(route.provider)) await pickProviderModel(route.provider, resume);
