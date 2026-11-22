@@ -97,6 +97,11 @@ export class ToolRow implements Component {
     this.setSummary(`${status === "error" ? "✗" : "✓"} ${this.label}${suffix}`);
     this.touch();
   }
+  /** Apply a partial/streaming result update without finalizing the row. */
+  updateResult(text: string) {
+    this.resultText = text;
+    this.touch();
+  }
   toggle() {
     if (!this.hasDetails) return false;
     this.expanded = !this.expanded;
@@ -154,6 +159,12 @@ export class ToolLog {
     for (const entry of this.entries.values()) if (entry.callId === callId) return entry.row;
     return undefined;
   }
+  update(callId: string, text: string): ToolRow | undefined {
+    const row = this.find(callId);
+    row?.updateResult(text);
+    return row;
+  }
+
   record(output: ToolOutput): ToolRow | undefined {
     const key = JSON.stringify([output.sessionId, output.callId]);
     let entry = this.entries.get(key);
