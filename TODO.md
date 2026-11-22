@@ -4,11 +4,7 @@
 
 **Version 0.2.3** · Suite **150/150 passing** (41 test files) · `npm run check` clean · `npm run build` clean · dist boots.
 
-The pi-coding-agent interactive-mode port is **feature-complete and wired**: every
-advertised keybinding fires, every advertised panel opens, theme/settings persist,
-retry + compaction states are live, and the DSH bridge loads the full
-`@deepseek-ai/dsh-base` profile (101 plugin rows — see `DSH-BASE.md`) with only the
-14 services the TUI actually needs mounted eagerly.
+**Core complete; UX gaps remain** (see AUDIT.md §4). The pi-coding-agent interactive-mode port is **functionally complete** — every advertised keybinding fires, every advertised panel opens, theme/settings persist, retry + compaction states are live, and the DSH bridge loads the full `@deepseek-ai/dsh-base` profile (101 plugin rows — see `DSH-BASE.md`) with only the 14 services the TUI actually needs mounted eagerly. However, **19 UX gaps remain** (see AUDIT.md §4: 4 P0, 6 P1, 5 P2, 4 P3).
 
 **Layout** (applied in §8.0 / CAUTRUC.md — three layers + root contracts):
 
@@ -17,9 +13,9 @@ src/
 ├── cli.ts plugin.ts types.ts          # wiring + barrel
 ├── interfaces.ts runtime-events.ts    # contracts (types + events only)
 ├── runtime/ (11 files)                # DSH bridge + boot, no pi-tui imports
-├── interactive-mode/ (89 files)        # the TUI
-│   ├── components/ (32 files)
-│   └── theme/ (8 files + 3 JSON)
+├── interactive-mode/ (84 files)        # the TUI
+│   ├── components/ (31 files)
+│   └── theme/ (6 files + 3 JSON)
 └── utils/ (7 files)                   # pure helpers, no pi-tui, no dsh
 ```
 
@@ -58,7 +54,7 @@ name/path toggles, archive/rename), search utilities.
 
 ### Phase 4 — Keybindings & Theme ✅
 
-27 configurable actions with platform defaults, hot reload, legacy migration,
+25 configurable actions with platform defaults, hot reload, legacy migration,
 hint text everywhere. Theme system: tokens, DA1 terminal query, system light/dark
 auto-sync, live reload, validated user themes, persisted selection.
 
@@ -82,34 +78,34 @@ verification.
 
 ### Phase 8 — Upstream Parity & Follow-ups ✅
 
-| §    | Item                                                                                                                  |
-| ---- | --------------------------------------------------------------------------------------------------------------------- |
-| 8.0  | Housekeeping (debug writer removed)                                                                                   |
-| 8.1  | `-v/--version`, complete `runtime.cancel()`                                                                           |
-| 8.2  | Ctrl+C state machine (`interrupt.ts`): clear / interrupt / force-exit / exit                                          |
-| 8.3  | `/new` keeps transcript, `/clear` wipes                                                                               |
-| 8.4  | QuestionPanel height budget for short terminals                                                                       |
-| 8.5  | History shows reasoning rows (lifecycle by `attemptId`)                                                               |
-| 8.6  | Tool meta plumbing end-to-end                                                                                         |
-| 8.7  | `detail.ts` — one detail engine for approval + history                                                                |
-| 8.8  | Deps `0.2.2-rc.4` (all 36 packages, old sessions still resume)                                                        |
-| 8.9  | Overlay lifecycle: `/model` two-level picker, inverted `selecting` guards, login-dialog dismiss, real header version  |
-| 8.10 | Theme selector + thinking selector wired into `/settings` and `/effort`                                               |
-| 8.11 | 3-layer restructure (CAUTRUC.md), `theme-schema` validation real, `tui-renderer` wired, dead files deleted            |
-| 8.12 | `ModelSelectorComponent` wired (`model-catalog-runtime.ts` adapter)                                                   |
-| 8.13 | Auto light/dark pair setting in the theme picker                                                                      |
-| 8.14 | All 27 keybindings audited and handled (6 advertised-but-dead keys wired; Ctrl+Z suspend; model cycling)              |
-| 8.15 | Theme setting persists to `~/.config/lazydsh/theme.json`                                                              |
-| 8.16 | Confirm-on-exit real + persisted; cosmetic toggles became honest info rows                                            |
-| 8.17 | Retry/compaction status rows wired to DSH session events                                                              |
-| 8.18 | Footer extension-status row live (`ExtensionWidget.status()`), dead provider params removed                           |
-| 8.19 | Documentation pass: every claim re-verified against code (this file, README, AGENTS, ARCH, GOAL, CAUTRUC)             |
-| 8.20 | Bash mode (`!` / `!!`): `Runtime.shell()` via DSH's executor + pure parser + card + next-prompt context               |
-| 8.21 | Fixed `messageCount: 0` bug — now counts user messages from session events                                            |
-| 8.22 | Fixed `footer.ts` inline `homedir()` — now imports from `node:os`                                                     |
-| 8.23 | Fixed `getSessionPathKey` — now canonicalizes + case-insensitive on Windows                                           |
-| 8.24 | Fixed `ScopedModel` missing `thinkingLevel` — added optional field                                                    |
-| 8.25 | Mermaid rendering: `createMermaidMarkdownTransformer` using `lovely-mermaid`, wired into AssistantMessage/UserMessage |
+| §    | Item                                                                                                                                             |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 8.0  | Housekeeping (debug writer removed)                                                                                                              |
+| 8.1  | `-v/--version`, complete `runtime.cancel()`                                                                                                      |
+| 8.2  | Ctrl+C state machine (`interrupt.ts`): clear / interrupt / force-exit / exit                                                                     |
+| 8.3  | `/new` keeps transcript, `/clear` wipes                                                                                                          |
+| 8.4  | QuestionPanel height budget for short terminals                                                                                                  |
+| 8.5  | History shows reasoning rows (lifecycle by `attemptId`)                                                                                          |
+| 8.6  | Tool meta plumbing end-to-end                                                                                                                    |
+| 8.7  | `detail.ts` — one detail engine for approval + history                                                                                           |
+| 8.8  | Deps `0.2.2-rc.4` (all 36 packages, old sessions still resume)                                                                                   |
+| 8.9  | Overlay lifecycle: `/model` two-level picker, inverted `selecting` guards, login-dialog dismiss, real header version                             |
+| 8.10 | Theme selector + thinking selector wired into `/settings` and `/effort`                                                                          |
+| 8.11 | 3-layer restructure (CAUTRUC.md), `theme-schema` validation real, `tui-renderer` wired, dead files deleted                                       |
+| 8.12 | `ModelSelectorComponent` wired (`model-catalog-runtime.ts` adapter)                                                                              |
+| 8.13 | Auto light/dark pair setting in the theme picker                                                                                                 |
+| 8.14 | All 25 keybindings audited and handled (6 advertised-but-dead keys wired; Ctrl+Z suspend; model cycling)                                         |
+| 8.15 | Theme setting persists to `~/.config/lazydsh/theme.json`                                                                                         |
+| 8.16 | Confirm-on-exit real + persisted; cosmetic toggles became honest info rows                                                                       |
+| 8.17 | Retry/compaction status rows wired to DSH session events                                                                                         |
+| 8.18 | Footer extension-status row live (`ExtensionWidget.status()`), dead provider params removed                                                      |
+| 8.19 | Documentation pass: every claim re-verified against code (this file, README, AGENTS, ARCH, GOAL, CAUTRUC)                                        |
+| 8.20 | Bash mode (`!` / `!!`): `Runtime.shell()` via DSH's executor + pure parser + card + next-prompt context                                          |
+| 8.21 | Fixed `messageCount: 0` bug — now counts user messages from session events                                                                       |
+| 8.22 | Fixed `footer.ts` inline `homedir()` — now imports from `node:os`                                                                                |
+| 8.23 | Fixed `getSessionPathKey` — now canonicalizes + case-insensitive on Windows                                                                      |
+| 8.24 | Fixed `ScopedModel` missing `thinkingLevel` — added optional field                                                                               |
+| 8.25 | Mermaid streaming ⚠️ PARTIAL — `createMermaidMarkdownTransformer` exists but **disabled during streaming** (raw markdown shown until completion) |
 
 ### 8.20 Bash mode ✅
 
@@ -223,7 +219,7 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 
 23. **`session-selector-search.ts` top-level (330 lines)** — ✅ DELETED: content merged into `components/session-selector-search.ts`; keeping both would duplicate the search engine.
 
-24. **`tool-execution.ts` (438 lines)** — ✅ DELETED: a second tool renderer contradicts the single-engine rule (`detail.ts` owns all tool pixels); per-tool `renderCall`/`renderResult` callbacks would hand pixels back to providers.
+24. **`tool-execution.ts` (438 lines)** — **NEVER EXISTED**; `bash-execution.ts` (210L) is the actual Bash mode renderer; `detail.ts` owns all tool pixels.
 
 25. **`tool-presentation.ts` (432 lines)** — ✅ DELETED: `detail.ts` + tool meta already turn DSH render intents into rows; this was a parallel implementation of the same mapping.
 
@@ -233,40 +229,33 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 
 27. **`custom-editor.ts` (167 lines)** — ✅ DELETED (different approach, PromptEditor used instead).
 
-### D. Missing features (gaps vs reference)
+### D. Missing features & UX gaps (aligned with AUDIT.md §4 priorities)
 
-28. **Mermaid rendering** — `mermaid.js` (Unicode diagrams, settings mode off/final/streaming).
-    - **Action:** Implement `createMermaidMarkdownTransformer` equivalent.
+**P0 Critical (blocks core workflow):**
 
-29. **Session tree view** — `tree-selector.js` (1246 lines, navigation, folding, filtering, labeling, copying, branch summarization).
-    - **Action:** Implement tree selector component.
+1. **Boot progress indicator** — Editor disabled 2–5s during deferred plugin activation, no visual feedback.
+2. **History virtualization** — `historyRows()` creates one component per user-facing event; 10k events = lag/OOM.
+3. **Login unification** — 3 entry points (CLI, TUI `/login`, auto-reauth) with duplicate code, fake OAuth options, broken notice dialog.
+4. **Tool streaming** — `tool_execution_update` event type exists but never emitted; no live arg/result streaming.
 
-30. **Scoped models** — `scoped-models-selector.js` (toggle models for Ctrl+P, enable/disable all, reorder, persist).
-    - **Action:** Implement scoped models selector.
+**P1 High (degrades experience significantly):** 5. **Footer git polling** — `spawnSync` every 5s; switch to file watcher. 6. **Theme DA1 blocking** — 100ms+ blocking first paint; make async. 7. **Ctrl+C simplification** — 4-state behavior (clear/interrupt/force-exit/exit) confuses users; reduce to 2 states. 8. **`!!cmd` output dropped** — Excluded from transcript; user loses context. 9. **Queue indicator** — No visual distinction for queued vs sent messages. 10. **Silent retry in auth** — `goingBack=true` restarts login loop silently on cancel.
 
-31. **Skill invocation UI** — `skill-invocation-message.js` (render skill blocks with expand/collapse).
-    - **Action:** Implement skill invocation message component.
+**P2 Medium (polish gaps):** 11. **Nested panels ESC** — No global ESC to dismiss all overlays. 12. **Mermaid streaming** — Disabled during stream; raw markdown shown until completion. 13. **BashExecutionComponent unused for tools** — Rich renderer exists but only used for `!cmd`/`!!cmd`. 14. **Approval "always allow"** — Missing option in ApprovalPanel. 15. **Model selector test connection** — No "test connection" button.
 
-32. **Config selector** — `config-selector.js` (resource management: enable/disable extensions/skills/prompts/themes, project overrides).
-    - **Action:** Implement config selector.
+**P3 Low (nice to have):** 16. History search/filter. 17. Footer cost breakdown per model. 18. Session selector multi-delete. 19. Theme creator UI.
 
-33. **Radius MCP** — `radius-login-selector.js` (Radius MCP integration with animated shimmer).
-    - **Action:** Implement Radius login selector (niche).
+### E. Missing features (gaps vs pi-coding-agent reference)
 
-34. **Easter eggs / mascot** — `armin.js`, `easter-egg-3d.js`, `earendil-announcement.js` (cosmetic).
-    - **Action:** Implement or skip (cosmetic).
-
-35. **Pi logo** — `pi-logo.js` (half-block logo with Apple Terminal fallback).
-    - **Action:** Implement or keep provider-brand (cosmetic).
-
-36. **Custom editor component** — `custom-editor.js` (extends Editor with app keybindings).
-    - **Action:** Implement or keep PromptEditor approach.
-
-37. **Extension system** — Full extension API (custom editors, widgets, dialogs, shortcuts, commands, tools, resources, RPC, MCP).
-    - **Action:** Design real extension API (intentionally out of scope).
-
-38. **Commands missing** — `/clone`, `/import`, `/reload`, `/debug`, `/hotkeys`, `/tree`, `/scoped`, `/trust`, `/skill:*`.
-    - **Action:** Implement each command.
+28. **Session tree view** — Navigation, folding, filtering, labeling, copying, branch summarization.
+29. **Scoped models** — Toggle models for Ctrl+P, enable/disable all, reorder, persist.
+30. **Skill invocation UI** — Render skill blocks with expand/collapse.
+31. **Config selector** — Resource management: enable/disable extensions/skills/prompts/themes.
+32. **Radius MCP** — Radius MCP integration with animated shimmer.
+33. **Easter eggs / mascot** — `armin.js`, `easter-egg-3d.js`, `earendil-announcement.js` (cosmetic).
+34. **Pi logo** — Half-block logo with Apple Terminal fallback.
+35. **Custom editor component** — Extends Editor with app keybindings.
+36. **Extension system** — Full extension API (custom editors, widgets, dialogs, shortcuts, commands, tools, resources, RPC, MCP).
+37. **Commands missing** — `/clone`, `/import`, `/reload`, `/debug`, `/hotkeys`, `/tree`, `/scoped`, `/trust`, `/skill:*`.
 
 ### E. Docs / parity
 
@@ -299,6 +288,28 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 - [x] `getSessionPathKey` canonicalizes + case-insensitive on Windows
 - [x] `ScopedModel` has `thinkingLevel` field
 
+**UX Gaps (see AUDIT.md §4):**
+
+- [ ] P0: Boot progress indicator during deferred plugin activation
+- [ ] P0: History virtualization (lazy render visible window)
+- [ ] P0: Login unification (3 entry points → 1)
+- [ ] P0: Tool streaming (`tool_execution_update` wired)
+- [ ] P1: Footer git watcher (replace 5s polling)
+- [ ] P1: Theme DA1 async (non-blocking first paint)
+- [ ] P1: Ctrl+C simplified to 2 states
+- [ ] P1: `!!cmd` output in transcript
+- [ ] P1: Queue visual indicator
+- [ ] P1: Auth silent retry fixed
+- [ ] P2: Nested panels global ESC
+- [ ] P2: Mermaid streaming enabled
+- [ ] P2: BashExecutionComponent for tool calls
+- [ ] P2: Approval "always allow" option
+- [ ] P2: Model selector test connection
+- [ ] P3: History search/filter
+- [ ] P3: Footer cost breakdown
+- [ ] P3: Session selector multi-delete
+- [ ] P3: Theme creator UI
+
 **Suite: 150/150 passing** (51/95 at the start of Phase 8).
 
 ## Dependencies
@@ -306,13 +317,17 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 `diff`, `highlight.js`, `open`, `typebox`, `zod` (direct); DSH packages per
 `DSH-BASE.md`; UI on `@earendil-works/pi-tui`.
 
-## Next Actions (priority order)
+## Next Actions (priority order per AUDIT.md §6)
 
-1. **Fix `safeSessionName` dead code** (low priority).
-2. **Fix `session-selector.ts` `widthForLabel` hoisting** (low priority, cosmetic).
-3. **Fix `components/session-selector-search.ts` simplified search** (medium priority — merge tiered search).
-4. **Wire orphan components** that DSH needs: `branch-summary-message` (blocked — DSH emits no branch/summary event), `compaction-summary-message` (✅ wired), `trust-selector` (blocked — DSH exposes no ProjectTrustStore), `user-message-selector` (N/A — forkPoints() is DSH-native) (medium priority).
-5. **Wire extension system components** when extension API is designed (low priority).
-6. **Implement missing features** (mermaid, tree view, scoped models, skill invocation, config selector, radius, easter eggs, pi logo, custom editor, 9 commands) — defer to v0.3.0.
-7. **Refresh README translations** — fixed typo in README.ja.md (avctions→actions). Full refresh deferred.
-8. **Design extension API** — needs real API design (intentionally out of scope).
+1. **Unify Login** (P0#3) — delete `terminal-login.ts`, `command-runner.ts` login; route CLI `lazydsh login` through main TUI `signIn()`.
+2. **Fix Fake OAuth Options** (P0#3) — `buildLoginProviderOptions()` → query `flow.methods` from `authorization`.
+3. **Redesign LoginDialog Notice** (P0#3) — add progress, buttons, auto-close.
+4. **Virtualize History** (P0#2) — render only visible transcript window + sentinel.
+5. **Wire Tool Streaming** (P0#4) — implement `tool_execution_update` → `ToolRow.updateArgs()` / partial result.
+6. **Boot Progress** (P0#1) — show deferred plugin activation progress in status area.
+7. **Footer Git** (P1#5) — switch to file watcher (`.git/HEAD`) or async spawn.
+8. **Ctrl+C Simplify** (P1#7) — 2 states: clear draft / interrupt turn.
+9. **Fix Silent Retry** (P1#10) — throw on cancel, show "Cancelled" notice.
+10. **Queue Indicator** (P1#9) — distinct style for queued messages.
+
+Then P2/P3 items, then missing features vs reference (defer to v0.3.0).

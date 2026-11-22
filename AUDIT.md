@@ -15,7 +15,7 @@
 | **DSH**              | DeepSeek Harness — Cordis-based agent platform (101 plugins). Runs in same process.                                  |
 | **Callbacks**        | `interfaces.ts:Callbacks` — Three hooks Runtime calls when it needs human: `onAuth`, `onApproval`, `onUserQuestion`. |
 | **Overlay**          | `tui.showOverlay(panel)` — Modal panel stacked above editor; `dismissPanel()` pops.                                  |
-| **Deferred Plugins** | 50+ plugin rows disabled at boot, mounted after first paint (`runtime/deferred.ts`).                                 |
+| **Deferred Plugins** | 33 deferred entries (`DEFERRED_ENTRY_IDS` in `runtime/deferred.ts`), full profile activates ~50+ rows at boot.       |
 | **ToolRow**          | `tools.ts:ToolRow` — One expandable row per tool call (pending → result/diff).                                       |
 | **Streaming**        | Incremental rendering: reasoning + answer deltas → same `AssistantMessageComponent`.                                 |
 
@@ -98,7 +98,7 @@
 
 ## 2. COMPOSED FLOWS (Atomic ops combined)
 
-### 2.1 Boot Sequence (ui.ts lines 2280–2332)
+### 2.1 Boot Sequence (ui.ts lines ~2120–2180)
 
 1. **Create TUI**: `createInteractiveTui({tuiMode: "fullscreen", mouse: true})` → `TuiAltScreen`.
 2. **Component Tree**:
@@ -118,7 +118,7 @@
 8. **After First Paint Hook** (async, blocks editor submit):
    - `catalog.validateRoute(provider, model)`
    - `packages.refresh()` (Cordis plugin resolution)
-   - `activateDeferredPlugins(ctx, rows)` — 50+ rows mounted in parallel, each with 5s timeout
+   - `activateDeferredPlugins(ctx, rows)` — 33 deferred entries (from `DEFERRED_ENTRY_IDS` in `runtime/deferred.ts`) mounted in parallel, each with 5s timeout; full profile activates ~50+ rows total
    - `waitForRuntimeServices(ctx)` — polls 14 services (agents, llm, commands, attachments, sessionProjections, authorization, credentials, userQuestions, sessionTitle, workspaceRegistry, jobs, fileReferences, skills, workingDirectory) — 15s deadline
    - `pending.attach(await createRuntime(ctx, options, effort))` — **swaps throwing proxy for real Runtime**
    - `starting = false` → editor enabled.
@@ -127,7 +127,7 @@
 
 **Critical UX Gap**: Steps 8 takes 2–5s. Editor disabled, **no progress indicator**. User sees UI but cannot type.
 
-### 2.2 Session Connect (`connect()` — ui.ts lines 690–764)
+### 2.2 Session Connect (`connect()` — ui.ts lines ~740–820)
 
 1. `runtime.open(route, callbacks)`:
    - Resume? → `agents.resume({resumeSessionId, agentOptions})`
@@ -150,9 +150,9 @@
    - `scroll.scrollToEnd()`.
 9. `probeCredentialSource(provider)` → if env var → notify once.
 
-**Performance Risk**: `historyRows()` creates **one component per event**. 10k events = 10k components = lag/OOM. No virtualization, no pagination.
+**Performance Risk**: `historyRows()` creates **one component per user-facing event** (user messages, commands, assistant messages, tool calls, turn metrics). A session with 10k raw events may produce ~1-2k components = lag/OOM risk. No virtualization, no pagination.
 
-### 2.3 Input Submission (`editor.onSubmit` — ui.ts lines 1284–1916)
+### 2.3 Input Submission (`editor.onSubmit` — ui.ts lines 1112–1755)
 
 #### Branch A: Bash Mode (`!cmd` / `!!cmd`)
 
@@ -166,7 +166,7 @@
 - `enqueue(text)` → `QueuedMessage` in `QueueView` + history.
 - `drainQueue()` called after each turn ends → `editor.onSubmit(queuedText)`.
 
-#### Branch C: Slash Commands (~35)
+#### Branch C: Slash Commands (~16 unique)
 
 | Command                               | Flow                                                               |
 | ------------------------------------- | ------------------------------------------------------------------ |
@@ -288,7 +288,7 @@
    - `search` → matches by file
    - `web` → sources / fetch summary
    - `generic` → fallback
-4. **Rich Card** (`tool-execution.ts:ToolExecutionComponent`): **Dùng cho Bash mode** (`bash-execution.ts:BashExecutionComponent`), nhưng **chưa wired vào main transcript flow** cho tool calls thường.
+4. **Rich Card** (`bash-execution.ts:BashExecutionComponent`): **Dùng cho Bash mode** (`!cmd`/`!!cmd`), nhưng **chưa wired vào main transcript flow** cho tool calls thường. File `tool-execution.ts` không tồn tại.
 
 **Missing Wire**: `tool_execution_update` event listener in `runtime.ts` only has comment — **no live streaming args/result** in `ToolRow`.
 
@@ -455,7 +455,7 @@ tui.start() → raw mode + alt screen
 afterFirstPaint:
   catalog.validateRoute()
   packages.refresh()
-  activateDeferredPlugins(50+ rows) → parallel mount
+  activateDeferredPlugins(33 entries from DEFERRED_ENTRY_IDS) → parallel mount, 5s timeout each; full DSH-base profile ~50+ rows total
   waitForRuntimeServices(14 services, 15s)
   pending.attach(createRuntime()) → proxy swap
 ```
@@ -519,7 +519,7 @@ tui.onTerminalColorSchemeChange(scheme):
 | #   | Flow                       | Problem                                                      | Impact                                           |
 | --- | -------------------------- | ------------------------------------------------------------ | ------------------------------------------------ |
 | 1   | Boot (`afterFirstPaint`)   | Editor disabled 2–5s, **no progress indicator**              | User sees UI but cannot type; thinks frozen      |
-| 2   | History Replay (`connect`) | **No virtualization** — 1 component per event                | 10k events = lag/OOM; first paint blocks         |
+| 2   | History Replay (`connect`) | **No virtualization** — 1 component per user-facing event    | 10k raw events → ~1-2k components = lag/OOM      |
 | 3   | Login (3 entry points)     | **Duplicate code**, fake OAuth options, broken notice dialog | Confusing, broken auth UX                        |
 | 4   | Tool Streaming             | `tool_execution_update` **not wired**                        | No live args/result; ToolRow only updates on end |
 
@@ -536,13 +536,13 @@ tui.onTerminalColorSchemeChange(scheme):
 
 ### P2 — Medium (Polish gaps)
 
-| #   | Flow                   | Problem                                     |
-| --- | ---------------------- | ------------------------------------------- |
-| 11  | Nested Panels          | No global ESC — must dismiss each           |
-| 12  | Mermaid Streaming      | Disabled during stream — raw markdown shown |
-| 13  | ToolExecutionComponent | Orphan — rich cards not used in transcript  |
-| 14  | ApprovalPanel          | No "Always allow" option                    |
-| 15  | ModelSelector          | No "test connection" button                 |
+| #   | Flow                   | Problem                                             |
+| --- | ---------------------- | --------------------------------------------------- |
+| 11  | Nested Panels          | No global ESC — must dismiss each                   |
+| 12  | Mermaid Streaming      | Disabled during stream — raw markdown shown         |
+| 13  | BashExecutionComponent | Dùng cho Bash mode, chưa dùng cho tool calls thường |
+| 14  | ApprovalPanel          | No "Always allow" option                            |
+| 15  | ModelSelector          | No "test connection" button                         |
 
 ### P3 — Low (Nice to have)
 
@@ -566,7 +566,7 @@ tui.onTerminalColorSchemeChange(scheme):
 ### 5.2 Technical Debt (Needs refactor)
 
 - **Login**: 3 code paths → should unify to single `OAuthSelectorComponent` + `LoginDialog`.
-- **Tool Rendering**: `tool-execution.ts` dùng cho Bash mode nhưng **chưa dùng cho tool calls thường** → wire `tool_execution_update` + dùng `ToolExecutionComponent` trong transcript.
+- **Tool Rendering**: `bash-execution.ts:BashExecutionComponent` dùng cho Bash mode nhưng **chưa dùng cho tool calls thường** → wire `tool_execution_update` + dùng `BashExecutionComponent` trong transcript.
 - **History**: Needs virtualization (render only visible window).
 - **Boot**: Needs async progress indicator during deferred plugin activation.
 
@@ -595,23 +595,23 @@ tui.onTerminalColorSchemeChange(scheme):
 
 ## 7. FILE MAP (Key logic locations)
 
-| Flow         | Primary Files                                                                                                                          |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Boot         | `ui.ts` (2280–2332), `runtime/dsh-boot.ts`, `runtime/deferred.ts`                                                                      |
-| Connect      | `ui.ts` (690–764), `runtime/runtime.ts` (open)                                                                                         |
-| Input/Submit | `ui.ts` (1284–1916)                                                                                                                    |
-| Streaming    | `ui.ts` (1738–1915), `streaming.ts`, `stream-highlight.ts`                                                                             |
-| Auth         | `ui.ts` (1035–1156), `runtime/runtime.ts` (712–834), `components/login-dialog.ts`, `components/oauth-selector.ts`, `terminal-login.ts` |
-| Tools        | `tools.ts`, `detail.ts`, `tool-presentation.ts`, `tool-execution.ts`                                                                   |
-| Panels       | `ui.ts` (766–810), `components/*.ts`                                                                                                   |
-| Sessions     | `ui.ts` (2020–2060), `session-selector.ts`, `session-select.ts`                                                                        |
-| Models       | `ui.ts` (904–991), `model-selector.ts`, `model-cycle.ts`                                                                               |
-| Status       | `components/status-container.ts`, `components/status-indicator.ts`                                                                     |
-| Theme        | `theme/theme.ts`, `theme/theme-controller.ts`, `theme/system-theme.ts`                                                                 |
-| Footer       | `footer.ts`, `footer-data-provider.ts`                                                                                                 |
-| History      | `history.ts`, `tools.ts`                                                                                                               |
-| Bash         | `bash-mode.ts`, `bash-execution.ts`                                                                                                    |
-| Settings     | `settings-selector.ts`, `settings-store.ts`                                                                                            |
+| Flow         | Primary Files                                                                                                                                          |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Boot         | `ui.ts` (~2120–2180), `runtime/dsh-boot.ts`, `runtime/deferred.ts`                                                                                     |
+| Connect      | `ui.ts` (~740–820), `runtime/runtime.ts` (open)                                                                                                        |
+| Input/Submit | `ui.ts` (1112–1755)                                                                                                                                    |
+| Streaming    | `ui.ts` (1738–1915), `streaming.ts`, `stream-highlight.ts`                                                                                             |
+| Auth         | `ui.ts` (1035–1156), `auth-flow.ts`, `runtime/runtime.ts` (712–834), `components/login-dialog.ts`, `components/oauth-selector.ts`, `terminal-login.ts` |
+| Tools        | `tools.ts`, `detail.ts`, `tool-presentation.ts`, `bash-execution.ts`                                                                                   |
+| Panels       | `ui.ts` (766–810), `components/*.ts`                                                                                                                   |
+| Sessions     | `ui.ts` (2020–2060), `session-selector.ts`, `session-select.ts`                                                                                        |
+| Models       | `ui.ts` (904–991), `model-selector.ts`, `model-cycle.ts`                                                                                               |
+| Status       | `components/status-container.ts`, `components/status-indicator.ts`                                                                                     |
+| Theme        | `theme/theme.ts`, `theme/theme-controller.ts`, `theme/system-theme.ts`                                                                                 |
+| Footer       | `footer.ts`, `footer-data-provider.ts`                                                                                                                 |
+| History      | `history.ts`, `tools.ts`                                                                                                                               |
+| Bash         | `bash-mode.ts`, `bash-execution.ts`                                                                                                                    |
+| Settings     | `settings-selector.ts`, `settings-store.ts`                                                                                                            |
 
 ---
 

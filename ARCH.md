@@ -32,7 +32,7 @@ and `runtime-events.ts` (event union + helpers).
 (`dsh-boot.ts`, `deferred.ts`, `plugin-patch.ts`), catalog/provider, DSH-native
 commands, preferences, pending-runtime proxy, upgrade. No pi-tui imports.
 
-**interactive-mode/ (89 files: 49 top-level + 32 components + 8 theme)** — the TUI:
+**interactive-mode/ (84 files: 47 top-level + 31 components + 6 theme)** — the TUI:
 `ui.ts` (orchestration), presentation primitives, tool rows + detail engine,
 selectors (model/session/effort/theme/permission), pickers, footer, header,
 status indicators, dialogs (login, approval, question), messages, theme system.
@@ -58,10 +58,12 @@ stats, limits, models-are-equal, version).
 ```
 editor.onSubmit → add("You", text) → runtime.run(text, onEvent)
   → DSH Agent → LLM → tool plugins execute (bash/fs/web/subagent/…)
-  → events: tool_execution_start/update/end, assistant.delta,
+  → events: tool_execution_start/end, assistant.delta,
             assistant.reasoning, session.event (llm/retry, compaction/*)
   → ui.ts: ToolRow / AssistantMessageComponent / status rows / footer
 ```
+
+**Note:** `tool_execution_update` event type exists in `RuntimeEvent` union but is never emitted by runtime — no live arg/result streaming.
 
 Session resume replays `historyRows()` from the JSONL log — same components as
 the live path.
@@ -72,7 +74,7 @@ the live path.
   `CredentialSource`, `ApprovalRequest`, `QuestionResult`, `ModelRuntime`.
 - `runtime-events.ts`: `RuntimeEvent` union; `eventText` projects DSH session
   events (incl. tool `meta` for diffs) into transcript rows; `reasoningText`
-  for thinking rows.
+  for thinking rows. **Note:** `tool_execution_update` defined but never emitted.
 - `detail.ts`: one renderer for arguments/diff/output — shared by the approval
   panel and expandable history rows.
 
@@ -91,7 +93,7 @@ Status states: working (spinner + message), retry (attempt/max + countdown, from
 
 | File                                 | Owner                      |
 | ------------------------------------ | -------------------------- |
-| `~/.config/lazydsh/keybindings.json` | 27 actions, hot reload     |
+| `~/.config/lazydsh/keybindings.json` | 25 actions, hot reload     |
 | `~/.config/lazydsh/theme.json`       | selected theme / auto pair |
 | `~/.config/lazydsh/themes/*.json`    | user themes (validated)    |
 | `~/.config/lazydsh/settings.json`    | `confirmExit`              |
@@ -125,13 +127,11 @@ the launcher only adds UI. Proxy: `installProxyFromEnvironment`.
 
 ## Known gaps
 
-See `TODO.md` REMAINING for the full list. Key gaps:
+See `TODO.md` REMAINING + `AUDIT.md` §4 for full list. Key gaps:
 
-- 11 missing features vs pi-coding-agent (mermaid, tree view, scoped models,
-  skill invocation, config selector, radius MCP, easter eggs, pi logo, custom
-  editor, extension system, 9 commands, full settings).
-- 27 orphan files ported but unwired (see TODO.md §C).
-- 8 code smells (see TODO.md §B).
-- 1 functional bug (`safeSessionName` dead code).
+- **P0 Critical (4):** Boot no progress indicator; history no virtualization; login 3 entry points with bugs; tool streaming missing (`tool_execution_update` not wired).
+- **P1 High (6):** Footer git polling 5s; Theme DA1 blocks first paint; Ctrl+C 4-state confusing; `!!cmd` drops output; queue no visual indicator; silent retry in auth.
+- **P2 Medium (5):** Nested panels no global ESC; mermaid disabled during stream; BashExecutionComponent unused for tool calls; approval no "always allow"; model selector no test connection.
+- **P3 Low (4):** History no search/filter; footer no cost breakdown; session selector no multi-delete; theme no creator UI.
 
 Full comparison: `GOAL.md` "Comparison with pi-coding-agent interactive mode".

@@ -40,11 +40,12 @@ root (cli, plugin, types, contracts) → may reference both layers
 | `pending-runtime.ts` | throwing proxy before the deferred plugins attach                                                     |
 | `upgrade.ts`         | self-upgrade (npm/pnpm/yarn/bun/vp)                                                                   |
 
-## interactive-mode/ (89 files + components/ + theme/)
+## interactive-mode/ (84 files: 47 top-level + 31 components + 6 theme)
 
 | File                                                                                       | Role                                                                        |
 | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
 | `ui.ts`                                                                                    | orchestration: layout, commands, overlays, streaming, queue, keybindings    |
+| `auth-flow.ts`                                                                             | login/logout flows extracted from ui.ts                                     |
 | `presentation.ts`                                                                          | editor, status panel, queue view, transcript, notifications                 |
 | `tui-renderer.ts`                                                                          | `createInteractiveTui` (search styling, URL open, select-to-copy)           |
 | `tools.ts`, `detail.ts`                                                                    | tool rows + the one render engine                                           |
@@ -64,25 +65,24 @@ root (cli, plugin, types, contracts) → may reference both layers
 | `streaming.ts`, `stream-highlight.ts`, `highlight.ts`, `diff.ts`, `markdown-transform.ts`  | rendering helpers                                                           |
 | `stats.ts`, `limits.ts` (FE copies live in `utils/`)                                       | footer/status formatting                                                    |
 
-### components/ (32)
+### components/ (31)
 
 header · assistant-message · user-message · login-dialog · oauth-selector ·
 auth-url · provider-brand · status-indicator · status-container · dynamic-border ·
 bordered-loader* · visual-truncate · themed-text* · countdown-timer ·
 model-selector · session-selector · session-selector-search · thinking-selector ·
 theme-selector · settings-submenu* · show-images-selector* · trust-selector* ·
-user-message-selector* · custom-editor* · custom-entry* · custom-message* ·
+user-message-selector* · custom-entry* · custom-message* ·
 extension-editor* · extension-input* · extension-selector* ·
 first-time-setup* · branch-summary-message* · compaction-summary-message* · index
 
 \* = ported but not wired (TODO REMAINING)
 
-### theme/ (8)
+### theme/ (6)
 
 theme.ts (facade) · theme-tokens.ts (83 tokens) · theme-controller.ts (DA1,
 auto-sync, live reload, preview) · theme-schema.ts (validation) ·
-theme-settings.ts (persistence) · system-theme.ts · dark.json · light.json ·
-lazydsh.json
+theme-settings.ts (persistence) · system-theme.ts · dark.json · light.json
 
 ## utils/ (7)
 

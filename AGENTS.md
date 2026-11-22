@@ -29,10 +29,12 @@ src/
 │   ├── preferences.ts                  #   $DSH_HOME/lazydsh-model.json
 │   ├── pending-runtime.ts, upgrade.ts
 ├── interactive-mode/                   # the TUI (imports contracts, utils, runtime)
-│   ├── ui.ts                           #   orchestration (~1900 lines)
+│   ├── ui.ts                           #   orchestration (~2338 lines)
+│   ├── auth-flow.ts                    #   login/logout flows extracted from ui.ts
 │   ├── presentation.ts, presentation   #   editor/status/transcript primitives
 │   ├── tools.ts, detail.ts,            #   tool rows + the one render engine
 │   │   approval.ts, question.ts
+│   ├── bash-execution.ts               #   bash mode renderer (used for !cmd/!!cmd)
 │   ├── model-*.ts, session-*.ts,       #   selectors + search
 │   │   picker.ts, autocomplete.ts
 │   ├── theme.ts, theme/                #   tokens, controller, JSON themes
@@ -61,6 +63,8 @@ Services the TUI needs eagerly (`runtime/deferred.ts`): `agents`,
 `workspaceRegistry`, `jobs`, `fileReferences`, `skills`. Everything else
 (tools, sandboxes, web, telemetry, PTC, MCP, …) mounts after first paint, and
 every enabled row of the 101-row bundle eventually runs.
+
+**Deferred entries:** 33 hardcoded in `DEFERRED_ENTRY_IDS` (`runtime/deferred.ts`); full profile activates ~50+ rows total.
 
 ## Runtime API (used by the TUI)
 
@@ -103,7 +107,7 @@ Events (`runtime-events.ts`): `session.event` (DSH events, incl. `llm/retry`,
 
 ```bash
 npm run check    # format + lint + types (must be warning-free)
-npm test         # vitest — 145 tests, 40 files
+npm test         # vitest — 150 tests, 41 files
 npm run build    # vite-plus bundle → dist/
 node dist/cli.mjs --version
 ```
@@ -116,7 +120,7 @@ covered by `test/runtime.test.ts` (real profile, temp home).
 
 | File                                   | Purpose                                               |
 | -------------------------------------- | ----------------------------------------------------- |
-| `~/.config/lazydsh/keybindings.json`   | 27 actions, hot-reloaded                              |
+| `~/.config/lazydsh/keybindings.json`   | 25 actions, hot-reloaded                              |
 | `~/.config/lazydsh/theme.json`         | Selected theme (`{"theme":"dark"}` or `"light/dark"`) |
 | `~/.config/lazydsh/themes/<name>.json` | User themes (validated on load)                       |
 | `~/.config/lazydsh/settings.json`      | UI prefs (`confirmExit`)                              |
@@ -153,5 +157,5 @@ node dist/cli.mjs --list    # providers/models without a session
 
 ## Status
 
-All phases complete; see `TODO.md` for the phase history and the REMAINING list
-(bash mode, tool-renderer duplication, orphan components).
+Core complete; UX gaps remain (see AUDIT.md §4). See `TODO.md` for phase history.
+Remaining: P0 boot progress / history virtualization / login unification / tool streaming; P1 git poll / DA1 blocking / Ctrl+C / !!cmd / queue indicator / silent retry.

@@ -206,9 +206,9 @@ src/
 ├── cli.ts, plugin.ts, types.ts      # wiring
 ├── interfaces.ts, runtime-events.ts # contracts
 ├── runtime/ (11)                    # DSH bridge + two-phase boot
-├── interactive-mode/ (47)           # TUI
-│   ├── components/ (32)
-│   └── theme/ (8 + 3 JSON)
+├── interactive-mode/ (84)           # TUI
+│   ├── components/ (31)
+│   └── theme/ (6 + 3 JSON)
 └── utils/ (7)                       # pure helpers
 ```
 
@@ -242,7 +242,14 @@ path when the output is truncated) and works while a turn is running.
 
 ## Known gaps
 
-A few ported components await wiring decisions — see `TODO.md` REMAINING.
+See `TODO.md` REMAINING + `AUDIT.md` §4 for full list. Key gaps:
+
+- **P0 Critical (4):** Boot no progress indicator; history no virtualization; login 3 entry points with bugs; tool streaming missing.
+- **P1 High (6):** Footer git polling 5s; Theme DA1 blocks first paint; Ctrl+C 4-state confusing; `!!cmd` drops output; queue no visual indicator; silent retry in auth.
+- **P2 Medium (5):** Nested panels no global ESC; mermaid disabled during stream; BashExecutionComponent unused for tool calls; approval no "always allow"; model selector no test connection.
+- **P3 Low (4):** History no search/filter; footer no cost breakdown; session selector no multi-delete; theme no creator UI.
+
+Full comparison: `GOAL.md` "Comparison with pi-coding-agent interactive mode".
 
 ## License
 

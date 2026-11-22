@@ -41,15 +41,20 @@ Goals, in order:
 
 ## Current State
 
-**All phases complete** (see TODO.md phase history). 150/150 tests, `check` and
-`build` clean.
+**Core complete, UX gaps remain** (see TODO.md phase history + AUDIT.md). 150/150 tests, `check` and `build` clean.
 
-- Full interactive parity with pi-coding-agent's documented feature set.
-- 27 keybindings wired; Ctrl+C state machine; suspend/resume; model cycling.
-- Live status rows for retry/compaction; footer with git, providers, extension
-  statuses.
+- **Core interactive parity** with pi-coding-agent's documented feature set.
+- 25 app keybindings wired; Ctrl+C 4-state machine; suspend/resume; model cycling.
+- Live status rows for retry/compaction; footer with git, providers, extension statuses.
 - Persistence: keybindings, theme (name/auto pair), UI settings, model choice.
 - Bash mode (`!` / `!!`) wired via DSH shell executor.
+
+**Known UX gaps (see AUDIT.md §4):**
+
+- **P0 Critical (4):** Boot no progress indicator; history no virtualization; login 3 entry points with bugs; tool streaming missing (`tool_execution_update` not wired).
+- **P1 High (6):** Footer git polling 5s; Theme DA1 blocks first paint; Ctrl+C 4-state confusing; `!!cmd` drops output; queue no visual indicator; silent retry in auth.
+- **P2 Medium (5):** Nested panels no global ESC; mermaid disabled during stream; BashExecutionComponent unused for tool calls; approval no "always allow"; model selector no test connection.
+- **P3 Low (4):** History no search/filter; footer no cost breakdown; session selector no multi-delete; theme no creator UI.
 
 ## Layer Layout
 
@@ -61,7 +66,7 @@ Applied (CAUTRUC.md): `interactive-mode/` (TUI, `components/`, `theme/`),
 ## Comparison with pi-coding-agent interactive mode
 
 lazydsh's interactive-mode is a **port** of pi-coding-agent's `modes/interactive/`.
-Full comparison (all 62 reference files + 89 lazydsh files read):
+Full comparison (all reference files + 84 lazydsh files read):
 
 ### ✅ Parity (lazydsh = reference)
 
@@ -92,7 +97,7 @@ Full comparison (all 62 reference files + 89 lazydsh files read):
 
 | #   | Feature                 | Priority      | Notes                                                                                          |
 | --- | ----------------------- | ------------- | ---------------------------------------------------------------------------------------------- |
-| 1   | Mermaid rendering       | P2            | Unicode diagrams from mermaid code blocks                                                      |
+| 1   | Mermaid streaming       | P2            | Disabled during streaming (raw markdown shown); `mermaid.ts` exists but inactive during stream |
 | 2   | Session tree view       | P2            | Navigation, folding, filtering, labeling, copying                                              |
 | 3   | Scoped models           | P2            | Toggle models for Ctrl+P cycling, reorder, persist                                             |
 | 4   | Skill invocation UI     | P2            | Render skill blocks with expand/collapse                                                       |
@@ -116,7 +121,7 @@ Full comparison (all 62 reference files + 89 lazydsh files read):
 | 5   | TODO.md stale (bash mode)               | ✅ Fixed — bash mode wired (§8.20)                      |
 | 6   | `safeSessionName` always undefined      | ⚠️ Dead code (low impact)                               |
 | 7   | `widthForLabel` hoisting                | ⚠️ Works (unusual)                                      |
-| 8   | `ui.ts` 2211 lines                      | ⚠️ Maintainability                                      |
+| 8   | `ui.ts` 2178 lines                      | ⚠️ Maintainability                                      |
 | 9   | `connect()` many params                 | ⚠️ Maintainability                                      |
 | 10  | `ask()` / `select()` race condition     | ⚠️ By design                                            |
 | 11  | `sessionManager` getter fallback        | ⚠️ Low risk                                             |
@@ -163,7 +168,7 @@ display. They should be **wired, not deleted**.
 #### Need wiring (DSH provides the feature, TUI needs to display it)
 
 1. `branch-summary-message.ts` (105L) — DSH `branch_summary` events, not rendered
-2. `compaction-summary-message.ts` (107L) — DSH compaction events, not rendered
+2. `compaction-summary-message.ts` (107L) — DSH compaction events, wired in ui.ts
 3. `trust-selector.ts` (151L) — DSH trust management, no UI
 4. `user-message-selector.ts` (176L) — DSH fork from message, uses different approach
 5. `custom-entry.ts` (85L) — DSH custom entries, extension system needed
@@ -180,13 +185,15 @@ display. They should be **wired, not deleted**.
 #### Quality improvements (merge or wire)
 
 15. `session-selector-search.ts` (330L) — Tiered fuzzy search, better than component version (190L)
-16. `tool-execution.ts` (438L) — Alternative tool renderer (dup of `tools.ts`/`detail.ts`)
+16. `bash-execution.ts` (210L) — Bash mode renderer, could replace `tools.ts`/`detail.ts` for tool calls too
 17. `tool-presentation.ts` (432L) — DSH render intent bridge (dup of `detail.ts` + tool meta)
 
-#### Truly unnecessary (could delete)
+#### Truly unnecessary / not ported
 
-18. `themed-text.ts` (41L) — Orphan by design (TUI.invalidate() cascades)
-19. `custom-editor.ts` (167L) — Different approach (PromptEditor extends Editor)
+- `themed-text.ts` — not ported (orphan by design; TUI.invalidate() cascades)
+- `custom-editor.ts` — not ported (different approach: PromptEditor extends Editor)
+- `tool-execution.ts` — does not exist; `bash-execution.ts` is the actual implementation
+- `tool-presentation.ts` — does not exist; `detail.ts` covers render intent
 
 ## Onboarding Files
 

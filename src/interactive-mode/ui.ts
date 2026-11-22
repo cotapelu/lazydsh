@@ -7,6 +7,11 @@ import { sep } from "node:path";
 import { loadModel, preferencesPath, saveModel } from "../runtime/preferences.ts";
 import { normalizeProvider } from "../runtime/provider.ts";
 import { SearchPicker, selectionTheme } from "./picker.ts";
+import {
+  pickModel as pickModelFlow,
+  pickProviderModel as pickProviderModelFlow,
+  type ModelPickerHost,
+} from "./model-picker.ts";
 import { highlightCode } from "./highlight.ts";
 import type { SessionStats } from "../utils/stats.ts";
 import { Autocomplete } from "./autocomplete.ts";
@@ -945,96 +950,25 @@ export async function runUI(
     return choice === null ? null : resumeDirectoryTarget(choice, options.cwd);
   }
 
-  async function pickModel(sessionId = runtime.session?.id ?? resume) {
-    const [{ ModelSelectorComponent }, { catalogModelRuntime, catalogModels }] = await Promise.all([
-      import("./model-selector.ts"),
-      import("./model-catalog-runtime.ts"),
-    ]);
-    const selection = runtime.selection();
-    const current =
-      selection === undefined
-        ? undefined
-        : { provider: selection.provider, id: selection.model, name: selection.model };
-    // "scoped" keeps the providers the user can actually authenticate against.
-    const authenticated = new Set(runtime.authProviders().map((provider) => provider.value));
-    const scoped = catalogModels([...authenticated]);
-    const saved = await loadModel(preferencesPath(options.dshHome));
-    const defaultModel =
-      saved === undefined
-        ? undefined
-        : { provider: saved.provider, id: saved.model, name: saved.model };
-    const picker = new ModelSelectorComponent(
-      tui,
-      current,
-      catalogModelRuntime(),
-      scoped.map((model) => ({ model })),
-      (model) => {
-        dismissPanel();
-        picker.dispose();
-        void connect(
-          { provider: model.provider, model: model.id },
-          { sessionId, notifyModel: true },
-        );
-      },
-      () => {
-        dismissPanel();
-        picker.dispose();
-      },
-      "",
-      (model) => {
-        dismissPanel();
-        picker.dispose();
-        void saveModelDefault(model);
-      },
-      defaultModel,
-    );
-    showPanel(picker);
+  /** Host services for the extracted model-picker flows. */
+  const modelPickerHost: ModelPickerHost = {
+    runtime,
+    dshHome: options.dshHome,
+    tui,
+    add,
+    showPanel,
+    dismissPanel,
+    hasOverlays: () => overlayHandles.length > 0,
+    connect: (route, options) => connect(route, options),
+    select: select as any,
+  };
+
+  function pickModel(sessionId = runtime.session?.id ?? resume) {
+    return pickModelFlow(modelPickerHost, sessionId as any);
   }
 
-  /** Persist a provider/model pair as the startup default (Ctrl+S in the picker). */
-  async function saveModelDefault(model: { provider: string; id: string }) {
-    const selection = runtime.selection();
-    const sameRoute =
-      selection !== undefined &&
-      selection.provider === model.provider &&
-      selection.model === model.id;
-    try {
-      await saveModel(preferencesPath(options.dshHome), {
-        provider: model.provider,
-        model: model.id,
-        ...(sameRoute && selection.effort !== undefined ? { effort: selection.effort } : {}),
-      });
-      add("Model", `Default: ${model.provider}/${model.id}`);
-    } catch (error) {
-      add("Error", error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  async function pickProviderModel(provider: string, sessionId?: string, _parent?: SearchPicker) {
-    const { models } = await import("../runtime/catalog.ts");
-    const picker: SearchPicker = select(
-      models(provider).map((model) => ({
-        value: model.id,
-        label: model.id,
-        description: model.name,
-      })),
-      "Models",
-      (model) => {
-        // Close all overlays (provider + model picker) before connecting
-        dismissPanel(true);
-        void connect({ provider, model }, { sessionId, notifyModel: true });
-      },
-      undefined,
-      true,
-    );
-    picker.onCancel = () => {
-      // Close model picker only, parent provider picker remains
-      dismissPanel();
-      if (!overlayHandles.length) {
-        // No parent picker, go back to provider selection
-        void pickModel(sessionId);
-      }
-    };
+  function pickProviderModel(provider: string, sessionId?: string) {
+    return pickProviderModelFlow(modelPickerHost, provider, sessionId);
   }
 
   // Codex-compatible chat lifecycle: both commands start a new session, but
