@@ -7,6 +7,7 @@
  */
 
 import { getAppKeybindings } from "./keybindings.ts";
+import type { Keybinding } from "@earendil-works/pi-tui";
 import { theme } from "./theme/theme.ts";
 
 function formatKeyPart(part: string, options: { capitalize?: boolean } = {}): string {
@@ -35,17 +36,17 @@ function formatKeys(keys: string[], options: { capitalize?: boolean } = {}): str
 }
 
 /** The key text for a keybinding, reading from the user's configured keys */
-export function keyText(keybinding: string): string {
-  return formatKeys(getAppKeybindings().getKeys(keybinding as any));
+export function keyText(keybinding: Keybinding): string {
+  return formatKeys(getAppKeybindings().getKeys(keybinding));
 }
 
 /** The key display text (capitalized) for a keybinding */
-export function keyDisplayText(keybinding: string): string {
-  return formatKeys(getAppKeybindings().getKeys(keybinding as any), { capitalize: true });
+export function keyDisplayText(keybinding: Keybinding): string {
+  return formatKeys(getAppKeybindings().getKeys(keybinding), { capitalize: true });
 }
 
 /** Themed key hint: key in dim, description in muted */
-export function keyHint(keybinding: string, description: string): string {
+export function keyHint(keybinding: Keybinding, description: string): string {
   return theme.fg("dim", keyText(keybinding)) + theme.fg("muted", ` ${description}`);
 }
 

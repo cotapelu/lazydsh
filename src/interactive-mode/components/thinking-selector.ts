@@ -146,7 +146,7 @@ export class ThinkingSelectorComponent extends Container {
 
   handleInput(keyData: string): void {
     const kb = getAppKeybindings();
-    if (kb.matches(keyData, "app.thinking.save" as any) && this.onSelectAsDefaultCallback) {
+    if (kb.matches(keyData, "app.thinking.save") && this.onSelectAsDefaultCallback) {
       const item = this.selectList.getSelectedItem();
       if (item) this.onSelectAsDefaultCallback(item.value);
       return;

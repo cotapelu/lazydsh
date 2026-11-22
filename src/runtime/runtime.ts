@@ -226,9 +226,15 @@ export class Runtime {
     ]).values;
     const cp = values?.contextPressure;
     if (!cp) return undefined;
+    const contextWindow = cp.contextWindow;
+    const projected = cp.projectedTokens;
+    const percent =
+      contextWindow !== undefined && projected !== undefined && contextWindow > 0
+        ? Math.round((projected / contextWindow) * 100)
+        : null;
     return {
-      percent: (cp as any).percent ?? null,
-      contextWindow: (cp as any).contextWindow,
+      percent,
+      contextWindow,
     };
   }
 

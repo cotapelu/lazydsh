@@ -414,7 +414,9 @@ export async function runUI(
       if (runtime.session?.id === sessionId && !closing) {
         stats = next;
         footerDataProvider.setCwd(options.cwd);
-        ensureFooter().invalidate();
+        const footer = ensureFooter();
+        footer.setSession(footerSession());
+        footer.invalidate();
         update();
       }
     } catch {
@@ -763,7 +765,12 @@ export async function runUI(
       try {
         footerDataProvider.setAvailableProviderCount(runtime.authProviders().length);
         footerDataProvider.setCwd(options.cwd);
-        ensureFooter();
+        const footer = ensureFooter();
+        // The footer snapshots the session (model/thinking/routed model) at
+        // creation time, so refresh it on every (re)connect — otherwise a
+        // newly selected model never reaches the footer bar.
+        footer.setSession(footerSession());
+        footer.invalidate();
       } catch {
         // The footer is cosmetic; never block the session on it.
       }
@@ -960,11 +967,11 @@ export async function runUI(
     dismissPanel,
     hasOverlays: () => overlayHandles.length > 0,
     connect: (route, options) => connect(route, options),
-    select: select as any,
+    select,
   };
 
   function pickModel(sessionId = runtime.session?.id ?? resume) {
-    return pickModelFlow(modelPickerHost, sessionId as any);
+    return pickModelFlow(modelPickerHost, sessionId);
   }
 
   function pickProviderModel(provider: string, sessionId?: string) {

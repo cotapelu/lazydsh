@@ -6,10 +6,11 @@
  * default. Extracted from `ui.ts`; the orchestrator supplies the host below.
  */
 
-import type { Component } from "@earendil-works/pi-tui";
+import type { Component, SelectItem } from "@earendil-works/pi-tui";
 import { loadModel, preferencesPath, saveModel } from "../runtime/preferences.ts";
 import type { Runtime } from "../runtime/runtime.ts";
 import type { Route } from "../interfaces.ts";
+import type { SearchPicker } from "./picker.ts";
 
 /** Orchestrator services the model picker flows need. */
 export interface ModelPickerHost {
@@ -28,12 +29,12 @@ export interface ModelPickerHost {
   connect(route: Route, options?: { sessionId?: string; notifyModel?: boolean }): Promise<void>;
   /** Search picker for the provider-scoped model list. */
   select(
-    items: { value: string; label: string; description?: string }[],
+    items: SelectItem[],
     title: string,
     onSelect: (value: string) => void,
     selected?: string,
     searchable?: boolean,
-  ): { onCancel?: () => void; dispose: () => void };
+  ): SearchPicker;
 }
 
 /** Persist a provider/model pair as the startup default (Ctrl+S in the picker). */
@@ -61,7 +62,7 @@ export async function saveModelDefault(
 /** `/model` — the full selector: scoped models, current selection, saved default. */
 export async function pickModel(
   host: ModelPickerHost,
-  sessionId = host.runtime.session?.id,
+  sessionId: string | undefined = host.runtime.session?.id,
 ): Promise<void> {
   const [{ ModelSelectorComponent }, { catalogModelRuntime, catalogModels }] = await Promise.all([
     import("./model-selector.ts"),
@@ -135,7 +136,7 @@ export async function pickProviderModel(
     host.dismissPanel();
     if (!host.hasOverlays()) {
       // No parent picker, so go back to provider selection.
-      void pickModel(host, sessionId as any);
+      void pickModel(host, sessionId);
     }
   };
 }
