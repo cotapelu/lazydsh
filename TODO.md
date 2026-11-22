@@ -157,10 +157,7 @@ verification.
    - **Fix:** Extract `signIn()`, `signOut()`, `pickModel()` into separate files.
    - **Severity:** Low — maintainability.
 
-4. **`ui.ts` `connect()` many parameters** — 6+ positional params.
-   - **File:** `interactive-mode/ui.ts`
-   - **Fix:** Refactor to use options object.
-   - **Severity:** Low.
+4. **`ui.ts` `connect()` many parameters** — ✅ FIXED: options object (`ConnectOptions`: sessionId, notifyModel, startup, directory, keepTranscript); param renamed `connection` to avoid shadowing the outer `options`.
 
 5. **`ui.ts` `ask()` / `select()` potential race condition** — No queueing; concurrent calls reject.
    - **File:** `interactive-mode/ui.ts`
