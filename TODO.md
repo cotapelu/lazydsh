@@ -345,7 +345,7 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 1. **Fix `safeSessionName` dead code** (low priority).
 2. **Fix `session-selector.ts` `widthForLabel` hoisting** (low priority, cosmetic).
 3. **Fix `components/session-selector-search.ts` simplified search** (medium priority — merge tiered search).
-4. **Wire orphan components** that DSH needs: `branch-summary-message`, `compaction-summary-message`, `trust-selector`, `user-message-selector` (medium priority).
+4. **Wire orphan components** that DSH needs: `branch-summary-message` (blocked — DSH emits no branch/summary event), `compaction-summary-message` (✅ wired), `trust-selector` (blocked — DSH exposes no ProjectTrustStore), `user-message-selector` (N/A — forkPoints() is DSH-native) (medium priority).
 5. **Wire extension system components** when extension API is designed (low priority).
 6. **Implement missing features** (mermaid, tree view, scoped models, skill invocation, config selector, radius, easter eggs, pi logo, custom editor, 9 commands) — defer to v0.3.0.
 7. **Refresh README translations** — when next touched.
