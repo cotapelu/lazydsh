@@ -308,7 +308,7 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 - [x] P3: History search/filter
 - [x] P3: Footer cost breakdown
 - [x] P3: Session selector multi-delete
-- [ ] P3: Theme creator UI
+- [x] P3: Theme creator UI
 
 **Suite: 150/150 passing** (51/95 at the start of Phase 8).
 
