@@ -292,7 +292,7 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 
 - [x] P0: Boot progress indicator during deferred plugin activation
 - [x] P0: History virtualization (lazy render visible window)
-- [ ] P0: Login unification (3 entry points → 1)
+- [x] P0: Login unification (3 entry points → 1)
 - [ ] P0: Tool streaming (`tool_execution_update` wired)
 - [ ] P1: Footer git watcher (replace 5s polling)
 - [ ] P1: Theme DA1 async (non-blocking first paint)

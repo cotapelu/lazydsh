@@ -47,6 +47,7 @@ export interface AuthHost {
 /** Build the two rows (OAuth + API key) the login selector shows per provider. */
 export async function buildLoginProviderOptions(host: AuthHost): Promise<ProviderOption[]> {
   const options: ProviderOption[] = [];
+  const flows = host.runtime.ctx.authorization.list();
   for (const provider of host.runtime.authProviders()) {
     const providerId = provider.value;
     const authStatus: CredentialSource = await host.runtime.credentialSource(providerId);
@@ -57,21 +58,31 @@ export async function buildLoginProviderOptions(host: AuthHost): Promise<Provide
             source: authStatus.label,
           }
         : undefined;
-
-    options.push({
-      id: providerId,
-      name: provider.label,
-      authType: "oauth",
-      status,
-      subscription: false,
-    });
-    options.push({
-      id: providerId,
-      name: provider.label,
-      authType: "api_key",
-      status,
-      subscription: false,
-    });
+    const flow = flows.find((entry) => entry.key === `llm-pi-ai/${providerId}`);
+    const methods = flow?.methods ?? [];
+    if (methods.length === 0) {
+      // Providers without an authorization flow (e.g. DeepSeek) authenticate
+      // with an API key only.
+      options.push({
+        id: providerId,
+        name: provider.label,
+        authType: "api_key",
+        status,
+        subscription: false,
+      });
+      continue;
+    }
+    for (const method of methods) {
+      const authType = method.id === "oauth" ? "oauth" : "api_key";
+      options.push({
+        id: providerId,
+        name: provider.label,
+        authType,
+        status,
+        subscription: false,
+        method: { loginLabel: method.label },
+      });
+    }
   }
   return options.sort((a: ProviderOption, b: ProviderOption) => a.name.localeCompare(b.name));
 }
