@@ -192,9 +192,8 @@ These files are **complete implementations** ported from pi-coding-agent. They a
    - DSH provides `branch_summary` events. lazydsh **does not** render branch summaries currently.
    - **Action:** Wire into transcript rendering.
 
-10. **`compaction-summary-message.ts` (107 lines)** — Renders compaction summary messages.
-    - DSH provides compaction events. lazydsh **does not** render compaction summaries currently.
-    - **Action:** Wire into transcript rendering.
+10. **`compaction-summary-message.ts` (107 lines)** — Renders compaction summary messages. ✅ WIRED
+    - Wired into `compaction/summary` session events in ui.ts (renders summary text + tokensBefore).
 
 11. **`trust-selector.ts` (151 lines)** — Project trust decision UI.
     - DSH has `ProjectTrustStore` and trust management. lazydsh has no trust UI.
