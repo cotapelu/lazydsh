@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Version 0.2.3** · Suite **150/150 passing** (42 test files) · `npm run check` clean · `npm run build` clean · dist boots.
+**Version 0.2.11** · Suite **150/150 passing** (42 test files) · `npm run check` clean · `npm run build` clean · dist boots.
 
 **Core complete.** The pi-coding-agent interactive-mode port is **functionally complete** — every advertised keybinding fires, every advertised panel opens, theme/settings persist, retry + compaction states are live, and the DSH bridge loads the full `@deepseek-ai/dsh-base` profile (101 plugin rows) with only the 14 services the TUI actually needs mounted eagerly. Most P0/P1/P2 gaps fixed; 10 UX gaps remain (see AUDIT.md §4).
 
