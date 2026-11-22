@@ -166,10 +166,7 @@ verification.
    - **Fix:** Use explicit check with warning.
    - **Severity:** Low.
 
-7. **`settings-selector.ts` simplified** — Only 10 settings items vs reference's 40+.
-   - **File:** `interactive-mode/settings-selector.ts`
-   - **Fix:** Add missing settings (transport, cache warming, mermaid rendering, etc.) or document as DSH-delegated.
-   - **Severity:** Medium — users miss settings.
+7. **`settings-selector.ts` simplified** — Mostly by design: context policy, sandbox, transport, and cache warming are DSH-owned, and those rows say so instead of pretending to toggle them. Added the one setting lazydsh genuinely owns beyond `confirmExit`: **Mermaid diagrams** (`off` / `final` / `streaming`), persisted in `UiSettings.mermaidMode` and read live by the markdown transformer. Remaining rows stay as documented DSH delegations.
 
 8. **`components/session-selector-search.ts` simplified** — Loses tiered fuzzy search (TIER_NAME, TIER_TEXT, TIER_FUZZY), regex mode, phrase matching.
    - **File:** `interactive-mode/components/session-selector-search.ts`

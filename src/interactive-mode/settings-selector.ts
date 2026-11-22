@@ -49,12 +49,20 @@ export class SettingsSelectorComponent extends Container {
       currentTheme?: string;
       version?: string;
       confirmExit?: boolean;
+      mermaidMode?: string;
       onToggle?: (key: string, value: boolean) => void;
+      onSelect?: (key: string, value: string) => void;
     } = {},
   ) {
     super();
     this.tui = tui;
-    this.initializeItems(options.currentTheme, options.version, options.confirmExit);
+    this.onSelect = options.onSelect;
+    this.initializeItems(
+      options.currentTheme,
+      options.version,
+      options.confirmExit,
+      options.mermaidMode,
+    );
     this.onToggle = options.onToggle;
     this.rebuild();
   }
@@ -67,7 +75,12 @@ export class SettingsSelectorComponent extends Container {
     this._focused = value;
   }
 
-  private initializeItems(currentTheme?: string, version?: string, confirmExit?: boolean): void {
+  private initializeItems(
+    currentTheme?: string,
+    version?: string,
+    confirmExit?: boolean,
+    mermaidMode = "final",
+  ): void {
     this.items = [
       // General
       {
@@ -104,6 +117,19 @@ export class SettingsSelectorComponent extends Container {
         description: "Set by the active theme — edit its JSON for a transparent background",
         category: "appearance",
         type: "info",
+      },
+      {
+        key: "mermaidMode",
+        label: "Mermaid diagrams",
+        description: "Render ```mermaid blocks as Unicode diagrams — never, on completion, or live",
+        category: "appearance",
+        type: "select",
+        value: mermaidMode,
+        options: [
+          { value: "off", label: "off" },
+          { value: "final", label: "final (on completion)" },
+          { value: "streaming", label: "streaming (live)" },
+        ],
       },
       {
         key: "showLineNumbers",
@@ -273,6 +299,7 @@ export class SettingsSelectorComponent extends Container {
         const nextIdx = (currentIdx + 1) % item.options.length;
         item.value = item.options[nextIdx].value;
         item.onChange?.(item.value);
+        this.onSelect?.(item.key, String(item.value));
         this.rebuild();
         this.tui.requestRender();
       } else if (item.type === "info") {
@@ -312,4 +339,7 @@ export class SettingsSelectorComponent extends Container {
 
   /** Called after a toggle flipped, with the new value. */
   onToggle?: (key: string, value: boolean) => void;
+
+  /** Called after a select item cycled, with the new value. */
+  onSelect?: (key: string, value: string) => void;
 }

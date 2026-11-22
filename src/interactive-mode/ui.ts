@@ -67,7 +67,13 @@ import {
 import { HeaderComponent } from "./components/header.ts";
 import { ThemeController } from "./theme/theme-controller.ts";
 import { readThemeSetting, writeThemeSetting } from "./theme/theme-settings.ts";
-import { readUiSettings, writeUiSettings, type UiSettings } from "./settings-store.ts";
+import {
+  DEFAULT_UI_SETTINGS,
+  readUiSettings,
+  writeUiSettings,
+  type MermaidMode,
+  type UiSettings,
+} from "./settings-store.ts";
 import { safeText, accent, dim } from "./theme.ts";
 import { theme as themeProxy } from "./theme/theme.ts";
 import { currentThemeName_ } from "./theme/theme.ts";
@@ -92,9 +98,16 @@ export const markdownTheme = {
   underline: identity,
 };
 
+/**
+ * Live Mermaid rendering mode. Read by the transformer on every render, so a
+ * settings change applies without rebuilding the pipeline; seeded from the
+ * persisted `UiSettings` when the UI starts.
+ */
+let mermaidMode: MermaidMode = DEFAULT_UI_SETTINGS.mermaidMode;
+
 /** Mermaid diagram transformer for assistant/user messages. */
 const mermaidTransformer = createMermaidMarkdownTransformer({
-  getMode: () => "final",
+  getMode: () => mermaidMode,
   theme: themeProxy,
 });
 
@@ -254,6 +267,7 @@ export async function runUI(
   let themeSetting: string | undefined = readThemeSetting();
   // TUI-side preferences (~/.config/lazydsh/settings.json).
   let uiSettings: UiSettings = readUiSettings();
+  mermaidMode = uiSettings.mermaidMode;
   const themeController = new ThemeController(tui, {
     getSettingsManager: () => ({ getThemeSetting: () => themeSetting }),
     showError: (msg) => add("Error", msg),
@@ -1497,11 +1511,19 @@ export async function runUI(
       const settings = new SettingsSelectorComponent(tui, {
         currentTheme: currentThemeName_(),
         confirmExit: uiSettings.confirmExit,
+        mermaidMode: uiSettings.mermaidMode,
         onToggle: (key, value) => {
           if (key !== "confirmExit") return;
           uiSettings.confirmExit = value;
           writeUiSettings(uiSettings);
           add("Settings", `Confirm on exit: ${value ? "on" : "off"}`);
+        },
+        onSelect: (key, value) => {
+          if (key !== "mermaidMode") return;
+          uiSettings.mermaidMode = value as MermaidMode;
+          mermaidMode = value as MermaidMode;
+          writeUiSettings(uiSettings);
+          add("Settings", `Mermaid diagrams: ${value}`);
         },
       });
       settings.onCancel = dismissPanel;
