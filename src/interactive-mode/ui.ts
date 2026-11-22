@@ -301,6 +301,12 @@ export async function runUI(
     keepTranscript?: boolean;
   }
   let decision: ((value: string | null) => void) | undefined;
+  /** Questions waiting for the active prompt to settle (see `ask`/`drainAskQueue`). */
+  const askQueue: {
+    message: string;
+    signal?: AbortSignal;
+    resolve: (value: string | null) => void;
+  }[] = [];
   let selecting = false;
   /** Stack of overlay handles for nested panels (e.g., provider -> model picker). */
   const overlayHandles: OverlayHandle[] = [];
@@ -520,24 +526,49 @@ export async function runUI(
     update();
   }
 
-  function ask(message: string, signal?: AbortSignal) {
+  /**
+   * Prompt the user for one line of text. Prompts are serialized: a question
+   * that arrives while another is open waits for it to settle instead of
+   * failing, so racing commands cannot reject their callers.
+   */
+  function ask(message: string, signal?: AbortSignal): Promise<string | null> {
     if (closing || signal?.aborted) return Promise.resolve(null);
-    if (decision) return Promise.reject(new Error("Another question is already open."));
-    add("Input", message);
-    editor.setText("");
     return new Promise<string | null>((resolve) => {
-      const settle = (value: string | null) => {
-        signal?.removeEventListener("abort", abort);
-        decision = undefined;
-        editor.setText("");
-        update();
-        resolve(value);
-      };
-      const abort = () => settle(null);
-      decision = settle;
-      signal?.addEventListener("abort", abort, { once: true });
-      update();
+      askQueue.push({ message, signal, resolve });
+      drainAskQueue();
     });
+  }
+
+  /** Opens the next queued question once the active one has settled. */
+  function drainAskQueue(): void {
+    if (decision !== undefined || askQueue.length === 0) return;
+    if (closing) {
+      for (const pending of askQueue.splice(0)) pending.resolve(null);
+      return;
+    }
+    const pending = askQueue.shift()!;
+    if (pending.signal?.aborted) {
+      pending.resolve(null);
+      drainAskQueue();
+      return;
+    }
+    add("Input", pending.message);
+    editor.setText("");
+    let settled = false;
+    const settle = (value: string | null) => {
+      if (settled) return;
+      settled = true;
+      pending.signal?.removeEventListener("abort", abort);
+      decision = undefined;
+      editor.setText("");
+      update();
+      pending.resolve(value);
+      drainAskQueue();
+    };
+    const abort = () => settle(null);
+    decision = settle;
+    pending.signal?.addEventListener("abort", abort, { once: true });
+    update();
   }
 
   const callbacks: Callbacks = {

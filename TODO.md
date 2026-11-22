@@ -159,10 +159,7 @@ verification.
 
 4. **`ui.ts` `connect()` many parameters** — ✅ FIXED: options object (`ConnectOptions`: sessionId, notifyModel, startup, directory, keepTranscript); param renamed `connection` to avoid shadowing the outer `options`.
 
-5. **`ui.ts` `ask()` / `select()` potential race condition** — No queueing; concurrent calls reject.
-   - **File:** `interactive-mode/ui.ts`
-   - **Fix:** Add queueing or document the contract.
-   - **Severity:** Low.
+5. **`ui.ts` `ask()` / `select()` potential race condition** — ✅ FIXED: `ask()` now queues (`askQueue` + `drainAskQueue`); a question that arrives while another is open waits for it to settle instead of rejecting. Runtime callbacks (`onAuth`/`onApproval`/`onUserQuestion`) keep their fail-fast guard — DSH serializes its own prompts.
 
 6. **`runtime/runtime.ts` `sessionManager` getter fallback** — `ctx.get("sessionManager") ?? ctx.get("sessionPersistence")` might mask missing service.
    - **File:** `runtime/runtime.ts`
