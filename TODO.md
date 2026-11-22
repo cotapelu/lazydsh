@@ -140,17 +140,11 @@ verification.
 
 ### A. Bugs (functional issues)
 
-1. **`safeSessionName` always returns undefined** — `runtime.sessionManager` has no `getSessionName()` method.
-   - **File:** `interactive-mode/ui.ts` (line 129), `runtime/runtime.ts` (line 186)
-   - **Fix:** Remove dead code or implement `getSessionName()` on sessionManager.
-   - **Severity:** Low — no user-visible impact.
+1. **`safeSessionName` dead code** — ✅ REMOVED (no `getSessionName()` on DSH's sessionManager).
 
 ### B. Code smells / technical debt
 
-2. **`session-selector.ts` `widthForLabel` hoisting** — Function defined 200 lines after first use.
-   - **File:** `interactive-mode/session-selector.ts`
-   - **Fix:** Move function definition to top of file.
-   - **Severity:** Low.
+2. **`session-selector.ts` `widthForLabel` hoisting** — ✅ FIXED (defined above first use).
 
 3. **`ui.ts` 2211 lines — single function** — Could benefit from further decomposition.
    - **File:** `interactive-mode/ui.ts`
@@ -161,17 +155,11 @@ verification.
 
 5. **`ui.ts` `ask()` / `select()` potential race condition** — ✅ FIXED: `ask()` now queues (`askQueue` + `drainAskQueue`); a question that arrives while another is open waits for it to settle instead of rejecting. Runtime callbacks (`onAuth`/`onApproval`/`onUserQuestion`) keep their fail-fast guard — DSH serializes its own prompts.
 
-6. **`runtime/runtime.ts` `sessionManager` getter fallback** — `ctx.get("sessionManager") ?? ctx.get("sessionPersistence")` might mask missing service.
-   - **File:** `runtime/runtime.ts`
-   - **Fix:** Use explicit check with warning.
-   - **Severity:** Low.
+6. **`runtime/runtime.ts` `sessionManager` getter fallback** — ✅ FIXED: explicit `undefined` checks with a logger warning, throws when neither service exists.
 
 7. **`settings-selector.ts` simplified** — Mostly by design: context policy, sandbox, transport, and cache warming are DSH-owned, and those rows say so instead of pretending to toggle them. Added the one setting lazydsh genuinely owns beyond `confirmExit`: **Mermaid diagrams** (`off` / `final` / `streaming`), persisted in `UiSettings.mermaidMode` and read live by the markdown transformer. Remaining rows stay as documented DSH delegations.
 
-8. **`components/session-selector-search.ts` simplified** — Loses tiered fuzzy search (TIER_NAME, TIER_TEXT, TIER_FUZZY), regex mode, phrase matching.
-   - **File:** `interactive-mode/components/session-selector-search.ts`
-   - **Fix:** Merge tiered search from top-level `session-selector-search.ts` (330 lines, currently orphan).
-   - **Severity:** Medium — search quality degraded.
+8. **`components/session-selector-search.ts` simplified search** — ✅ FIXED: tiered fuzzy search (TIER_NAME / TIER_TEXT / TIER_FUZZY), regex mode and phrase matching merged into the component version.
 
 ### C. Orphan files (ported, typechecked, no call site — need product decision)
 
@@ -236,17 +224,11 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 
 #### C2. Quality improvements (merge or wire)
 
-23. **`session-selector-search.ts` top-level (330 lines)** — Tiered fuzzy search with message text, regex, phrases.
-    - Better search quality than component version (190 lines).
-    - **Action:** Merge tiered search into component version.
+23. **`session-selector-search.ts` top-level (330 lines)** — ✅ DELETED: content merged into `components/session-selector-search.ts`; keeping both would duplicate the search engine.
 
-24. **`tool-execution.ts` (438 lines)** — Rich tool card with live streaming, custom renderers, images, duration.
-    - Alternative renderer to `tools.ts`/`detail.ts`. Complete implementation.
-    - **Action:** Decide: wire as alternative or delete. Keep one renderer.
+24. **`tool-execution.ts` (438 lines)** — ✅ DELETED: a second tool renderer contradicts the single-engine rule (`detail.ts` owns all tool pixels); per-tool `renderCall`/`renderResult` callbacks would hand pixels back to providers.
 
-25. **`tool-presentation.ts` (432 lines)** — Maps DSH render intents to pi-tui components.
-    - DSH-specific approach. Complete implementation.
-    - **Action:** Decide: wire as alternative or delete. DSH render intents superseded by `detail.ts` + tool meta.
+25. **`tool-presentation.ts` (432 lines)** — ✅ DELETED: `detail.ts` + tool meta already turn DSH render intents into rows; this was a parallel implementation of the same mapping.
 
 #### C3. Truly unnecessary (could delete)
 

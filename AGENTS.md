@@ -31,8 +31,8 @@ src/
 ├── interactive-mode/                   # the TUI (imports contracts, utils, runtime)
 │   ├── ui.ts                           #   orchestration (~1900 lines)
 │   ├── presentation.ts, presentation   #   editor/status/transcript primitives
-│   ├── tool-execution.ts*, tools.ts,   #   *unwired — see TODO REMAINING
-│   │   detail.ts, approval.ts, question.ts
+│   ├── tools.ts, detail.ts,            #   tool rows + the one render engine
+│   │   approval.ts, question.ts
 │   ├── model-*.ts, session-*.ts,       #   selectors + search
 │   │   picker.ts, autocomplete.ts
 │   ├── theme.ts, theme/                #   tokens, controller, JSON themes

@@ -2,7 +2,8 @@
  * Components
  *
  * The UI layer, ported from pi-coding-agent's `modes/interactive/components`.
- * Tool cards bridge DSH's render intents (`tool-presentation.ts`) to these.
+ * Tool rows are rendered by the single `detail.ts` engine — tools declare
+ * render intent, this layer owns the pixels.
  */
 
 export { DynamicBorder } from "./dynamic-border.ts";
@@ -28,18 +29,8 @@ export {
   getSessionPathKey,
   hasSessionName,
   parseSearchQuery,
-} from "../session-selector-search.ts";
+} from "./session-selector-search.ts";
 export { BashExecutionComponent } from "../bash-execution.ts";
-export { ToolExecutionComponent, type ToolExecutionOptions } from "../tool-execution.ts";
-export {
-  genericCallFallback,
-  presentCall,
-  presentResult,
-  resolveImages,
-  textCard,
-  type ImageResolver,
-  type ResolvedImage,
-} from "../tool-presentation.ts";
 export { AssistantMessageComponent } from "./assistant-message.ts";
 export { UserMessageComponent } from "./user-message.ts";
 export { CompactionSummaryMessageComponent } from "./compaction-summary-message.ts";
