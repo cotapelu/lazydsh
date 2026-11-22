@@ -5,7 +5,6 @@ const localCommands: SlashCommand[] = [
   { name: "clear", description: "Clear the terminal and start a new chat" },
   { name: "resume", description: "Resume a saved conversation" },
   { name: "cd", description: "Change the working directory" },
-  { name: "permission", description: "Show or choose a permission preset" },
   { name: "model", description: "Switch provider and model" },
   {
     name: "login",
@@ -26,11 +25,6 @@ const localCommands: SlashCommand[] = [
     name: "dsh",
     argumentHint: "<command> [args]",
     description: "Run a native dsh command",
-  },
-  {
-    name: "effort",
-    argumentHint: "[level | default]",
-    description: "Choose reasoning effort",
   },
   { name: "new", description: "Start a new chat during a conversation" },
   { name: "rename", argumentHint: "[title]", description: "Rename this conversation" },
@@ -86,9 +80,22 @@ const nativeCommands = [
   },
 ];
 
+const preferredOrder = [
+  // Ước lượng tần suất sử dụng cao → thấp
+  "model", "status", "session", "resume", "new", "clear", "cd", "file",
+  "effort", "permission", "compact", "export", "plan", "goal", "feedback",
+  "login", "logout", "rename", "fork", "archive", "restore", "pin", "unpin",
+  "ps", "stop", "quit", "bug", "share", "changelog", "settings", "dsh",
+];
+
+function rank(name: string): number {
+  const index = preferredOrder.indexOf(name);
+  return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+}
+
 export function commandMenu(native?: readonly CommandDescriptor[]): SlashCommand[] {
   const commands =
-    native?.map((command) => {
+    (native?.map((command) => {
       const known = nativeCommands.find((item) => item.name === command.name);
       return {
         name: command.name,
@@ -96,8 +103,26 @@ export function commandMenu(native?: readonly CommandDescriptor[]): SlashCommand
           known?.description ?? (command.description.trim() || "Run a dsh plugin command"),
         argumentHint: known?.argumentHint ?? command.input?.hint,
       };
-    }) ?? nativeCommands;
-  return [
-    ...new Map([...commands, ...localCommands].map((command) => [command.name, command])).values(),
-  ];
+    }) ?? nativeCommands)
+      .slice()
+      .sort((a, b) => {
+        const rankDiff = rank(a.name) - rank(b.name);
+        if (rankDiff !== 0) return rankDiff;
+        return a.name.localeCompare(b.name);
+      });
+  // Match pi-coding-agent's autocomplete layout: built-in (local) commands first,
+  // then native/plugin commands. Built-ins win name collisions.
+  const seen = new Set<string>();
+  const ordered: SlashCommand[] = [];
+  const combined = [...localCommands, ...commands].sort((a, b) => {
+    const rankDiff = rank(a.name) - rank(b.name);
+    if (rankDiff !== 0) return rankDiff;
+    return a.name.localeCompare(b.name);
+  });
+  for (const command of combined) {
+    if (seen.has(command.name)) continue;
+    seen.add(command.name);
+    ordered.push(command);
+  }
+  return ordered;
 }

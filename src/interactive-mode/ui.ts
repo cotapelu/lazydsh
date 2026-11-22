@@ -1439,21 +1439,16 @@ export async function runUI(
       }
       return;
     }
-    const choiceCommand = /^\/(resume|cd|permission)(?:\s+(.*))?$/.exec(text);
+    const choiceCommand = /^\/(resume|cd)(?:\s+(.*))?$/ .exec(text);
     if (choiceCommand) {
       const name = choiceCommand[1];
       const argument = choiceCommand[2]?.trim();
-      const kind = name === "resume" ? "sessions" : name === "cd" ? "directories" : "permissions";
+      const kind = name === "resume" ? "sessions" : "directories";
       const apply = async (value: string) => {
         if (name === "resume") return applyResume(value);
-        if (name === "cd") {
-          options.cwd = await runtime.cd(value);
-          setAutocomplete();
-          add("Directory", options.cwd);
-        } else {
-          await runtime.choices(kind, value);
-          add("Permission", value);
-        }
+        options.cwd = await runtime.cd(value);
+        setAutocomplete();
+        add("Directory", options.cwd);
       };
       void runBusy(async () => {
         if (argument) await apply(argument);
@@ -1461,12 +1456,12 @@ export async function runUI(
         else {
           const picker: SearchPicker = select(
             [],
-            name === "cd" ? "Directories" : "Permissions",
+            "Directories",
             (value) => {
               void runBusy(() => apply(value));
             },
             undefined,
-            name !== "permission",
+            true,
           );
           picker.setLoading();
           try {
@@ -1486,43 +1481,6 @@ export async function runUI(
     }
     if (text === "/session") {
       add("Session", runtime.session?.id ?? "No active session.");
-      return;
-    }
-    if (text === "/effort") {
-      // The fuzzy thinking picker needs its level list before construction, so
-      // the catalog is fetched first while the status row reports the work.
-      busy = true;
-      update();
-      void runtime
-        .efforts()
-        .then(async (info) => {
-          if (closing) return;
-          const { ThinkingSelectorComponent } = await import("./components/thinking-selector.ts");
-          const picker = new ThinkingSelectorComponent({
-            currentLevel: info.current,
-            availableLevels: info.options.map((option) => option.id),
-            ...(info.defaultEffort === undefined
-              ? {}
-              : { defaultThinkingLevel: info.defaultEffort }),
-            onSelect: (level) => {
-              dismissPanel();
-              editor.onSubmit?.(`/effort ${level}`);
-            },
-            onCancel: () => dismissPanel(),
-            onSelectAsDefault: (level) => {
-              dismissPanel();
-              void saveDefaultEffort(level);
-            },
-          });
-          showPanel(picker);
-        })
-        .catch((error) => {
-          add("Error", error instanceof Error ? error.message : String(error));
-        })
-        .finally(() => {
-          busy = false;
-          update();
-        });
       return;
     }
     if (text === "/status") {
@@ -1871,7 +1829,7 @@ export async function runUI(
       onCancel: () => dismissPanel(),
       requestRender: () => tui.requestRender(),
     });
-    showPanel(selector as unknown as Component);
+    showPanel(selector);
     selector.setLoading();
     void runtime
       .sessions()
