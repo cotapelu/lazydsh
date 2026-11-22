@@ -2102,7 +2102,9 @@ export async function runUI(
       }
     }
     // Wait for terminal colors to be reported (DA1) before connecting
-    await themeController.waitForTerminalColors();
+    // Do not block first paint on the terminal color query (DA1): apply the
+    // theme immediately and let colors arrive asynchronously.
+    void themeController.waitForTerminalColors();
 
     if (!startupFailed) {
       if (route.model)

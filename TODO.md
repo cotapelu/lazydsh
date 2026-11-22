@@ -295,7 +295,7 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 - [x] P0: Login unification (3 entry points → 1)
 - [x] P0: Tool streaming (`tool_execution_update` wired)
 - [x] P1: Footer git watcher (replace 5s polling)
-- [ ] P1: Theme DA1 async (non-blocking first paint)
+- [x] P1: Theme DA1 async (non-blocking first paint)
 - [ ] P1: Ctrl+C simplified to 2 states
 - [ ] P1: `!!cmd` output in transcript
 - [ ] P1: Queue visual indicator
