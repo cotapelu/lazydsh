@@ -21,6 +21,8 @@
     "url": "git+https://github.com/nuskey8/lazydsh.git"
   },
   "bin": {
+    "dspi": "dist/cli.mjs",
+    "dspio": "dist/cli.mjs",
     "lazydsh": "dist/cli.mjs"
   },
   "files": [

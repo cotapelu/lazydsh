@@ -22,6 +22,18 @@ export type RuntimeEvent =
       params: { toolCallId: string; result: any; isError: boolean; durationMs?: number };
     };
 
+/** Tool output shape returned by eventText for tool-related events. */
+export type ToolOutput =
+  | { kind: "tool"; sessionId: string | undefined; callId: string; name: string; text: string }
+  | {
+      kind: "result" | "error";
+      sessionId: string | undefined;
+      callId: string;
+      text: string;
+      reason?: string;
+      meta?: unknown;
+    };
+
 export function isAuthFailure(failure: unknown) {
   if (typeof failure !== "object" || failure === null) return false;
   const { code, status, message } = failure as {
@@ -42,7 +54,32 @@ export function isAuthFailure(failure: unknown) {
   );
 }
 
-export function eventText(notification: RuntimeEvent) {
+export function eventText(
+  notification: RuntimeEvent,
+): ToolOutput | { kind: "assistant"; text: string } | undefined {
+  // Handle direct tool execution events from Runtime
+  if (notification.method === "tool_execution_start") {
+    const { toolName, toolCallId, args } = notification.params;
+    return {
+      kind: "tool",
+      sessionId: undefined,
+      callId: toolCallId,
+      name: toolName,
+      text: JSON.stringify(args),
+    };
+  }
+  if (notification.method === "tool_execution_end") {
+    const { toolCallId, result, isError } = notification.params;
+    return {
+      kind: isError ? "error" : "result",
+      sessionId: undefined,
+      callId: toolCallId,
+      text: typeof result === "string" ? result : JSON.stringify(result),
+      reason: isError ? (result?.error?.message ?? result?.message) : undefined,
+      meta: result?.meta,
+    };
+  }
+  // Handle session events (DSH native)
   if (notification.method !== "session.event") return;
   const { event, sessionId } = notification.params;
   if (event.type === "assistant/message") {
@@ -51,7 +88,7 @@ export function eventText(notification: RuntimeEvent) {
   if (event.type === "tool/call")
     return {
       kind: "tool",
-      sessionId: sessionId,
+      sessionId,
       callId: event.data.callId,
       name: event.data.name,
       text: event.data.arguments,
@@ -59,7 +96,7 @@ export function eventText(notification: RuntimeEvent) {
   if (event.type === "tool/result") {
     return {
       kind: event.data.message.isError ? "error" : "result",
-      sessionId: sessionId,
+      sessionId,
       callId: event.data.message.toolCallId,
       text: contentText(event.data.message.content),
       reason: event.data.error?.reason,

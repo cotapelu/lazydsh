@@ -8,9 +8,7 @@ import { activityLine } from "./presentation.ts";
 import { safeText } from "./theme.ts";
 import { toolDetails } from "./detail.ts";
 import { keyHint } from "./keybinding-hints.ts";
-import type { eventText } from "../runtime-events.ts";
-
-type ToolOutput = Exclude<NonNullable<ReturnType<typeof eventText>>, { kind: "assistant" }>;
+import type { ToolOutput } from "../runtime-events.ts";
 interface ToolEntry {
   row: ToolRow;
   label: string;
@@ -87,6 +85,11 @@ export class ToolRow implements Component {
   /** Keep the raw call so the collapsed row can expand without re-reading the log. */
   setCall(argumentsText: string) {
     this.argumentsText = argumentsText;
+    this.touch();
+  }
+  /** Update streaming tool call arguments. */
+  updateArgs(args: Record<string, unknown>) {
+    this.argumentsText = JSON.stringify(args, null, 2);
     this.touch();
   }
   finish(status: "ok" | "error", text: string, reason?: string, meta?: unknown) {

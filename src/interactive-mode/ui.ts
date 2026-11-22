@@ -1597,6 +1597,40 @@ export async function runUI(
               tui.requestRender();
               return;
             }
+            if (notification.method === "tool_execution_update") {
+              const { toolCallId, partialResult } = notification.params;
+              const row = toolLog.find(toolCallId);
+              if (row && partialResult?.args) {
+                row.updateArgs(partialResult.args);
+              } else if (row && partialResult?.content) {
+                // Streaming result content
+                row.updateResult(
+                  typeof partialResult.content === "string"
+                    ? partialResult.content
+                    : JSON.stringify(partialResult.content),
+                );
+              }
+              tui.requestRender();
+              return;
+            }
+            if (notification.method === "tool_execution_start") {
+              const output = eventText(notification);
+              if (output && output.kind !== "assistant") {
+                const row = toolLog.record(output);
+                if (row) transcript.addChild(row);
+              }
+              tui.requestRender();
+              return;
+            }
+            if (notification.method === "tool_execution_end") {
+              const output = eventText(notification);
+              if (output && output.kind !== "assistant") {
+                const row = toolLog.record(output);
+                if (row) transcript.addChild(row);
+              }
+              tui.requestRender();
+              return;
+            }
             if (
               "sessionId" in notification.params &&
               notification.params.sessionId === runtime.session?.id &&

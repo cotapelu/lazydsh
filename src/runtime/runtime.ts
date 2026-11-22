@@ -156,6 +156,8 @@ export class Runtime {
 
   // Event emitter for tool execution events
   private toolEventListeners = new Map<string, Set<(event: any) => void>>();
+  /** Track tool call arguments to detect streaming updates. */
+  private toolCallArgs = new Map<string, string>();
 
   on(
     event: "tool_execution_start" | "tool_execution_update" | "tool_execution_end",
@@ -730,6 +732,11 @@ export class Runtime {
     const onAuth = options?.onAuth ?? this.callbacks.onAuth;
     const selections: string[] = [];
     let cursor = 0;
+    // A declined step inside the auth seam settles the whole attempt as
+    // cancelled, so going back one level means starting the attempt over from
+    // the method select. `selections` bounds that: once the stack is empty the
+    // human declined the login itself, and the flow ends instead of looping.
+    let goingBack = false;
     const prompt = async (params: Record<string, unknown>, promptSignal = signal) => {
       const message =
         typeof params.message === "string" ? params.message.replace(/:\s*$/, "") : "Login";
@@ -760,8 +767,13 @@ export class Runtime {
       const answer = await onAuth?.("lazydsh/auth-prompt", display, promptSignal);
       promptSignal?.throwIfAborted();
       if (typeof answer !== "string" || !answer.trim()) {
-        // A cancelled prompt aborts the whole flow instead of silently
-        // restarting the login loop; the UI surfaces "Cancelled.".
+        // Nothing to unwind means the human declined the login itself; one
+        // question past the method select is a step back, not an exit. The UI
+        // surfaces "Cancelled." when the decline reaches the caller.
+        if (selections.length > 0) {
+          selections.pop();
+          goingBack = true;
+        }
         throw new AuthorizationDeclinedError();
       }
       if (params.kind === "select") {
@@ -772,59 +784,69 @@ export class Runtime {
     };
     while (true) {
       cursor = 0;
-      if (provider === "deepseek-official") {
-        await ctx.credentials.set(
-          credentialRef("DEEPSEEK_API_KEY"),
-          (await prompt({ kind: "secret", message: "DeepSeek API key" })).trim(),
-        );
-      } else {
-        const flow = ctx.authorization
-          .list()
-          .find((entry) => entry.key === `llm-pi-ai/${provider}`);
-        if (!flow)
-          throw new Error(`No login method for ${provider}. Configure credentials and retry.`);
-        const method =
-          flow.methods.length > 1
-            ? await prompt({
-                kind: "select",
-                message: `How would you like to log in to ${flow.label}?`,
-                options: flow.methods.map((method) => ({
-                  ...method,
-                  label:
-                    method.id === "oauth"
-                      ? "Log in with your account"
-                      : method.id === "api-key"
-                        ? "Use an API key"
-                        : method.label,
-                  description: method.label,
-                })),
-              })
-            : (flow.methods.find((method) => method.id === "oauth")?.id ?? flow.methods[0]?.id);
-        const result = await ctx.authorization.begin({
-          key: flow.key,
-          method,
-          signal,
-          interaction: {
-            notify: (notice) => {
-              void onAuth?.("lazydsh/auth-notice", { ...notice }).catch(() => {});
+      goingBack = false;
+      try {
+        if (provider === "deepseek-official") {
+          await ctx.credentials.set(
+            credentialRef("DEEPSEEK_API_KEY"),
+            (await prompt({ kind: "secret", message: "DeepSeek API key" })).trim(),
+          );
+        } else {
+          const flow = ctx.authorization
+            .list()
+            .find((entry) => entry.key === `llm-pi-ai/${provider}`);
+          if (!flow)
+            throw new Error(`No login method for ${provider}. Configure credentials and retry.`);
+          const method =
+            flow.methods.length > 1
+              ? await prompt({
+                  kind: "select",
+                  message: `How would you like to log in to ${flow.label}?`,
+                  options: flow.methods.map((method) => ({
+                    ...method,
+                    label:
+                      method.id === "oauth"
+                        ? "Log in with your account"
+                        : method.id === "api-key"
+                          ? "Use an API key"
+                          : method.label,
+                    description: method.label,
+                  })),
+                })
+              : (flow.methods.find((method) => method.id === "oauth")?.id ?? flow.methods[0]?.id);
+          const result = await ctx.authorization.begin({
+            key: flow.key,
+            method,
+            signal,
+            interaction: {
+              notify: (notice) => {
+                void onAuth?.("lazydsh/auth-notice", { ...notice }).catch(() => {});
+              },
+              prompt: (question) =>
+                prompt(
+                  {
+                    kind: question.kind,
+                    message: question.message,
+                    ...(question.kind === "select" ? { options: question.options } : {}),
+                  },
+                  question.signal && signal
+                    ? AbortSignal.any([question.signal, signal])
+                    : (question.signal ?? signal),
+                ),
             },
-            prompt: (question) =>
-              prompt(
-                {
-                  kind: question.kind,
-                  message: question.message,
-                  ...(question.kind === "select" ? { options: question.options } : {}),
-                },
-                question.signal && signal
-                  ? AbortSignal.any([question.signal, signal])
-                  : (question.signal ?? signal),
-              ),
-          },
-        });
-        signal?.throwIfAborted();
-        if (result.status !== "authorized") throw new AuthorizationDeclinedError("Login cancelled");
+          });
+          signal?.throwIfAborted();
+          if (result.status !== "authorized")
+            throw new AuthorizationDeclinedError("Login cancelled");
+        }
+        break;
+      } catch (error) {
+        // A decline that unwound a selection is a step back: ask the
+        // method select again and start the seam attempt over. A decline
+        // at the top select, or an attempt the caller already withdrew,
+        // leaves the login and surfaces as "Cancelled." in the UI.
+        if (!goingBack || signal?.aborted) throw error;
       }
-      break;
     }
     this.authFailed = false;
     return undefined;
@@ -1045,14 +1067,28 @@ export class Runtime {
             // UI turns them into one card: pending on the call, settled on the
             // result. A replayed log drives the same handlers.
             if (event.type === "tool/call") {
-              this.emitToolEvent("tool_execution_start", {
-                toolName: event.data.name,
-                toolCallId: String(event.data.callId),
-                args: parseArguments(event.data.arguments),
-              });
+              const callId = String(event.data.callId);
+              const rawArgs = event.data.arguments;
+              const isFirstCall = !this.toolCallArgs.has(callId);
+              this.toolCallArgs.set(callId, rawArgs);
+              if (isFirstCall) {
+                this.emitToolEvent("tool_execution_start", {
+                  toolName: event.data.name,
+                  toolCallId: callId,
+                  args: parseArguments(rawArgs),
+                });
+              } else {
+                // Streaming arguments update
+                this.emitToolEvent("tool_execution_update", {
+                  toolCallId: callId,
+                  partialResult: { args: parseArguments(rawArgs) },
+                });
+              }
             } else if (event.type === "tool/result") {
+              const callId = String(event.data.message.toolCallId);
+              this.toolCallArgs.delete(callId);
               this.emitToolEvent("tool_execution_end", {
-                toolCallId: String(event.data.message.toolCallId),
+                toolCallId: callId,
                 result: {
                   content: event.data.message.content,
                   isError: event.data.message.isError === true,
