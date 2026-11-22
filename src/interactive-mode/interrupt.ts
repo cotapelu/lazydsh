@@ -1,20 +1,16 @@
 /**
- * What Ctrl+C should do in the chat view. Agent CLIs treat the first press
- * during a running turn as "stop this turn", not "quit the app"; an idle press
- * still exits immediately, and a second press while cancellation is in flight
- * forces the exit.
+ * What Ctrl+C should do in the chat view. Only two states: clear the draft,
+ * or interrupt the running turn. An idle press exits.
  */
-export type CtrlCAction = "clear" | "interrupt" | "force-exit" | "exit";
+export type CtrlCAction = "clear" | "interrupt" | "exit";
 
 export function ctrlCAction(state: {
   /** The prompt or attachments contain unsaved input. */
   draft: boolean;
   /** A turn is generating (or otherwise live). */
   active: boolean;
-  /** Cancellation from a previous interrupt is still in flight. */
-  cancelling: boolean;
 }): CtrlCAction {
   if (state.draft) return "clear";
-  if (state.active) return state.cancelling ? "force-exit" : "interrupt";
+  if (state.active) return "interrupt";
   return "exit";
 }

@@ -296,7 +296,7 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 - [x] P0: Tool streaming (`tool_execution_update` wired)
 - [x] P1: Footer git watcher (replace 5s polling)
 - [x] P1: Theme DA1 async (non-blocking first paint)
-- [ ] P1: Ctrl+C simplified to 2 states
+- [x] P1: Ctrl+C simplified to 2 states
 - [ ] P1: `!!cmd` output in transcript
 - [ ] P1: Queue visual indicator
 - [ ] P1: Auth silent retry fixed

@@ -2025,14 +2025,12 @@ export async function runUI(
       const action = ctrlCAction({
         draft: editor.getText().length > 0 || pendingFiles.length > 0,
         active: running || busy,
-        cancelling: stopping,
       });
       if (action === "clear") {
         editor.setText("");
         pendingFiles = [];
         update();
       } else if (action === "interrupt") cancelTurn();
-      else if (action === "force-exit") void stop(); // second press: no confirmation
       else void requestExit(); // idle press
       return { consume: true };
     }
