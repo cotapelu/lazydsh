@@ -1580,6 +1580,7 @@ export async function runUI(
       // component is cleared in the finally block below.
       let liveText = "";
       let liveReasoning = "";
+      let currentAttemptId: string | undefined;
       // Lazily mount the answer block. The accumulated reasoning/text is built
       // by the caller before this runs, so the constructor must not reset it;
       // a retry (assistant/attempt) resets both instead.
@@ -1624,8 +1625,13 @@ export async function runUI(
               notification.method === "assistant.reasoning" &&
               notification.params.sessionId === runtime.session?.id
             ) {
-              // The model is reasoning: the component shows its quiet label
-              // (or the live reasoning text when thinking blocks are visible).
+              // Segment per assistant attempt so each model step gets its own block.
+              if (notification.params.attemptId !== currentAttemptId) {
+                liveAssistant = undefined;
+                liveText = "";
+                liveReasoning = "";
+                currentAttemptId = notification.params.attemptId;
+              }
               liveReasoning += notification.params.text;
               renderLive(true);
               tui.requestRender();
@@ -1635,6 +1641,12 @@ export async function runUI(
               notification.method === "assistant.delta" &&
               notification.params.sessionId === runtime.session?.id
             ) {
+              if (notification.params.attemptId !== currentAttemptId) {
+                liveAssistant = undefined;
+                liveText = "";
+                liveReasoning = "";
+                currentAttemptId = notification.params.attemptId;
+              }
               liveText += notification.params.text;
               renderLive(true);
               tui.requestRender();
@@ -1690,6 +1702,8 @@ export async function runUI(
                 transcript.removeChild(liveAssistant);
                 liveAssistant = undefined;
                 liveText = "";
+                liveReasoning = "";
+                currentAttemptId = undefined;
               }
               // DSH surfaces backoff and compaction as session events; mirror
               // them in the status row instead of leaving a silent spinner. The
