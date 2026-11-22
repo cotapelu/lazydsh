@@ -291,7 +291,7 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 **UX Gaps (see AUDIT.md §4):**
 
 - [x] P0: Boot progress indicator during deferred plugin activation
-- [ ] P0: History virtualization (lazy render visible window)
+- [x] P0: History virtualization (lazy render visible window)
 - [ ] P0: Login unification (3 entry points → 1)
 - [ ] P0: Tool streaming (`tool_execution_update` wired)
 - [ ] P1: Footer git watcher (replace 5s polling)

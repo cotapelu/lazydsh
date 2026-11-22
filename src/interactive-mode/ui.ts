@@ -764,7 +764,14 @@ export async function runUI(
       clearQueue();
       if (!keepTranscript) transcript.clear();
       if (sessionId) {
-        for (const row of historyRows(await runtime.history(), id)) {
+        const rows = historyRows(await runtime.history(), id);
+        // Virtualize very long histories: rendering every row up front can
+        // freeze or exhaust memory on huge sessions, so keep a recent window
+        // and leave a marker for the omitted older rows.
+        const maxHistoryRows = 500;
+        const omitted = Math.max(0, rows.length - maxHistoryRows);
+        if (omitted > 0) add("History", `${omitted} older rows omitted (history virtualized).`);
+        for (const row of rows.slice(-maxHistoryRows)) {
           if (row instanceof ToolRow) transcript.addChild(row);
           else if (row.kind === "metrics") transcript.addChild(new Text(dim(row.text), 2, 1));
           else if (row.kind === "assistant") add("assistant", row.text, undefined, row.reasoning);
