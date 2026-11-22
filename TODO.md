@@ -344,5 +344,5 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 4. **Wire orphan components** that DSH needs: `branch-summary-message` (blocked — DSH emits no branch/summary event), `compaction-summary-message` (✅ wired), `trust-selector` (blocked — DSH exposes no ProjectTrustStore), `user-message-selector` (N/A — forkPoints() is DSH-native) (medium priority).
 5. **Wire extension system components** when extension API is designed (low priority).
 6. **Implement missing features** (mermaid, tree view, scoped models, skill invocation, config selector, radius, easter eggs, pi logo, custom editor, 9 commands) — defer to v0.3.0.
-7. **Refresh README translations** — when next touched.
+7. **Refresh README translations** — fixed typo in README.ja.md (avctions→actions). Full refresh deferred.
 8. **Design extension API** — needs real API design (intentionally out of scope).
