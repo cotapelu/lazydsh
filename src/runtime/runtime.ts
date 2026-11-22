@@ -730,7 +730,6 @@ export class Runtime {
     const onAuth = options?.onAuth ?? this.callbacks.onAuth;
     const selections: string[] = [];
     let cursor = 0;
-    let goingBack = false;
     const prompt = async (params: Record<string, unknown>, promptSignal = signal) => {
       const message =
         typeof params.message === "string" ? params.message.replace(/:\s*$/, "") : "Login";
@@ -761,10 +760,8 @@ export class Runtime {
       const answer = await onAuth?.("lazydsh/auth-prompt", display, promptSignal);
       promptSignal?.throwIfAborted();
       if (typeof answer !== "string" || !answer.trim()) {
-        if (selections.length) {
-          selections.pop();
-          goingBack = true;
-        }
+        // A cancelled prompt aborts the whole flow instead of silently
+        // restarting the login loop; the UI surfaces "Cancelled.".
         throw new AuthorizationDeclinedError();
       }
       if (params.kind === "select") {
@@ -775,65 +772,59 @@ export class Runtime {
     };
     while (true) {
       cursor = 0;
-      goingBack = false;
-      try {
-        if (provider === "deepseek-official") {
-          await ctx.credentials.set(
-            credentialRef("DEEPSEEK_API_KEY"),
-            (await prompt({ kind: "secret", message: "DeepSeek API key" })).trim(),
-          );
-        } else {
-          const flow = ctx.authorization
-            .list()
-            .find((entry) => entry.key === `llm-pi-ai/${provider}`);
-          if (!flow)
-            throw new Error(`No login method for ${provider}. Configure credentials and retry.`);
-          const method =
-            flow.methods.length > 1
-              ? await prompt({
-                  kind: "select",
-                  message: `How would you like to log in to ${flow.label}?`,
-                  options: flow.methods.map((method) => ({
-                    ...method,
-                    label:
-                      method.id === "oauth"
-                        ? "Log in with your account"
-                        : method.id === "api-key"
-                          ? "Use an API key"
-                          : method.label,
-                    description: method.label,
-                  })),
-                })
-              : (flow.methods.find((method) => method.id === "oauth")?.id ?? flow.methods[0]?.id);
-          const result = await ctx.authorization.begin({
-            key: flow.key,
-            method,
-            signal,
-            interaction: {
-              notify: (notice) => {
-                void onAuth?.("lazydsh/auth-notice", { ...notice }).catch(() => {});
-              },
-              prompt: (question) =>
-                prompt(
-                  {
-                    kind: question.kind,
-                    message: question.message,
-                    ...(question.kind === "select" ? { options: question.options } : {}),
-                  },
-                  question.signal && signal
-                    ? AbortSignal.any([question.signal, signal])
-                    : (question.signal ?? signal),
-                ),
+      if (provider === "deepseek-official") {
+        await ctx.credentials.set(
+          credentialRef("DEEPSEEK_API_KEY"),
+          (await prompt({ kind: "secret", message: "DeepSeek API key" })).trim(),
+        );
+      } else {
+        const flow = ctx.authorization
+          .list()
+          .find((entry) => entry.key === `llm-pi-ai/${provider}`);
+        if (!flow)
+          throw new Error(`No login method for ${provider}. Configure credentials and retry.`);
+        const method =
+          flow.methods.length > 1
+            ? await prompt({
+                kind: "select",
+                message: `How would you like to log in to ${flow.label}?`,
+                options: flow.methods.map((method) => ({
+                  ...method,
+                  label:
+                    method.id === "oauth"
+                      ? "Log in with your account"
+                      : method.id === "api-key"
+                        ? "Use an API key"
+                        : method.label,
+                  description: method.label,
+                })),
+              })
+            : (flow.methods.find((method) => method.id === "oauth")?.id ?? flow.methods[0]?.id);
+        const result = await ctx.authorization.begin({
+          key: flow.key,
+          method,
+          signal,
+          interaction: {
+            notify: (notice) => {
+              void onAuth?.("lazydsh/auth-notice", { ...notice }).catch(() => {});
             },
-          });
-          signal?.throwIfAborted();
-          if (result.status !== "authorized")
-            throw new AuthorizationDeclinedError("Login cancelled");
-        }
-        break;
-      } catch (error) {
-        if (!goingBack || signal?.aborted) throw error;
+            prompt: (question) =>
+              prompt(
+                {
+                  kind: question.kind,
+                  message: question.message,
+                  ...(question.kind === "select" ? { options: question.options } : {}),
+                },
+                question.signal && signal
+                  ? AbortSignal.any([question.signal, signal])
+                  : (question.signal ?? signal),
+              ),
+          },
+        });
+        signal?.throwIfAborted();
+        if (result.status !== "authorized") throw new AuthorizationDeclinedError("Login cancelled");
       }
+      break;
     }
     this.authFailed = false;
     return undefined;

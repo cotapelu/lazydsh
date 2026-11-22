@@ -299,7 +299,7 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 - [x] P1: Ctrl+C simplified to 2 states
 - [ ] P1: `!!cmd` output in transcript
 - [ ] P1: Queue visual indicator
-- [ ] P1: Auth silent retry fixed
+- [x] P1: Auth silent retry fixed
 - [ ] P2: Nested panels global ESC
 - [ ] P2: Mermaid streaming enabled
 - [ ] P2: BashExecutionComponent for tool calls
