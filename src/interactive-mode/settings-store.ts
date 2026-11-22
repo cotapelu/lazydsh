@@ -21,7 +21,7 @@ export interface UiSettings {
   mermaidMode: MermaidMode;
 }
 
-export const DEFAULT_UI_SETTINGS: UiSettings = { confirmExit: false, mermaidMode: "final" };
+export const DEFAULT_UI_SETTINGS: UiSettings = { confirmExit: false, mermaidMode: "streaming" };
 
 /** `$XDG_CONFIG_HOME/lazydsh/settings.json` (default `~/.config/lazydsh/settings.json`). */
 export function uiSettingsPath(configDir?: string): string {
