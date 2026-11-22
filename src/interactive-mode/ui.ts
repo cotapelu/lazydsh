@@ -1662,6 +1662,11 @@ export async function runUI(
                 const row = toolLog.record(output);
                 if (row) transcript.addChild(row);
               }
+              // Finalize the current assistant segment so any later text starts a
+              // new block after the tool row, preserving chronological order.
+              liveAssistant = undefined;
+              liveText = "";
+              liveReasoning = "";
               tui.requestRender();
               return;
             }
