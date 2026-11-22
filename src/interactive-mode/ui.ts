@@ -19,6 +19,7 @@ import { LoginDialog } from "./components/login-dialog.ts";
 import { AssistantMessageComponent } from "./components/assistant-message.ts";
 import { createMermaidMarkdownTransformer } from "./components/mermaid.ts";
 import { UserMessageComponent } from "./components/user-message.ts";
+import { CompactionSummaryMessageComponent } from "./components/compaction-summary-message.ts";
 import { OAuthSelectorComponent, type ProviderOption } from "./components/oauth-selector.ts";
 import { editInExternalEditor, editorCommand } from "./external-editor.ts";
 import { reportBug } from "./bug-report.ts";
@@ -1823,6 +1824,21 @@ export async function runUI(
                 statusContainer.show("compaction", { reason: "overflow" });
               } else if (eventType === "compaction/end") {
                 if (running) statusContainer.show("working", { message: "Working" });
+              } else if (eventType === "compaction/summary") {
+                const summaryBlocks =
+                  (data?.summary as Array<{ type?: string; text?: string }>) ?? [];
+                const summaryText = summaryBlocks
+                  .filter((b) => b?.type === "text" && typeof b.text === "string")
+                  .map((b) => b.text as string)
+                  .join("\n");
+                const tokensBefore =
+                  typeof data?.shadowedTokenCount === "number" ? data.shadowedTokenCount : 0;
+                if (summaryText.trim()) {
+                  transcript.addChild(
+                    new CompactionSummaryMessageComponent({ summary: summaryText, tokensBefore }),
+                  );
+                  tui.requestRender();
+                }
               }
             }
             const output = eventText(notification);
