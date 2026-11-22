@@ -303,7 +303,7 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 - [x] P2: Nested panels global ESC
 - [x] P2: Mermaid streaming enabled
 - [x] P2: BashExecutionComponent for tool calls
-- [ ] P2: Approval "always allow" option
+- [x] P2: Approval "always allow" option
 - [ ] P2: Model selector test connection
 - [ ] P3: History search/filter
 - [ ] P3: Footer cost breakdown
