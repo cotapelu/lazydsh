@@ -1439,7 +1439,7 @@ export async function runUI(
       }
       return;
     }
-    const choiceCommand = /^\/(resume|cd)(?:\s+(.*))?$/ .exec(text);
+    const choiceCommand = /^\/(resume|cd)(?:\s+(.*))?$/.exec(text);
     if (choiceCommand) {
       const name = choiceCommand[1];
       const argument = choiceCommand[2]?.trim();

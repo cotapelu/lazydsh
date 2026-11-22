@@ -20,8 +20,10 @@ export function createPendingRuntime(): PendingRuntime {
   const runtime = new Proxy({} as Runtime, {
     get(_placeholder, property) {
       if (target !== undefined) {
-        const value = Reflect.get(target, property) as unknown;
-        return typeof value === "function" ? value.bind(target) : value;
+        const value: unknown = Reflect.get(target, property);
+        return typeof value === "function"
+          ? (value as (...args: unknown[]) => unknown).bind(target)
+          : value;
       }
       if (property === "session") return undefined;
       if (property === "close") return async () => {};

@@ -417,7 +417,7 @@ function active(): Theme {
 
 export const theme = new Proxy({} as Theme, {
   get(_target, prop) {
-    const value = Reflect.get(active(), prop as keyof Theme) as unknown;
+    const value: unknown = Reflect.get(active(), prop as keyof Theme);
     return typeof value === "function"
       ? (value as (...args: unknown[]) => unknown).bind(active())
       : value;

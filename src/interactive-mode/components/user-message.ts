@@ -7,7 +7,7 @@
 
 import { Container, Markdown } from "@earendil-works/pi-tui";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
-import { createMarkdownTransform } from "./markdown-transform.ts";
+import { createMarkdownTransform, type MarkdownTransformers } from "./markdown-transform.ts";
 
 const OSC133_ZONE_START = "\x1b]133;A\x07";
 const OSC133_ZONE_END = "\x1b]133;B\x07";
@@ -17,7 +17,7 @@ export class UserMessageComponent extends Container {
   private text: string;
   private markdownTheme: ReturnType<typeof getMarkdownTheme>;
   private outputPad: number;
-  private markdownTransformers: any[];
+  private markdownTransformers: MarkdownTransformers;
   private messageId: string | undefined;
   private timestamp: number | undefined;
 
@@ -25,7 +25,7 @@ export class UserMessageComponent extends Container {
     text: string,
     markdownTheme = getMarkdownTheme(),
     outputPad = 1,
-    markdownTransformers: any[] = [],
+    markdownTransformers: MarkdownTransformers = [],
     messageId?: string,
     timestamp?: number,
   ) {

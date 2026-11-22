@@ -9,6 +9,8 @@ import { stripAnsi } from "../utils/ansi.ts";
 import { theme } from "./theme/theme.ts";
 import { DynamicBorder } from "./components/dynamic-border.ts";
 import { keyHint, keyText } from "./keybinding-hints.ts";
+import { narrowedUi } from "./tui-renderer.ts";
+import type { TuiHost } from "../interfaces.ts";
 import { truncateToVisualLines } from "./components/visual-truncate.ts";
 
 // Preview line limit when not expanded (matches tool execution behavior)
@@ -28,7 +30,7 @@ export class BashExecutionComponent extends Container {
   public colorKey: string;
   public outputPad: number;
 
-  constructor(command: string, ui: any, excludeFromContext = false, outputPad = 1) {
+  constructor(command: string, ui: TuiHost, excludeFromContext = false, outputPad = 1) {
     super();
     this.command = command;
     this.colorKey = excludeFromContext ? "dim" : "bashMode";
@@ -43,7 +45,7 @@ export class BashExecutionComponent extends Container {
     this.contentContainer = new Container();
     this.addChild(this.contentContainer);
     this.loader = new Loader(
-      ui,
+      narrowedUi(ui),
       (spinner) => theme.fg(this.colorKey, spinner),
       (text) => theme.fg("muted", text),
       `Running... (${keyText("tui.select.cancel")} to cancel)`,

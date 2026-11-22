@@ -10,6 +10,7 @@
 import {
   TUI_KEYBINDINGS,
   KeybindingsManager as TuiKeybindingsManager,
+  type KeybindingDefinitions,
   type KeyId,
 } from "@earendil-works/pi-tui";
 import { existsSync, readFileSync, unwatchFile, watchFile } from "node:fs";
@@ -20,13 +21,16 @@ const windowsKeybindings =
   process.platform === "win32" ||
   (process.platform === "linux" && Boolean(process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP));
 
+/** Build a key list with `KeyId` inference, so `as const` stays available for `keyof typeof`. */
+const keys = (...ids: KeyId[]): KeyId[] => ids;
+
 /** lazydsh's own actions. Keys are `app.*`; tui.* stays pi-tui's. */
 export const APP_KEYBINDINGS = {
   "app.interrupt": { defaultKeys: "escape", description: "Cancel or abort" },
   "app.clear": { defaultKeys: "ctrl+c", description: "Clear editor" },
   "app.exit": { defaultKeys: "ctrl+d", description: "Exit when editor is empty" },
   "app.suspend": {
-    defaultKeys: process.platform === "win32" ? [] : "ctrl+z",
+    defaultKeys: process.platform === "win32" ? keys() : "ctrl+z",
     description: "Suspend to background",
   },
   "app.thinking.cycle": { defaultKeys: "shift+tab", description: "Cycle thinking level" },
@@ -57,11 +61,11 @@ export const APP_KEYBINDINGS = {
     description: "Restore queued messages",
   },
   "app.clipboard.pasteImage": {
-    defaultKeys: windowsKeybindings ? ["alt+v", "ctrl+v"] : "ctrl+v",
+    defaultKeys: windowsKeybindings ? keys("alt+v", "ctrl+v") : "ctrl+v",
     description: "Paste images or text from clipboard",
   },
-  "app.session.new": { defaultKeys: [], description: "Start a new session" },
-  "app.session.resume": { defaultKeys: [], description: "Resume a session" },
+  "app.session.new": { defaultKeys: keys(), description: "Start a new session" },
+  "app.session.resume": { defaultKeys: keys(), description: "Resume a session" },
   "app.session.togglePath": { defaultKeys: "ctrl+p", description: "Toggle session path display" },
   "app.session.toggleSort": { defaultKeys: "ctrl+s", description: "Toggle session sort mode" },
   "app.session.rename": { defaultKeys: "ctrl+r", description: "Rename session" },
@@ -83,7 +87,7 @@ declare module "@earendil-works/pi-tui" {
   interface Keybindings extends AppKeybindings {}
 }
 
-export const KEYBINDINGS = {
+export const KEYBINDINGS: KeybindingDefinitions = {
   ...TUI_KEYBINDINGS,
   "tui.editor.undo": {
     ...TUI_KEYBINDINGS["tui.editor.undo"],
@@ -91,18 +95,18 @@ export const KEYBINDINGS = {
   },
   "tui.altScreen.previousPrompt": {
     ...TUI_KEYBINDINGS["tui.altScreen.previousPrompt"],
-    defaultKeys: windowsKeybindings ? "ctrl+up" : ["ctrl+shift+up", "ctrl+up"],
+    defaultKeys: windowsKeybindings ? "ctrl+up" : keys("ctrl+shift+up", "ctrl+up"),
   },
   "tui.altScreen.nextPrompt": {
     ...TUI_KEYBINDINGS["tui.altScreen.nextPrompt"],
-    defaultKeys: windowsKeybindings ? "ctrl+down" : ["ctrl+shift+down", "ctrl+down"],
+    defaultKeys: windowsKeybindings ? "ctrl+down" : keys("ctrl+shift+down", "ctrl+down"),
   },
   "tui.altScreen.search": {
     ...TUI_KEYBINDINGS["tui.altScreen.search"],
     defaultKeys: windowsKeybindings ? "ctrl+f" : "ctrl+shift+f",
   },
   ...APP_KEYBINDINGS,
-} as const;
+};
 
 /** Legacy pi keybinding names → current names, so old configs keep working. */
 const KEYBINDING_NAME_MIGRATIONS: Record<string, string> = {
@@ -227,7 +231,7 @@ export class KeybindingsManager extends TuiKeybindingsManager {
   private watching = false;
 
   constructor(userBindings: Record<string, KeyId | KeyId[]> = {}, configPath: string) {
-    super(KEYBINDINGS as never, userBindings);
+    super(KEYBINDINGS, userBindings);
     this.configPath = configPath;
   }
 

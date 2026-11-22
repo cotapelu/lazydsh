@@ -7,7 +7,7 @@
  * Ported from pi-coding-agent's `custom-entry.js`.
  */
 
-import { Box, Container, Spacer, Text } from "@earendil-works/pi-tui";
+import { Box, Container, Spacer, Text, type Component } from "@earendil-works/pi-tui";
 import { theme } from "../theme/theme.ts";
 import { keyHint, keyText } from "../keybinding-hints.ts";
 
@@ -20,7 +20,7 @@ type CustomEntryRenderer = (
   entry: CustomEntry,
   options: { expanded: boolean; keyText: typeof keyText; keyHint: typeof keyHint },
   theme: typeof import("../theme/theme.ts").theme,
-) => unknown;
+) => Component | undefined;
 
 /**
  * Component that renders a custom session entry from extensions.
@@ -64,7 +64,7 @@ export class CustomEntryComponent extends Container {
   private rebuild(): void {
     this.clear();
     this.customComponent = undefined;
-    let component: unknown;
+    let component: Component | undefined;
     try {
       component = this.renderer(this.entry, { expanded: this._expanded, keyText, keyHint }, theme);
     } catch (error) {
@@ -80,6 +80,6 @@ export class CustomEntryComponent extends Container {
     }
     this.customComponent = component;
     this.addChild(new Spacer(1));
-    this.addChild(component as never);
+    this.addChild(component);
   }
 }

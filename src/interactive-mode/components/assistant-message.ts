@@ -8,7 +8,7 @@
 
 import { Container, Markdown, MouseRegion, Spacer, Text } from "@earendil-works/pi-tui";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
-import { createMarkdownTransform } from "./markdown-transform.ts";
+import { createMarkdownTransform, type MarkdownTransformers } from "./markdown-transform.ts";
 
 const OSC133_ZONE_START = "\x1b]133;A\x07";
 const OSC133_ZONE_END = "\x1b]133;B\x07";
@@ -43,7 +43,7 @@ export class AssistantMessageComponent extends Container {
   private lastMessage: AssistantMessage | undefined;
   private hasToolCalls = false;
   private isStreaming = false;
-  private markdownTransformers: any[];
+  private markdownTransformers: MarkdownTransformers;
   private messageId: string | undefined;
   private timestamp: number | undefined;
   private thinkingVisibilityOverrides = new Map<number, boolean>();
@@ -55,7 +55,7 @@ export class AssistantMessageComponent extends Container {
     markdownTheme = getMarkdownTheme(),
     hiddenThinkingLabel = "Thinking...",
     outputPad = 1,
-    markdownTransformers: any[] = [],
+    markdownTransformers: MarkdownTransformers = [],
     messageId?: string,
     timestamp?: number,
   ) {

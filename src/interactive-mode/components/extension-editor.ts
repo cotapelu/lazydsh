@@ -8,6 +8,7 @@
 
 import { Container, Editor, getKeybindings, Spacer, Text } from "@earendil-works/pi-tui";
 import { editInExternalEditor } from "../external-editor.ts";
+import { narrowedUi } from "../tui-renderer.ts";
 import { getEditorTheme, theme } from "../theme/theme.ts";
 import { DynamicBorder } from "./dynamic-border.ts";
 import { keyHint } from "../keybinding-hints.ts";
@@ -73,7 +74,7 @@ export class ExtensionEditorComponent extends Container {
     }
     this.addChild(new Spacer(1));
     // Create editor
-    this.editor = new Editor(tui as never, getEditorTheme(), editorOptions);
+    this.editor = new Editor(narrowedUi(tui), getEditorTheme(), editorOptions);
     if (prefill) {
       this.editor.setText(prefill);
     }

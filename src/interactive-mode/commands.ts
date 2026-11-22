@@ -82,10 +82,37 @@ const nativeCommands = [
 
 const preferredOrder = [
   // Ước lượng tần suất sử dụng cao → thấp
-  "model", "status", "session", "resume", "new", "clear", "cd", "file",
-  "effort", "permission", "compact", "export", "plan", "goal", "feedback",
-  "login", "logout", "rename", "fork", "archive", "restore", "pin", "unpin",
-  "ps", "stop", "quit", "bug", "share", "changelog", "settings", "dsh",
+  "model",
+  "status",
+  "session",
+  "resume",
+  "new",
+  "clear",
+  "cd",
+  "file",
+  "effort",
+  "permission",
+  "compact",
+  "export",
+  "plan",
+  "goal",
+  "feedback",
+  "login",
+  "logout",
+  "rename",
+  "fork",
+  "archive",
+  "restore",
+  "pin",
+  "unpin",
+  "ps",
+  "stop",
+  "quit",
+  "bug",
+  "share",
+  "changelog",
+  "settings",
+  "dsh",
 ];
 
 function rank(name: string): number {
@@ -94,8 +121,8 @@ function rank(name: string): number {
 }
 
 export function commandMenu(native?: readonly CommandDescriptor[]): SlashCommand[] {
-  const commands =
-    (native?.map((command) => {
+  const commands = (
+    native?.map((command) => {
       const known = nativeCommands.find((item) => item.name === command.name);
       return {
         name: command.name,
@@ -103,13 +130,14 @@ export function commandMenu(native?: readonly CommandDescriptor[]): SlashCommand
           known?.description ?? (command.description.trim() || "Run a dsh plugin command"),
         argumentHint: known?.argumentHint ?? command.input?.hint,
       };
-    }) ?? nativeCommands)
-      .slice()
-      .sort((a, b) => {
-        const rankDiff = rank(a.name) - rank(b.name);
-        if (rankDiff !== 0) return rankDiff;
-        return a.name.localeCompare(b.name);
-      });
+    }) ?? nativeCommands
+  )
+    .slice()
+    .sort((a, b) => {
+      const rankDiff = rank(a.name) - rank(b.name);
+      if (rankDiff !== 0) return rankDiff;
+      return a.name.localeCompare(b.name);
+    });
   // Match pi-coding-agent's autocomplete layout: built-in (local) commands first,
   // then native/plugin commands. Built-ins win name collisions.
   const seen = new Set<string>();

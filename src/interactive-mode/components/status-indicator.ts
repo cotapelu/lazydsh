@@ -5,22 +5,31 @@
  * Ported from pi-coding-agent's status-indicator.js.
  */
 
-import { Container, Loader, Spacer, Text, truncateToWidth } from "@earendil-works/pi-tui";
+import {
+  Container,
+  Loader,
+  Spacer,
+  Text,
+  truncateToWidth,
+  type LoaderIndicatorOptions,
+} from "@earendil-works/pi-tui";
 import { theme } from "../theme/theme.ts";
 import { CountdownTimer } from "./countdown-timer.ts";
 import { keyText } from "../keybinding-hints.ts";
+import { narrowedUi } from "../tui-renderer.ts";
+import type { TuiHost } from "../../interfaces.ts";
 
 export class StatusIndicator extends Loader {
   kind: string;
   constructor(
     kind: string,
-    ui: any,
+    ui: TuiHost,
     spinnerColorFn: (text: string) => string,
     messageColorFn: (text: string) => string,
     message: string,
-    indicator?: any,
+    indicator?: LoaderIndicatorOptions,
   ) {
-    super(ui, spinnerColorFn, messageColorFn, message, indicator);
+    super(narrowedUi(ui), spinnerColorFn, messageColorFn, message, indicator);
     this.kind = kind;
   }
 
@@ -43,7 +52,12 @@ export class StatusIndicator extends Loader {
 }
 
 export class WorkingStatusIndicator extends StatusIndicator {
-  constructor(ui: any, message: string, indicator?: any, colorFn?: (text: string) => string) {
+  constructor(
+    ui: TuiHost,
+    message: string,
+    indicator?: LoaderIndicatorOptions,
+    colorFn?: (text: string) => string,
+  ) {
     super(
       "working",
       ui,
@@ -57,7 +71,7 @@ export class WorkingStatusIndicator extends StatusIndicator {
 
 export class RetryStatusIndicator extends StatusIndicator {
   countdown: CountdownTimer | undefined;
-  constructor(ui: any, attempt: number, maxAttempts: number, delayMs: number) {
+  constructor(ui: TuiHost, attempt: number, maxAttempts: number, delayMs: number) {
     const retryMessage = (seconds: number) =>
       `Retrying (${attempt}/${maxAttempts}) in ${seconds}s... (${keyText("app.interrupt")} to cancel)`;
     super(
@@ -87,7 +101,7 @@ export class RetryStatusIndicator extends StatusIndicator {
 }
 
 export class CompactionStatusIndicator extends StatusIndicator {
-  constructor(ui: any, reason: "manual" | "overflow", colorFn?: (text: string) => string) {
+  constructor(ui: TuiHost, reason: "manual" | "overflow", colorFn?: (text: string) => string) {
     const cancelHint = `(${keyText("app.interrupt")} to cancel)`;
     const label =
       reason === "manual"
@@ -104,7 +118,7 @@ export class CompactionStatusIndicator extends StatusIndicator {
 }
 
 export class BranchSummaryStatusIndicator extends StatusIndicator {
-  constructor(ui: any) {
+  constructor(ui: TuiHost) {
     super(
       "branchSummary",
       ui,

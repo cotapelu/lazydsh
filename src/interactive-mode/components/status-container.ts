@@ -6,6 +6,7 @@
  */
 
 import { Container } from "@earendil-works/pi-tui";
+import type { TuiHost } from "../../interfaces.ts";
 import {
   WorkingStatusIndicator,
   RetryStatusIndicator,
@@ -23,7 +24,7 @@ export interface StatusOptions {
 }
 
 export class StatusIndicatorContainer extends Container {
-  private tui: any;
+  private tui: TuiHost;
   private currentIndicator:
     | WorkingStatusIndicator
     | RetryStatusIndicator
@@ -32,7 +33,7 @@ export class StatusIndicatorContainer extends Container {
     | null = null;
   private currentKind: string | null = null;
 
-  constructor(tui: any) {
+  constructor(tui: TuiHost) {
     super();
     this.tui = tui;
   }

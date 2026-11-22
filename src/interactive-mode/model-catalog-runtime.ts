@@ -9,14 +9,7 @@
  */
 
 import { models, providers } from "../runtime/catalog.ts";
-import type { ModelRuntime } from "../interfaces.ts";
-
-/** One row in the picker: a provider/model pair with a display name. */
-export interface CatalogModel {
-  provider: string;
-  id: string;
-  name: string;
-}
+import type { CatalogModel, ModelRuntime } from "../interfaces.ts";
 
 function toModel(provider: string, model: { id: string; name?: string }): CatalogModel {
   return { provider, id: model.id, name: model.name ?? model.id };

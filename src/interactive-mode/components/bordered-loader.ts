@@ -8,6 +8,7 @@
 import { Container, Loader, Spacer, type TUI } from "@earendil-works/pi-tui";
 import { theme } from "../theme/theme.ts";
 import { DynamicBorder } from "./dynamic-border.ts";
+import { narrowedUi } from "../tui-renderer.ts";
 
 export interface BorderedLoaderOptions {
   message?: string;
@@ -28,7 +29,7 @@ export class BorderedLoader extends Container {
     this.addChild(new Spacer(1));
 
     this.loader = new Loader(
-      options.tui,
+      narrowedUi(options.tui),
       colorFn,
       (text: string) => theme.fg("muted", text),
       message,

@@ -13,6 +13,7 @@ import { theme } from "../theme/theme.ts";
 import { DynamicBorder } from "./dynamic-border.ts";
 import { accent, dim, safeText } from "../theme/theme.ts";
 import { keyHint } from "../keybinding-hints.ts";
+import { narrowedUi } from "../tui-renderer.ts";
 import { AuthUrlComponent } from "./auth-url.ts";
 
 export type LoginPromptKind = "secret" | "select" | "notice";
@@ -127,7 +128,7 @@ export class LoginDialog extends Container {
     }
     this.addChild(new Spacer(1));
     this.loader = new Loader(
-      this.tui as never,
+      narrowedUi(this.tui),
       (spinner) => theme.fg("accent", spinner),
       (text) => theme.fg("muted", text),
       "Waiting for authorization…",

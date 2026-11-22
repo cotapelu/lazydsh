@@ -14,6 +14,7 @@ import {
   Spacer,
   Text,
 } from "@earendil-works/pi-tui";
+import type { CatalogModel, ModelRuntime, TuiHost } from "../interfaces.ts";
 import { theme } from "./theme/theme.ts";
 import { getAppKeybindings } from "./keybindings.ts";
 import { DynamicBorder } from "./components/dynamic-border.ts";
@@ -24,14 +25,8 @@ import { modelsAreEqual } from "../utils/models-are-equal.ts";
 
 const MAX_VISIBLE = 10;
 
-interface ModelItem {
-  provider: string;
-  id: string;
-  name: string;
-}
-
 interface ScopedModel {
-  model: ModelItem;
+  model: CatalogModel;
   thinkingLevel?: string;
 }
 
@@ -44,22 +39,22 @@ export class ModelSelectorComponent extends Container {
   private searchInput: Input;
   private _focused = false;
   private listContainer: Container;
-  private allModels: ModelItem[] = [];
-  private scopedModelItems: ModelItem[] = [];
-  private activeModels: ModelItem[] = [];
-  private filteredModels: ModelItem[] = [];
+  private allModels: CatalogModel[] = [];
+  private scopedCatalogModels: CatalogModel[] = [];
+  private activeModels: CatalogModel[] = [];
+  private filteredModels: CatalogModel[] = [];
   private selectedIndex = 0;
-  private currentModel: ModelItem | undefined;
-  private modelRuntime: any;
-  private onSelectCallback: (model: ModelItem) => void;
-  private onSelectAsDefaultCallback: ((model: ModelItem) => void) | undefined;
+  private currentModel: CatalogModel | undefined;
+  private modelRuntime: ModelRuntime;
+  private onSelectCallback: (model: CatalogModel) => void;
+  private onSelectAsDefaultCallback: ((model: CatalogModel) => void) | undefined;
   private onCancelCallback: () => void;
   private errorMessage: string | undefined;
   private refreshStatusMessage = "Refreshing model catalogs…";
   private refreshStatusSuccess = false;
-  private tui: any;
+  private tui: TuiHost;
   private scopedModels: ScopedModel[];
-  private defaultModel: ModelItem | undefined;
+  private defaultModel: CatalogModel | undefined;
   private scope = "all";
   private scopeText: Text | undefined;
   private scopeHintText: Text | undefined;
@@ -68,15 +63,15 @@ export class ModelSelectorComponent extends Container {
   private closed = false;
 
   constructor(
-    tui: any,
-    currentModel: ModelItem | undefined,
-    modelRuntime: any,
+    tui: TuiHost,
+    currentModel: CatalogModel | undefined,
+    modelRuntime: ModelRuntime,
     scopedModels: ScopedModel[],
-    onSelect: (model: ModelItem) => void,
+    onSelect: (model: CatalogModel) => void,
     onCancel: () => void,
     initialSearchInput = "",
-    onSelectAsDefault?: (model: ModelItem) => void,
-    defaultModel?: ModelItem,
+    onSelectAsDefault?: (model: CatalogModel) => void,
+    defaultModel?: CatalogModel,
   ) {
     super();
     this.tui = tui;
@@ -162,7 +157,7 @@ export class ModelSelectorComponent extends Container {
   }
 
   loadModelsFromSnapshot(): void {
-    const models = this.modelRuntime.getAvailableSnapshot().map((model: any) => ({
+    const models = this.modelRuntime.getAvailableSnapshot().map((model: CatalogModel) => ({
       provider: model.provider,
       id: model.id,
       model,
@@ -172,12 +167,12 @@ export class ModelSelectorComponent extends Container {
       const refreshed = this.modelRuntime.getModel(scoped.model.provider, scoped.model.id);
       return refreshed ? { ...scoped, model: refreshed } : scoped;
     });
-    this.scopedModelItems = this.scopedModels.map((scoped) => ({
+    this.scopedCatalogModels = this.scopedModels.map((scoped) => ({
       provider: scoped.model.provider,
       id: scoped.model.id,
       name: scoped.model.name,
     }));
-    this.activeModels = this.scope === "scoped" ? this.scopedModelItems : this.allModels;
+    this.activeModels = this.scope === "scoped" ? this.scopedCatalogModels : this.allModels;
     this.filteredModels = this.activeModels;
     const currentIndex = this.filteredModels.findIndex((item) =>
       modelsAreEqual(this.currentModel, item),
@@ -241,7 +236,7 @@ export class ModelSelectorComponent extends Container {
     this.refreshAbortController.abort();
   }
 
-  sortModels(models: Array<{ provider: string; id: string; model: any }>): ModelItem[] {
+  sortModels(models: Array<{ provider: string; id: string; model: CatalogModel }>): CatalogModel[] {
     const sorted = [...models];
     // Sort: current model first, default model second, then by provider.
     sorted.sort((a, b) => {
@@ -273,7 +268,7 @@ export class ModelSelectorComponent extends Container {
     return keyHint("tui.input.tab", "scope") + theme.fg("muted", " (all/scoped)");
   }
 
-  isDefaultModel(model: ModelItem): boolean {
+  isDefaultModel(model: CatalogModel): boolean {
     return this.defaultModel?.provider === model.provider && this.defaultModel.id === model.id;
   }
 
@@ -285,7 +280,7 @@ export class ModelSelectorComponent extends Container {
   setScope(scope: string): void {
     if (this.scope === scope) return;
     this.scope = scope;
-    this.activeModels = this.scope === "scoped" ? this.scopedModelItems : this.allModels;
+    this.activeModels = this.scope === "scoped" ? this.scopedCatalogModels : this.allModels;
     const currentIndex = this.activeModels.findIndex((item) =>
       modelsAreEqual(this.currentModel, item),
     );
@@ -296,7 +291,7 @@ export class ModelSelectorComponent extends Container {
     }
   }
 
-  filterModels(query: string, preferredModel?: any): void {
+  filterModels(query: string, preferredModel?: CatalogModel): void {
     if (query) {
       const filtered = fuzzyFilter(this.activeModels, query, (item) => {
         const defaultText = this.isDefaultModel(item) ? " default" : "";
@@ -407,7 +402,7 @@ export class ModelSelectorComponent extends Container {
     );
 
     if (kb.matches(keyData, "tui.input.tab")) {
-      if (this.scopedModelItems.length > 0) {
+      if (this.scopedCatalogModels.length > 0) {
         const nextScope = this.scope === "all" ? "scoped" : "all";
         this.setScope(nextScope);
         if (this.scopeHintText) {
@@ -464,7 +459,7 @@ export class ModelSelectorComponent extends Container {
     }
   }
 
-  handleSelect(model: ModelItem): void {
+  handleSelect(model: CatalogModel): void {
     this.dispose();
     this.onSelectCallback(model);
   }

@@ -9,7 +9,7 @@
 import { Box, Container, Markdown, MouseRegion, Spacer, Text } from "@earendil-works/pi-tui";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
 import { keyText } from "../keybinding-hints.ts";
-import { createMarkdownTransform } from "./markdown-transform.ts";
+import { createMarkdownTransform, type MarkdownTransformers } from "./markdown-transform.ts";
 
 export interface BranchSummaryMessage {
   summary: string;
@@ -22,7 +22,7 @@ export class BranchSummaryMessageComponent extends Box {
   private expanded = false;
   private message: BranchSummaryMessage;
   private markdownTheme: ReturnType<typeof getMarkdownTheme>;
-  private markdownTransformers: unknown[];
+  private markdownTransformers: MarkdownTransformers;
   private messageId: string | undefined;
   private timestamp: number | undefined;
 
@@ -30,7 +30,7 @@ export class BranchSummaryMessageComponent extends Box {
     message: BranchSummaryMessage,
     markdownTheme = getMarkdownTheme(),
     outputPad = 1,
-    markdownTransformers: unknown[] = [],
+    markdownTransformers: MarkdownTransformers = [],
     messageId?: string,
     timestamp?: number,
   ) {
@@ -68,7 +68,7 @@ export class BranchSummaryMessageComponent extends Box {
       const transform = createMarkdownTransform(
         "summary",
         () => false,
-        this.markdownTransformers as never,
+        this.markdownTransformers,
         this.messageId,
         this.timestamp,
       );

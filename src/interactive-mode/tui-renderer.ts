@@ -10,7 +10,22 @@
 
 import { ProcessTerminal, TuiAltScreen, TuiMainScreen, type TUI } from "@earendil-works/pi-tui";
 import { keyDisplayText } from "./keybinding-hints.ts";
+import type { TuiHost } from "../interfaces.ts";
 import { theme } from "./theme/theme.ts";
+
+/**
+ * Narrow a {@link TuiHost} for pi-tui components typed against the full `TUI`.
+ *
+ * `Loader` and `Editor` declare their host as the 25-member `TUI`, but each
+ * only ever calls `requestRender()` (and, for `Editor`, `stop`/`start`) on it.
+ * Every caller therefore holds a `TuiHost`, which satisfies the real contract
+ * but not the declared one, so the narrowing happens here — at these few
+ * library boundaries — instead of typing every component with a `TUI` it
+ * cannot construct.
+ */
+export function narrowedUi(host: TuiHost): TUI {
+  return host as TUI;
+}
 
 /** Open a URL in the platform browser without invoking a shell. */
 function openBrowser(target: string): void {

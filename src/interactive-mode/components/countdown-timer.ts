@@ -3,16 +3,18 @@
  * Ported from pi-coding-agent's countdown-timer.js
  */
 
+import type { TuiHost } from "../../interfaces.ts";
+
 export class CountdownTimer {
   intervalId: ReturnType<typeof setInterval> | undefined;
   remainingSeconds: number;
-  tui: any;
+  tui: TuiHost;
   onTick: (seconds: number) => void;
   onExpire: () => void;
 
   constructor(
     timeoutMs: number,
-    tui: any,
+    tui: TuiHost,
     onTick: (seconds: number) => void,
     onExpire: () => void,
   ) {

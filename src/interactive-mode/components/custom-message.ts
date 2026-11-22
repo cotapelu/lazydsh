@@ -7,10 +7,10 @@
  * Ported from pi-coding-agent's `custom-message.js`.
  */
 
-import { Box, Container, Markdown, Spacer, Text } from "@earendil-works/pi-tui";
+import { Box, Container, Markdown, Spacer, Text, type Component } from "@earendil-works/pi-tui";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
 import { keyHint, keyText } from "../keybinding-hints.ts";
-import { createMarkdownTransform } from "./markdown-transform.ts";
+import { createMarkdownTransform, type MarkdownTransformers } from "./markdown-transform.ts";
 
 export interface CustomMessage {
   customType: string;
@@ -26,7 +26,7 @@ type CustomRenderer = (
     keyHint: typeof keyHint;
   },
   theme: typeof import("../theme/theme.ts").theme,
-) => unknown;
+) => Component | undefined;
 
 /**
  * Component that renders a custom message entry from extensions.
@@ -35,11 +35,11 @@ export class CustomMessageComponent extends Container {
   private message: CustomMessage;
   private customRenderer: CustomRenderer | undefined;
   private box: Box;
-  private customComponent: unknown;
+  private customComponent: Component | undefined;
   private markdownTheme: ReturnType<typeof getMarkdownTheme>;
   private _expanded = false;
   private outputPad: number;
-  private markdownTransformers: unknown[];
+  private markdownTransformers: MarkdownTransformers;
   private messageId: string | undefined;
   private timestamp: number | undefined;
 
@@ -48,7 +48,7 @@ export class CustomMessageComponent extends Container {
     customRenderer?: CustomRenderer,
     markdownTheme = getMarkdownTheme(),
     outputPad = 1,
-    markdownTransformers: unknown[] = [],
+    markdownTransformers: MarkdownTransformers = [],
     messageId?: string,
     timestamp?: number,
   ) {
@@ -88,7 +88,7 @@ export class CustomMessageComponent extends Container {
   private rebuild(): void {
     // Remove previous content component
     if (this.customComponent) {
-      this.removeChild(this.customComponent as never);
+      this.removeChild(this.customComponent);
       this.customComponent = undefined;
     }
     this.removeChild(this.box);
@@ -104,7 +104,7 @@ export class CustomMessageComponent extends Container {
         if (component) {
           // Custom renderer provides its own styled component
           this.customComponent = component;
-          this.addChild(component as never);
+          this.addChild(component);
           return;
         }
       } catch {
@@ -141,7 +141,7 @@ export class CustomMessageComponent extends Container {
           transform: createMarkdownTransform(
             "custom",
             () => false,
-            this.markdownTransformers as never,
+            this.markdownTransformers,
             this.messageId,
             this.timestamp,
           ),

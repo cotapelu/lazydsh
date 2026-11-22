@@ -73,8 +73,32 @@ export type RunResult = {
   events: SessionEvent[];
 };
 
-/** The llm runtime handle the model layer exposes; structurally any. */
-export type ModelRuntime = any;
+/** The narrow TUI surface lazydsh's components and loaders actually consume. */
+export interface TuiHost {
+  requestRender(force?: boolean): void;
+}
+
+/** One row in the model catalog the interactive selector consumes. */
+export interface CatalogModel {
+  provider: string;
+  id: string;
+  name: string;
+  [key: string]: unknown;
+}
+
+/**
+ * The model-catalog surface the interactive selector was ported against.
+ * `refresh` and `getError` are optional: a static catalog needs neither.
+ *
+ * The optional hooks are declared `this: void` — they never read instance
+ * state — so callers may reference them unbound (e.g. to test presence).
+ */
+export interface ModelRuntime {
+  getAvailableSnapshot(): CatalogModel[];
+  getModel(provider: string, id: string): CatalogModel | undefined;
+  getError?(this: void): string | undefined;
+  refresh?(this: void, options: { signal: AbortSignal }): Promise<unknown>;
+}
 
 /** Opaque id type used by the session layer. */
 export type SessionIdLike = string;

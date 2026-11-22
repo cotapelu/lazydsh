@@ -9,7 +9,7 @@
 import { Box, Container, Markdown, MouseRegion, Spacer, Text } from "@earendil-works/pi-tui";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
 import { keyText } from "../keybinding-hints.ts";
-import { createMarkdownTransform } from "./markdown-transform.ts";
+import { createMarkdownTransform, type MarkdownTransformers } from "./markdown-transform.ts";
 
 export interface CompactionSummaryMessage {
   summary: string;
@@ -23,7 +23,7 @@ export class CompactionSummaryMessageComponent extends Box {
   private expanded = false;
   private message: CompactionSummaryMessage;
   private markdownTheme: ReturnType<typeof getMarkdownTheme>;
-  private markdownTransformers: unknown[];
+  private markdownTransformers: MarkdownTransformers;
   private messageId: string | undefined;
   private timestamp: number | undefined;
 
@@ -31,7 +31,7 @@ export class CompactionSummaryMessageComponent extends Box {
     message: CompactionSummaryMessage,
     markdownTheme = getMarkdownTheme(),
     outputPad = 1,
-    markdownTransformers: unknown[] = [],
+    markdownTransformers: MarkdownTransformers = [],
     messageId?: string,
     timestamp?: number,
   ) {
@@ -70,7 +70,7 @@ export class CompactionSummaryMessageComponent extends Box {
       const transform = createMarkdownTransform(
         "summary",
         () => false,
-        this.markdownTransformers as never,
+        this.markdownTransformers,
         this.messageId,
         this.timestamp,
       );
