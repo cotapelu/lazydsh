@@ -2035,6 +2035,11 @@ export async function runUI(
       else void requestExit(); // idle press
       return { consume: true };
     }
+    // Global ESC closes every nested overlay at once.
+    if (selecting && data === "\x1b") {
+      dismissPanel(true);
+      return { consume: true };
+    }
     if (kb.matches(data, "app.interrupt") && !selecting) {
       if (decision) decision(null);
       else if (busy || running) cancelTurn();
