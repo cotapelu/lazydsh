@@ -8,7 +8,8 @@
  * - Available provider count
  */
 import { spawnSync } from "node:child_process";
-import { resolve, relative, isAbsolute, sep } from "node:path";
+import { existsSync, watch, type FSWatcher } from "node:fs";
+import { resolve, relative, isAbsolute, sep, join } from "node:path";
 
 /** Sanitize text for single-line status display */
 function sanitizeStatusText(text: string): string {
@@ -65,7 +66,6 @@ export function createFooterDataProvider(initialCwd: string): FooterDataProvider
   let branchChangeCallbacks: (() => void)[] = [];
   const extensionStatuses = new Map<string, string>();
   let availableProviderCount = 0;
-  let branchWatchInterval: ReturnType<typeof setInterval> | undefined;
 
   /** Update git branch and notify listeners */
   function updateGitBranch(): void {
@@ -89,10 +89,21 @@ export function createFooterDataProvider(initialCwd: string): FooterDataProvider
   }
 
   /** Start watching for git branch changes */
+  let branchWatcher: FSWatcher | undefined;
   function startBranchWatcher(): void {
-    if (branchWatchInterval) return;
+    if (branchWatcher) return;
     updateGitBranch();
-    branchWatchInterval = setInterval(updateGitBranch, 5000);
+    const headPath = join(cwd, ".git", "HEAD");
+    if (!existsSync(headPath)) return;
+    try {
+      branchWatcher = watch(headPath, () => updateGitBranch());
+      branchWatcher.on("error", () => {
+        branchWatcher?.close();
+        branchWatcher = undefined;
+      });
+    } catch {
+      branchWatcher = undefined;
+    }
   }
 
   return {
@@ -132,8 +143,10 @@ export function createFooterDataProvider(initialCwd: string): FooterDataProvider
     },
 
     setCwd(newCwd: string): void {
+      branchWatcher?.close();
+      branchWatcher = undefined;
       cwd = newCwd;
-      updateGitBranch();
+      startBranchWatcher();
     },
 
     getCwd(): string {
