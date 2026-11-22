@@ -297,7 +297,7 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 - [x] P1: Footer git watcher (replace 5s polling)
 - [x] P1: Theme DA1 async (non-blocking first paint)
 - [x] P1: Ctrl+C simplified to 2 states
-- [ ] P1: `!!cmd` output in transcript
+- [x] P1: `!!cmd` output in transcript
 - [ ] P1: Queue visual indicator
 - [x] P1: Auth silent retry fixed
 - [ ] P2: Nested panels global ESC

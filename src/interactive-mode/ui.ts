@@ -510,6 +510,7 @@ export async function runUI(
         stderr,
       });
       if (block !== "") bashContext = bashContext === "" ? block : `${bashContext}\n\n${block}`;
+      if (intent.excludeFromContext) add("Bash", "Output excluded from context.");
     } catch (error) {
       card.setComplete(undefined, false, undefined, undefined);
       add("Bash", error instanceof Error ? error.message : String(error));
