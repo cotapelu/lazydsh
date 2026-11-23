@@ -45,6 +45,11 @@ import {
   KILO_DISPLAY_NAME,
   KILO_API_KEY_ENV,
 } from "./custom-providers/kilo-config.js";
+import {
+  OFM_KILO_PROVIDER_ID,
+  OFM_KILO_DISPLAY_NAME,
+  OFM_KILO_API_KEY_ENV,
+} from "./custom-providers/ofm-kilo-config.js";
 import { registerCommands } from "./native-commands.ts";
 import { ApprovalGrants, resolveApprovalOutcome } from "./approvals.ts";
 import { ActivitySet } from "./activities.ts";
@@ -669,6 +674,11 @@ export class Runtime {
         label: KILO_DISPLAY_NAME,
         description: `${KILO_PROVIDER_ID} · API key`,
       },
+      {
+        value: OFM_KILO_PROVIDER_ID,
+        label: OFM_KILO_DISPLAY_NAME,
+        description: `${OFM_KILO_PROVIDER_ID} · No credentials required`,
+      },
     ];
     const known = new Set([...fromAuthorization.map((item) => item.value), "deepseek-official"]);
     return [
@@ -716,6 +726,11 @@ export class Runtime {
         return native.oauth
           ? { kind: "none", label: "Not logged in" }
           : { kind: "keyless", label: "No credentials required" };
+    }
+    if (route === OFM_KILO_PROVIDER_ID) {
+      const info = await this.ctx.credentials.describe(credentialRef(OFM_KILO_API_KEY_ENV));
+      if (info.configured) return describeCredentialRef(OFM_KILO_API_KEY_ENV, info);
+      return { kind: "none", label: "Not logged in" };
     }
     if (route === KILO_PROVIDER_ID) {
       // Kilo is a hand-declared route: honour its declared env reference even
@@ -848,6 +863,8 @@ export class Runtime {
             credentialRef("DEEPSEEK_API_KEY"),
             (await prompt({ kind: "secret", message: "DeepSeek API key" })).trim(),
           );
+        } else if (provider === OFM_KILO_PROVIDER_ID) {
+          await this.ctx.credentials.set(credentialRef(OFM_KILO_API_KEY_ENV), "public");
         } else if (provider === KILO_PROVIDER_ID) {
           await ctx.credentials.set(
             credentialRef(KILO_API_KEY_ENV),

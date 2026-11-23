@@ -1,5 +1,4 @@
 import { test } from "vite-plus/test";
-import assert from "node:assert/strict";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -11,14 +10,23 @@ import { profilePatch } from "../src/runtime/plugin-patch.ts";
 
 const exec = promisify(execFile);
 const executable = process.execPath;
-const moduleUrl = (path) => pathToFileURL(resolve(path)).href;
+const moduleUrl = (path: string) => pathToFileURL(resolve(path)).href;
 
 test("kilo auth", async () => {
   const directory = await mkdtemp(join(tmpdir(), "lazydsh-kiloauth-"));
   const patch = join(directory, "patch.json");
   const driver = join(directory, "driver.mjs");
-  await writeFile(patch, JSON.stringify([...providerPatch(), ...profilePatch("lazydshTest"), { insert: [{ name: resolve("test/fixtures/native-runtime.ts") }] }]));
-  await writeFile(driver, `
+  await writeFile(
+    patch,
+    JSON.stringify([
+      ...providerPatch(),
+      ...profilePatch("lazydshTest"),
+      { insert: [{ name: resolve("test/fixtures/native-runtime.ts") }] },
+    ]),
+  );
+  await writeFile(
+    driver,
+    `
     import { ensureProfile, runProfile } from ${JSON.stringify(moduleUrl("src/runtime/dsh-boot.ts"))};
     import { loadLayeredEnv } from ${JSON.stringify(import.meta.resolve("@deepseek-ai/dsh-app-boot"))};
     const directory = ${JSON.stringify(directory)};
@@ -34,12 +42,13 @@ test("kilo auth", async () => {
     catch(e){ console.log("runerr=", e && e.message); }
     await shutdown.shutdown(0);
     console.log("native-ok");
-  `);
+  `,
+  );
   try {
     const result = await exec(executable, [driver], {
       cwd: process.cwd(),
       timeout: 90000,
-      maxBuffer: 1024*1024,
+      maxBuffer: 1024 * 1024,
       env: {
         PATH: process.env.PATH,
         HOME: directory,
@@ -49,7 +58,7 @@ test("kilo auth", async () => {
         NODE_OPTIONS: "--import=" + pathToFileURL(resolve("test/ts-resolve-preload.mjs")).href,
       },
     });
-    console.log("STDOUT>>"+result.stdout+"<<");
+    console.log("STDOUT>>" + result.stdout + "<<");
     console.log(result.stderr);
   } finally {
     await rm(directory, { recursive: true, force: true });
