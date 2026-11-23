@@ -15,7 +15,7 @@ export const OFM_KILO_MODEL_PROFILES = OFM_KILO_MODELS.map((model) => ({
     ? (["text", "image"] as ("text" | "image")[])
     : (["text"] as ("text" | "image")[]),
   reasoningEfforts: model.canDisable
-    ? ({ off: "off", low: "low", medium: "medium", high: "high" } as const)
+    ? ({ off: "none", low: "low", medium: "medium", high: "high" } as const)
     : ({ low: "low", medium: "medium", high: "high" } as const),
   compat: { supportsStore: false, maxTokensField: "max_tokens" as const },
 }));
