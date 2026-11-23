@@ -147,6 +147,11 @@ export class Runtime {
       if (choice === undefined) return "rejected";
       return resolveApprovalOutcome(choice, this.approvalGrants, request.toolName);
     });
+    ctx.on("llm-pi-ai/request-headers", (request, headers, next) => {
+      const result = next();
+      if (request.provider === OFM_KILO_PROVIDER_ID) result.delete("authorization");
+      return result;
+    });
     ctx.on("user-questions/request", async (request, next) => {
       if (!request.agent || !this.owns(request.agent)) return next();
       const signal = request.signal ?? options.signal ?? new AbortController().signal;
