@@ -130,6 +130,38 @@ export class Runtime {
   constructor(ctx: Context, options: RuntimeOptions = {}) {
     this.ctx = ctx;
     this.options = options;
+    // OFM Kilo free lane must reach the gateway with no Authorization header
+    // at all; pi-ai always attaches one when an apiKey is configured, so
+    // strip it on the wire for that endpoint.
+    const originalFetch = globalThis.fetch;
+    if (!(globalThis as any).__ofmFetchWrapped) {
+      (globalThis as any).__ofmFetchWrapped = true;
+      globalThis.fetch = async (input: any, init?: any) => {
+        try {
+          const url = typeof input === "string" ? input : input?.url;
+          if (typeof url === "string" && url.includes("api.kilo.ai/api/gateway")) {
+            if (init?.headers) {
+              if (init.headers instanceof Headers) init.headers.delete("authorization");
+              else if (Array.isArray(init.headers)) {
+                init.headers = init.headers.filter(
+                  (entry: any) =>
+                    !String(entry?.[0] ?? entry?.name ?? "")
+                      .toLowerCase()
+                      .startsWith("authorization"),
+                );
+              } else if (typeof init.headers === "object") {
+                for (const key of Object.keys(init.headers)) {
+                  if (key.toLowerCase() === "authorization") delete init.headers[key];
+                }
+              }
+            }
+          }
+        } catch {
+          // best-effort
+        }
+        return originalFetch(input, init);
+      };
+    }
     registerCommands(ctx);
     ctx.on("approval/request", async (request, next) => {
       if (!this.owns(request.agent)) return next();
