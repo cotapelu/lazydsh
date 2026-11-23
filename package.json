@@ -48,7 +48,8 @@
     "postbuild": "node -e \"const {copyFileSync,mkdirSync,readdirSync}=require('fs');const {resolve}=require('path');const srcDir=resolve('src/interactive-mode/theme');const destDir=resolve('dist');mkdirSync(destDir,{recursive:true});for(const file of readdirSync(srcDir)){if(file.endsWith('.json')){copyFileSync(resolve(srcDir,file),resolve(destDir,file));console.log('copied',file);}}\"",
     "check": "vp check",
     "test": "vp test run",
-    "prepack": "vp pack"
+    "prepack": "vp pack",
+    "generate-ofm-kilo-models": "node scripts/generate-ofm-kilo-models.mjs"
   },
   "dependencies": {
     "@code-yeongyu/senpi": "^2026.11.21-2",
