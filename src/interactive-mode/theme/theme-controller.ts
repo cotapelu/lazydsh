@@ -154,6 +154,10 @@ export class ThemeController {
   ): { success: boolean; error?: string } {
     const result = setTheme(themeName, true);
     this.activeThemeName = result.success ? themeName : DEFAULT_THEME;
+    // Track the applied theme so an edit on disk is picked up without a
+    // restart. The watcher used to be dead code: nothing ever called
+    // startWatching, so the documented live-reload never happened.
+    this.startWatching(this.activeThemeName);
     this.notifyChanged();
     if (!result.success && showError)
       this.showError(

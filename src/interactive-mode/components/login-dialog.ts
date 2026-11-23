@@ -8,7 +8,15 @@
  * Ported from pi-coding-agent's LoginDialogComponent.
  */
 
-import { Container, Input, Loader, Spacer, Text, type Component } from "@earendil-works/pi-tui";
+import {
+  Container,
+  Input,
+  Loader,
+  matchesKey,
+  Spacer,
+  Text,
+  type Component,
+} from "@earendil-works/pi-tui";
 import { theme } from "../theme/theme.ts";
 import { DynamicBorder } from "./dynamic-border.ts";
 import { accent, dim, safeText } from "../theme/theme.ts";
@@ -119,7 +127,7 @@ export class LoginDialog extends Container {
       // Handle Enter key for device code action
       const originalHandleInput = this.handleInput.bind(this);
       this.handleInput = (data: string) => {
-        if (data === "enter") {
+        if (matchesKey(data, "enter")) {
           void this.activateDeviceCode();
           return;
         }
@@ -217,7 +225,7 @@ export class LoginDialog extends Container {
   handleInput(data: string): void {
     if (this.prompt.kind === "notice") {
       // The OAuth notice is cancelled with Escape, Enter activates device code
-      if (data === "escape") {
+      if (matchesKey(data, "escape")) {
         this.done(null);
       }
       return;
@@ -231,7 +239,7 @@ export class LoginDialog extends Container {
         this.tui.requestRender();
         return;
       }
-      if (data === "enter") {
+      if (matchesKey(data, "enter")) {
         const option = options[this.optionIndex];
         this.done(option?.id ?? null);
         return;
@@ -241,19 +249,19 @@ export class LoginDialog extends Container {
         if (option !== undefined) this.done(option.id);
         return;
       }
-      if (data === "escape") {
+      if (matchesKey(data, "escape")) {
         this.done(null);
         return;
       }
       return;
     }
     if (this.input === undefined) return;
-    if (data === "enter") {
+    if (matchesKey(data, "enter")) {
       const value = this.input.getValue().trim();
       this.done(value === "" ? null : value);
       return;
     }
-    if (data === "escape") {
+    if (matchesKey(data, "escape")) {
       this.done(null);
       return;
     }

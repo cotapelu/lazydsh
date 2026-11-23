@@ -15,7 +15,7 @@ import {
 } from "@earendil-works/pi-tui";
 import { existsSync, readFileSync, unwatchFile, watchFile } from "node:fs";
 import { join } from "node:path";
-import { homedir } from "node:os";
+import { lazydshConfigDir } from "./theme/theme-settings.ts";
 
 const windowsKeybindings =
   process.platform === "win32" ||
@@ -211,7 +211,7 @@ function loadRawConfig(path: string): Record<string, unknown> | undefined {
 }
 
 export function keybindingsConfigPath(configDir?: string): string {
-  return join(configDir ?? join(homedir(), ".config", "lazydsh"), "keybindings.json");
+  return join(configDir ?? lazydshConfigDir(), "keybindings.json");
 }
 
 let sharedManager: KeybindingsManager | undefined;

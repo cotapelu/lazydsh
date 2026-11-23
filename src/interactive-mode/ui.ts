@@ -326,8 +326,14 @@ export async function runUI(
     resolve: (value: string | null) => void;
   }[] = [];
   let selecting = false;
-  /** Stack of overlay handles for nested panels (e.g., provider -> model picker). */
+  /**
+   * Stack of overlay handles and their panels for nested panels
+   * (e.g., provider -> model picker). The panel rides along with its handle so
+   * a global key can be handed to the panel that owns the screen instead of
+   * hiding the overlay and leaving its promise unsettled.
+   */
   const overlayHandles: OverlayHandle[] = [];
+  const overlayPanels: Component[] = [];
   const { promise: done, resolve: finish } = Promise.withResolvers<void>();
 
   const history = new Container();
@@ -486,6 +492,9 @@ export async function runUI(
     const card = new BashExecutionComponent(intent.command, tui, intent.excludeFromContext);
     transcript.addChild(card);
     scroll.scrollToEnd();
+    // A turn already owns `busy`; restoring the previous value keeps the
+    // editor's submit gate from being reopened by a bash run mid-turn.
+    const previousBusy = busy;
     busy = true;
     update();
     try {
@@ -512,10 +521,12 @@ export async function runUI(
       if (block !== "") bashContext = bashContext === "" ? block : `${bashContext}\n\n${block}`;
       if (intent.excludeFromContext) add("Bash", "Output excluded from context.");
     } catch (error) {
-      card.setComplete(undefined, false, undefined, undefined);
+      // Report the run as failed rather than as a clean exit: a rejected
+      // execution (no shell executor, aborted start) must not look completed.
+      card.setComplete(1, false, undefined, undefined);
       add("Bash", error instanceof Error ? error.message : String(error));
     } finally {
-      busy = false;
+      busy = previousBusy;
       scroll.scrollToEnd();
       update();
     }
@@ -729,6 +740,10 @@ export async function runUI(
       keepTranscript = false,
     } = connection;
     pendingStartupConnection = undefined;
+    // A pending `!cmd` output belongs to the session that produced it; opening
+    // a different session (resume, fork, clone, model switch) must not prepend
+    // it to the first prompt of the new one.
+    bashContext = "";
     busy = true;
     update();
     try {
@@ -855,11 +870,13 @@ export async function runUI(
       // Close all nested overlays (e.g., provider -> model picker)
       while (overlayHandles.length > 0) {
         const handle = overlayHandles.pop();
+        overlayPanels.pop();
         handle?.hide();
       }
     } else if (overlayHandles.length > 0) {
       // Close only the topmost overlay
       const handle = overlayHandles.pop();
+      overlayPanels.pop();
       handle?.hide();
     }
     selecting = overlayHandles.length > 0;
@@ -867,6 +884,25 @@ export async function runUI(
       tui.setFocus(editor);
     }
     tui.requestRender();
+  }
+
+  /**
+   * Hand a key to the panel that currently owns the screen.
+   *
+   * The TUI dispatches input listeners *before* the focused component and a
+   * listener that returns `consume` stops the dispatch, so hiding the overlay
+   * from here would strip the panel of its own cancel path: it never settles
+   * the promise it owns and the caller awaiting it (approval, question, login,
+   * resume-directory picker) hangs with the editor still disabled. Letting the
+   * panel see the key keeps dismiss and settle symmetric. Returns false when
+   * the top panel takes no keyboard input, so the caller can fall back to the
+   * blunt clear-all hide.
+   */
+  function delegateToTopPanel(data: string): boolean {
+    const panel = overlayPanels[overlayPanels.length - 1];
+    if (panel === undefined || typeof panel.handleInput !== "function") return false;
+    panel.handleInput(data);
+    return true;
   }
 
   /** Show a panel (picker, dialog) as an overlay above the editor. */
@@ -880,6 +916,7 @@ export async function runUI(
       maxHeight: tui.terminal.rows - 8,
     });
     overlayHandles.push(handle);
+    overlayPanels.push(panel);
     tui.setFocus(panel);
     tui.requestRender();
   }
@@ -1150,7 +1187,21 @@ export async function runUI(
       decision(text);
       return;
     }
-    if (!fromQueue && (busy || starting || startupFailed || !text.trim())) return;
+    if (!text.trim()) return;
+    // A failed boot keeps the editor live so the user can retry: the deferred
+    // plugin activation is re-run and, once it succeeds, the prompt is sent.
+    if (
+      startupFailed &&
+      !/^\/(?:quit|model|login|logout|settings|status|session|bug)$/.test(text.trim())
+    ) {
+      void runBusy(async () => {
+        await runAfterFirstPaint();
+        if (!startupFailed && runtime.session === undefined) await openInitialSession();
+      });
+      if (!startupFailed) editor.onSubmit?.(text);
+      return;
+    }
+    if (!fromQueue && (busy || starting)) return;
     // Bash mode runs locally, so it works during a turn and never queues.
     const bashIntent = parseBashMode(text);
     if (bashIntent !== undefined) {
@@ -1668,12 +1719,14 @@ export async function runUI(
               tui.requestRender();
               return;
             }
+            // `tool_execution_start`/`end` are NOT recorded here: the runtime
+            // also projects the same `tool/call` + `tool/result` session events
+            // for the same call, so recording both channels produced two
+            // transcript rows per tool call (and made the live transcript differ
+            // from the replayed one). The session-event path below is the single
+            // owner of tool rows; `tool_execution_update` still streams partial
+            // arguments into the row it already found.
             if (notification.method === "tool_execution_start") {
-              const output = eventText(notification);
-              if (output && output.kind !== "assistant") {
-                const row = toolLog.record(output);
-                if (row) transcript.addChild(row);
-              }
               // Finalize the current assistant segment so any later text starts a
               // new block after the tool row, preserving chronological order.
               liveAssistant = undefined;
@@ -1683,11 +1736,6 @@ export async function runUI(
               return;
             }
             if (notification.method === "tool_execution_end") {
-              const output = eventText(notification);
-              if (output && output.kind !== "assistant") {
-                const row = toolLog.record(output);
-                if (row) transcript.addChild(row);
-              }
               tui.requestRender();
               return;
             }
@@ -2074,6 +2122,23 @@ export async function runUI(
 
   tui.addInputListener((data) => {
     const kb = keybindings;
+    // While an overlay owns the screen its keys win over the app-level ones.
+    // Two reasons, both load-bearing:
+    //  1. The session picker documents Ctrl+D archive, Ctrl+P paths and
+    //     Ctrl+Backspace; running the editor's exit / model-cycle / archive
+    //     actions here stole them and made the documented keys dead.
+    //  2. Esc and Ctrl+C must cancel *through* the panel so it settles the
+    //     promise it owns. Hiding the overlay from a listener instead leaves
+    //     the panel's promise pending forever.
+    if (selecting) {
+      const cancel = kb.matches(data, "app.clear");
+      if (data === "\x1b" || cancel) {
+        if (delegateToTopPanel("\x1b")) return { consume: true };
+        dismissPanel(true);
+        return { consume: true };
+      }
+      return undefined;
+    }
     if (kb.matches(data, "app.model.select")) {
       void pickModel();
       return { consume: true };
@@ -2165,6 +2230,58 @@ export async function runUI(
   const signalHandler = () => {
     void stop();
   };
+  /**
+   * Activate the deferred plugins, then open (or defer) the first session.
+   *
+   * A failure here used to be a dead end: `startupFailed` kept the editor
+   * permanently non-submittable with no session, no retry, and no way out
+   * short of quitting. The editor stays submittable instead, and any prompt
+   * typed after a failure re-runs this step — a transient plugin timeout (5 s
+   * per row) or a flaky package refresh then recovers without a restart.
+   */
+  async function runAfterFirstPaint(): Promise<void> {
+    if (hooks.afterFirstPaint === undefined) return;
+    starting = true;
+    statusContainer.show("working", { message: "Loading plugins…" });
+    update();
+    const onBootProgress = (loaded: number, total: number, id: string) => {
+      statusContainer.show("working", { message: `Loading plugins ${loaded}/${total}: ${id}` });
+      tui.requestRender();
+    };
+    process.on("lazydsh:boot-progress", onBootProgress);
+    tui.renderNow();
+    try {
+      await hooks.afterFirstPaint();
+      startupFailed = false;
+    } catch (error) {
+      startupFailed = true;
+      add("Error", error instanceof Error ? error.message : String(error));
+      add("Boot", "Press Enter to retry, or /quit to exit.");
+    } finally {
+      process.off("lazydsh:boot-progress", onBootProgress);
+      starting = false;
+      statusContainer.show("idle", {
+        message: startupFailed ? "Startup failed · Enter to retry" : "Ready",
+      });
+      update();
+    }
+  }
+
+  /** Open the first session after a successful (or recovered) boot. */
+  async function openInitialSession(): Promise<void> {
+    if (startupFailed) return;
+    if (route.model)
+      await connect(
+        { provider: route.provider, model: route.model },
+        { sessionId: resume, startup: true },
+      );
+    else {
+      const { providers } = await import("../runtime/catalog.ts");
+      if (providers.includes(route.provider)) await pickProviderModel(route.provider, resume);
+      else await pickModel();
+    }
+  }
+
   options.signal?.addEventListener("abort", signalHandler, { once: true });
   process.on("SIGINT", signalHandler);
   process.on("SIGTERM", signalHandler);
@@ -2180,47 +2297,13 @@ export async function runUI(
     update();
     // Initialize theme controller: applies theme, queries terminal colors (DA1)
     themeController.applyFromSettings();
-    if (hooks.afterFirstPaint) {
-      // Paint the startup screen before optional plugins are imported, then
-      // keep submit disabled until their tools are registered.
-      starting = true;
-      statusContainer.show("working", { message: "Loading plugins…" });
-      update();
-      const onBootProgress = (loaded: number, total: number, id: string) => {
-        statusContainer.show("working", { message: `Loading plugins ${loaded}/${total}: ${id}` });
-        tui.requestRender();
-      };
-      process.on("lazydsh:boot-progress", onBootProgress);
-      tui.renderNow();
-      try {
-        await hooks.afterFirstPaint();
-      } catch (error) {
-        startupFailed = true;
-        add("Error", error instanceof Error ? error.message : String(error));
-      } finally {
-        process.off("lazydsh:boot-progress", onBootProgress);
-        starting = false;
-        statusContainer.show("idle", { message: "Ready" });
-        update();
-      }
-    }
+    await runAfterFirstPaint();
     // Wait for terminal colors to be reported (DA1) before connecting
     // Do not block first paint on the terminal color query (DA1): apply the
     // theme immediately and let colors arrive asynchronously.
     void themeController.waitForTerminalColors();
 
-    if (!startupFailed) {
-      if (route.model)
-        await connect(
-          { provider: route.provider, model: route.model },
-          { sessionId: resume, startup: true },
-        );
-      else {
-        const { providers } = await import("../runtime/catalog.ts");
-        if (providers.includes(route.provider)) await pickProviderModel(route.provider, resume);
-        else await pickModel();
-      }
-    }
+    if (!startupFailed) await openInitialSession();
     await done;
   } finally {
     options.signal?.removeEventListener("abort", signalHandler);

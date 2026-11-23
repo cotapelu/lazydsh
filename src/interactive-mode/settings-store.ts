@@ -7,8 +7,8 @@
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { lazydshConfigDir } from "./theme/theme-settings.ts";
 
 /** When Mermaid code blocks render as Unicode diagrams. */
 export type MermaidMode = "off" | "final" | "streaming";
@@ -25,7 +25,7 @@ export const DEFAULT_UI_SETTINGS: UiSettings = { confirmExit: false, mermaidMode
 
 /** `$XDG_CONFIG_HOME/lazydsh/settings.json` (default `~/.config/lazydsh/settings.json`). */
 export function uiSettingsPath(configDir?: string): string {
-  return join(configDir ?? join(homedir(), ".config", "lazydsh"), "settings.json");
+  return join(configDir ?? lazydshConfigDir(), "settings.json");
 }
 
 /** Read the persisted preferences, falling back per-field on anything unreadable. */

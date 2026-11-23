@@ -524,24 +524,24 @@ tui.onTerminalColorSchemeChange(scheme):
 
 ### P0 — Critical
 
-| #   | Flow                       | Problem                                                      | Impact                                           |
-| --- | -------------------------- | ------------------------------------------------------------ | ------------------------------------------------ |
-| 3   | Login (CLI entry)          | CLI still uses terminal-login.ts/command-runner.ts (not unified with TUI signIn) | Duplicate auth code path |
+| #   | Flow              | Problem                                                                          | Impact                   |
+| --- | ----------------- | -------------------------------------------------------------------------------- | ------------------------ |
+| 3   | Login (CLI entry) | CLI still uses terminal-login.ts/command-runner.ts (not unified with TUI signIn) | Duplicate auth code path |
 
 ### P1 — High
 
-| #   | Flow         | Problem                                                | Impact                               |
-| --- | ------------ | ------------------------------------------------------ | ------------------------------------ |
-| 8   | `!!cmd`      | Output dropped from transcript (only notice added)      | User loses context                   |
-| 9   | Queue        | No distinct visual indicator for queued vs sent         | Unclear message state                |
+| #   | Flow    | Problem                                            | Impact                |
+| --- | ------- | -------------------------------------------------- | --------------------- |
+| 8   | `!!cmd` | Output dropped from transcript (only notice added) | User loses context    |
+| 9   | Queue   | No distinct visual indicator for queued vs sent    | Unclear message state |
 
 ### P2 — Medium
 
-| #   | Flow                   | Problem                                             |
-| --- | ---------------------- | --------------------------------------------------- |
-| 13  | BashExecutionComponent | Only used for bash mode, not for tool calls          |
-| 14  | ApprovalPanel          | No "Always allow" option                            |
-| 15  | ModelSelector          | No "test connection" button                         |
+| #   | Flow                   | Problem                                     |
+| --- | ---------------------- | ------------------------------------------- |
+| 13  | BashExecutionComponent | Only used for bash mode, not for tool calls |
+| 14  | ApprovalPanel          | No "Always allow" option                    |
+| 15  | ModelSelector          | No "test connection" button                 |
 
 ### P3 — Low
 
@@ -580,6 +580,7 @@ tui.onTerminalColorSchemeChange(scheme):
 ## 6. RECOMMENDED FIX ORDER
 
 Completed:
+
 - [x] Fix Fake OAuth Options (P0#3) — buildLoginProviderOptions queries authorization flow methods
 - [x] Virtualize History (P0#2) — max 500 rows + omitted marker
 - [x] Wire Tool Streaming (P0#4) — tool_execution_update → ToolRow.updateArgs/updateResult
@@ -591,6 +592,7 @@ Completed:
 - [x] Mermaid Streaming (P2#12) — mode "streaming"
 
 Remaining (priority order):
+
 1. **Unify Login** (P0) — route CLI `lazydsh login` through main TUI `signIn()`; delete terminal-login.ts/command-runner.ts login.
 2. **Redesign LoginDialog Notice** (P0) — add progress, buttons, auto-close.
 3. **`!!cmd` output** (P1) — add output to transcript, not just notice.
@@ -614,7 +616,7 @@ Remaining (priority order):
 | Input/Submit | `ui.ts` (1112–1755)                                                                                                                                    |
 | Streaming    | `ui.ts` (1738–1915), `streaming.ts`, `stream-highlight.ts`                                                                                             |
 | Auth         | `ui.ts` (1035–1156), `auth-flow.ts`, `runtime/runtime.ts` (712–834), `components/login-dialog.ts`, `components/oauth-selector.ts`, `terminal-login.ts` |
-| Tools        | `tools.ts`, `detail.ts`, `bash-execution.ts`                                                                                   |
+| Tools        | `tools.ts`, `detail.ts`, `bash-execution.ts`                                                                                                           |
 | Panels       | `ui.ts` (766–810), `components/*.ts`                                                                                                                   |
 | Sessions     | `ui.ts` (2020–2060), `session-selector.ts`, `session-select.ts`                                                                                        |
 | Models       | `ui.ts` (904–991), `model-selector.ts`, `model-cycle.ts`                                                                                               |

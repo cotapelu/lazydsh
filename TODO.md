@@ -220,6 +220,7 @@ These files are **complete implementations** ported from pi-coding-agent. They a
 ### D. Remaining UX gaps (aligned with AUDIT.md §4 priorities)
 
 Implemented (code exists) — removed from remaining list:
+
 - P0#1 Boot progress indicator during deferred plugin activation ✓
 - P0#2 History virtualization (max 500 rows) ✓
 - P0#3 (partial) Fake OAuth options fixed (buildLoginProviderOptions queries authorization) ✓
@@ -232,6 +233,7 @@ Implemented (code exists) — removed from remaining list:
 - P2#12 Mermaid streaming enabled (mode "streaming") ✓
 
 Still remaining (not implemented in code):
+
 - [ ] P0: Login unification — CLI still uses terminal-login.ts/command-runner.ts (not routed through TUI signIn)
 - [ ] P1: `!!cmd` output in transcript — only a notice added, output still dropped
 - [ ] P1: Queue visual indicator — only basic "N queued" status, no distinct transcript style
@@ -290,6 +292,7 @@ Still remaining (not implemented in code):
 **UX Gaps (see AUDIT.md §4):**
 
 Implemented (code exists):
+
 - [x] P0: Boot progress indicator during deferred plugin activation
 - [x] P0: History virtualization (lazy render visible window)
 - [x] P0: Login — fake OAuth options fixed (buildLoginProviderOptions queries authorization)
@@ -302,6 +305,7 @@ Implemented (code exists):
 - [x] P2: Mermaid streaming enabled (mode "streaming")
 
 Remaining (not implemented in code):
+
 - [ ] P0: Login unification — CLI still uses terminal-login.ts/command-runner.ts (not routed through TUI signIn)
 - [ ] P1: `!!cmd` output in transcript — only a notice added, output still dropped
 - [ ] P1: Queue visual indicator — only basic "N queued" status, no distinct transcript style

@@ -90,10 +90,9 @@ function withThemeTokenFallbacks(
     const fallback = descriptor.fallback;
     if (fallback === undefined) continue;
     const fallbackValue = resolved[fallback];
-    if (fallbackValue === undefined) {
-      throw new Error(`Theme token ${name} has unresolved fallback ${fallback}`);
-    }
-    resolved[name] = fallbackValue;
+    // See theme.ts: an absent fallback target resolves to the terminal default
+    // instead of making the whole document unloadable.
+    resolved[name] = fallbackValue ?? "";
   }
   return resolved;
 }

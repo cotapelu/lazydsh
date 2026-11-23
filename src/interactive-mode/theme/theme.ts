@@ -11,7 +11,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { join } from "node:path";
-import { homedir } from "node:os";
+import { fileURLToPath } from "node:url";
 import { stripVTControlCharacters } from "node:util";
 import {
   backgroundAnsi,
@@ -30,6 +30,7 @@ import {
   terminalTheme,
   GUESSED_DEFAULTS,
 } from "./system-theme.ts";
+import { lazydshConfigDir } from "./theme-settings.ts";
 
 // Re-export terminal color functions
 export {
@@ -80,9 +81,12 @@ function withThemeTokenFallbacks(values: Record<string, ColorValue>): Record<str
     if (fallback === undefined) continue;
     if (resolved[name] !== undefined) continue;
     const fallbackValue = resolved[fallback];
-    if (fallbackValue === undefined)
-      throw new Error(`Theme token ${name} has unresolved fallback ${fallback}`);
-    resolved[name] = fallbackValue;
+    // A theme that never declared the fallback's target (a minimal accent-only
+    // theme, or the shipped dark/light files which omit `text`) used to make the
+    // whole document unloadable. The chain's purpose is "reuse this other
+    // token", and the terminal's own default is the only honest answer when
+    // that token is absent too, so fall back to it rather than throwing.
+    resolved[name] = fallbackValue ?? "";
   }
   return resolved;
 }
@@ -271,12 +275,24 @@ function createSystemTheme(mode: ReturnType<typeof getTerminalColorMode>): Theme
 // ── loading ──
 
 function themesDir(): string {
-  return path.dirname(new URL(import.meta.url).pathname);
+  // `new URL(".", import.meta.url)` is already this module's directory — the
+  // one holding the built-in theme JSONs (and, in the bundle, `dist/`, where
+  // postbuild copies them). `fileURLToPath` decodes percent-escapes, which
+  // `new URL(...).pathname` does not, so an install path containing a space or
+  // a non-ASCII character used to resolve to a path that does not exist on
+  // Windows and made the built-in themes unloadable there.
+  return fileURLToPath(new URL(".", import.meta.url));
 }
 
-/** Where user-authored themes live (`~/.config/lazydsh/themes`). */
+/**
+ * Where user-authored themes live.
+ *
+ * Resolved through the shared config root so themes, keybindings, the theme
+ * selection and UI settings all live under one directory (see
+ * `theme-settings.ts#configDir`).
+ */
 export function customThemesDir(): string {
-  return join(process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "lazydsh", "themes");
+  return join(lazydshConfigDir(), "themes");
 }
 
 function loadThemeJson(name: string): unknown {

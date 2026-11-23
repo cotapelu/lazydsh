@@ -201,13 +201,31 @@ export function applyDeferredPatches(
     if (patch?.config === undefined) return row;
     const config =
       row.config !== null && typeof row.config === "object" && !Array.isArray(row.config)
-        ? {
-            ...(patch.config as Record<string, unknown>),
-            ...(row.config as Record<string, unknown>),
-          }
+        ? mergeConfig(patch.config, row.config)
         : patch.config;
     return { ...row, config };
   });
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+/**
+ * Merge a patch's config under the row's own, one level deep on `providers`.
+ *
+ * A shallow spread replaced the whole `providers` map, so a user `--patch`
+ * that declared one provider silently dropped every provider the built-in
+ * catalog had registered (DeepSeek, OpenCode, …). Both sides describe the same
+ * keyed table, so their keys union instead of colliding.
+ */
+function mergeConfig(patch: unknown, row: unknown): Record<string, unknown> {
+  const base = isPlainObject(patch) ? patch : {};
+  const own = isPlainObject(row) ? row : {};
+  const merged: Record<string, unknown> = { ...base, ...own };
+  if (isPlainObject(base.providers) && isPlainObject(own.providers))
+    merged.providers = { ...base.providers, ...own.providers };
+  return merged;
 }
 
 /** Merge a row-level inject list with the plugin's own static dependencies. */

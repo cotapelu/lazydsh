@@ -52,11 +52,13 @@ Goals, in order:
 **Known UX gaps (see AUDIT.md §4):**
 
 Implemented (code exists):
+
 - P0: Boot progress indicator; history virtualization; fake OAuth options fixed; tool streaming wired.
 - P1: Footer git watcher (FSWatcher); Theme DA1 async; Ctrl+C simplified; auth silent retry fixed.
 - P2: Nested panels global ESC; Mermaid streaming enabled.
 
 Remaining (not implemented in code):
+
 - P0: Login unification (CLI still uses terminal-login/command-runner).
 - P1: `!!cmd` output dropped (only notice added); queue visual indicator (basic "N queued" only).
 - P2: BashExecutionComponent for tool calls; approval "always allow"; model selector test connection.

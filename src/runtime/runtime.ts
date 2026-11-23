@@ -41,6 +41,7 @@ import { JobId } from "@deepseek-ai/dsh-jobs";
 import { formatFileMention } from "@deepseek-ai/dsh-file-reference/grammar";
 import { builtinProviders } from "@earendil-works/pi-ai/providers/all";
 import { registerCommands } from "./native-commands.ts";
+import { ActivitySet } from "./activities.ts";
 import { contentText, isAuthFailure, type RuntimeEvent } from "../runtime-events.ts";
 
 export { eventText, isAuthFailure } from "../runtime-events.ts";
@@ -89,12 +90,28 @@ export class Runtime {
   private callbacks: Callbacks = {};
   private closing?: Promise<void>;
   private activity?: AbortController;
+  /**
+   * Every AbortController whose work belongs to this runtime: the running turn
+   * plus any concurrent probe (a `/status` connection check). See
+   * `activities.ts` — a set, so a probe cannot replace the turn's controller.
+   */
+  private readonly activities = new ActivitySet();
   private connection?: {
     contextWindow?: number;
     latest?: TokenUsage;
     generationMs?: number;
     outputTokensPerSecond?: number;
   };
+  /**
+   * Cached per-session user-message counts, keyed by session id.
+   *
+   * Counting reads the whole JSONL log, so listing every saved session used to
+   * fan out one full read per session at once — hundreds of parallel log parses
+   * on a large home. Counts are memoized (a session's own history does not
+   * change while a picker is open) and the reads are bounded, which keeps the
+   * session picker responsive without changing what it reports.
+   */
+  private readonly messageCounts = new Map<string, number>();
   private limits?: AccountLimits;
   authFailed = false;
   constructor(ctx: Context, options: RuntimeOptions = {}) {
@@ -131,6 +148,14 @@ export class Runtime {
   }
   get session(): Session | undefined {
     return this.handle?.agent.session;
+  }
+  /** Track one unit of cancellable work for the life of this runtime. */
+  private trackActivity(controller: AbortController): AbortController {
+    return this.activities.add(controller);
+  }
+  /** Stop every in-flight request this runtime started. */
+  private abortActivities(): void {
+    this.activities.abortAll();
   }
   private get agent(): Agent {
     if (!this.handle) throw new Error("No model selected. Run /model.");
@@ -371,19 +396,23 @@ export class Runtime {
 
     // Count user messages per session from the event log.
     const messageCounts = new Map<string, number>();
-    await Promise.all(
-      records.map(async (record) => {
-        try {
-          const snapshot = await query.readSession(record.header.id);
-          const count = snapshot.events.filter(
-            (event) => event.type === "user/message" && event.data?.source?.kind === "user",
-          ).length;
-          messageCounts.set(record.header.id, count);
-        } catch {
-          messageCounts.set(record.header.id, 0);
-        }
-      }),
-    );
+    await mapWithConcurrency(records, SESSION_LIST_READ_CONCURRENCY, async (record) => {
+      const cached = this.messageCounts.get(record.header.id);
+      if (cached !== undefined) {
+        messageCounts.set(record.header.id, cached);
+        return;
+      }
+      try {
+        const snapshot = await query.readSession(record.header.id);
+        const count = snapshot.events.filter(
+          (event) => event.type === "user/message" && event.data?.source?.kind === "user",
+        ).length;
+        this.messageCounts.set(record.header.id, count);
+        messageCounts.set(record.header.id, count);
+      } catch {
+        messageCounts.set(record.header.id, 0);
+      }
+    });
 
     return records.map((record) => ({
       id: record.header.id,
@@ -882,8 +911,7 @@ export class Runtime {
   private async checkConnection() {
     const agent = this.agent;
     const current = agent.model.current()!;
-    const activity = new AbortController();
-    this.activity = activity;
+    const activity = this.trackActivity(new AbortController());
     const signal = this.options.signal
       ? AbortSignal.any([this.options.signal, activity.signal])
       : activity.signal;
@@ -942,10 +970,15 @@ export class Runtime {
         return;
       }
     } finally {
+      this.activities.delete(activity);
       if (this.activity === activity) this.activity = undefined;
     }
   }
   async stats(connect = false, onSnapshot?: (stats: SessionStats) => void): Promise<SessionStats> {
+    // A connection check sends a real (1-token) request. Running one while a
+    // turn is streaming doubles the request rate against the same account, so
+    // the probe is skipped for a busy agent and only local facts are reported.
+    if (connect && this.agent.status === "running") connect = false;
     if (connect) {
       if (onSnapshot && !this.authFailed) onSnapshot(await this.stats());
       await this.checkConnection();
@@ -1221,6 +1254,7 @@ export class Runtime {
     }
   }
   async cancel() {
+    this.abortActivities();
     this.activity?.abort();
     this.agent.cancel({ kind: "user" });
     await this.wait();
@@ -1229,6 +1263,7 @@ export class Runtime {
     if (this.closing) return this.closing;
     const handle = this.handle;
     if (!handle) return;
+    this.abortActivities();
     this.activity?.abort();
     this.closing = handle.dispose();
     try {
@@ -1264,4 +1299,46 @@ function latestFailure(event: SessionEvent) {
     finish.chunk.reason.kind === "error"
   )
     return finish.chunk.reason.failure;
+}
+
+/** How many session logs may be read at once while listing sessions. */
+const SESSION_LIST_READ_CONCURRENCY = 8;
+
+/**
+ * Run `task` over `items` with at most `limit` in flight.
+ *
+ * `Promise.all` over every saved session opened every log at once; a bounded
+ * pool keeps the same result with a predictable I/O footprint. A failing item
+ * is recorded and the rest still run to completion — rejecting on the first
+ * failure would abandon the queue and leave the remaining sessions without a
+ * count. The collected failures are thrown as one AggregateError afterwards,
+ * so a caller that handles per-item errors itself never sees a rejection.
+ */
+export async function mapWithConcurrency<T>(
+  items: readonly T[],
+  limit: number,
+  task: (item: T) => Promise<void>,
+): Promise<void> {
+  const failures: unknown[] = [];
+  const run = async (item: T): Promise<void> => {
+    try {
+      await task(item);
+    } catch (error) {
+      failures.push(error);
+    }
+  };
+  if (items.length <= limit) {
+    for (const item of items) await run(item);
+  } else {
+    let cursor = 0;
+    const worker = async (): Promise<void> => {
+      while (cursor < items.length) await run(items[cursor++]!);
+    };
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  }
+  if (failures.length > 0)
+    throw new AggregateError(
+      failures,
+      `mapWithConcurrency: ${failures.length} of ${items.length} items failed`,
+    );
 }

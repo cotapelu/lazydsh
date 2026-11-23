@@ -12,9 +12,28 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
+/**
+ * The lazydsh config directory.
+ *
+ * `customThemesDir()` honours `XDG_CONFIG_HOME`, so every other config file
+ * must resolve through the same root: reading themes from `$XDG_CONFIG_HOME`
+ * while keybindings, the theme selection and UI settings stayed in
+ * `~/.config/lazydsh` split one user's configuration across two trees.
+ *
+ * Named for what it returns rather than `configDir`, so call sites that accept
+ * a `configDir` override parameter can still call the default.
+ */
+export function lazydshConfigDir(): string {
+  const root = (process.env.XDG_CONFIG_HOME?.trim() || join(homedir(), ".config")).replace(
+    /\/+$/,
+    "",
+  );
+  return join(root, "lazydsh");
+}
+
 /** Where the theme setting lives (`$XDG_CONFIG_HOME/lazydsh/theme.json`). */
 export function themeSettingsPath(configDir?: string): string {
-  return join(configDir ?? join(homedir(), ".config", "lazydsh"), "theme.json");
+  return join(configDir ?? lazydshConfigDir(), "theme.json");
 }
 
 /** The persisted setting, or undefined when absent/unreadable. */
