@@ -10,8 +10,9 @@ import { selectionTheme } from "./picker.ts";
 import { keyHint } from "./keybinding-hints.ts";
 import { detailDiff, detailLabel, detailText, prettyArguments } from "./detail.ts";
 import { dim, gray, safeText } from "./theme.ts";
+import type { ApprovalOutcome } from "../interfaces.ts";
 
-export type ApprovalChoice = "allowed-once" | "rejected";
+export type ApprovalChoice = ApprovalOutcome;
 
 export type ApprovalDetails = {
   toolName: string;
@@ -30,6 +31,11 @@ const options: { value: ApprovalChoice; label: string; description: string }[] =
     value: "rejected",
     label: "No, reject",
     description: "Do not run this tool call",
+  },
+  {
+    value: "allowed-always",
+    label: "Always allow this session",
+    description: "Run every future call of this tool without asking",
   },
 ];
 
@@ -232,7 +238,8 @@ export class ApprovalPanel implements Component {
       this.choose(Number(data) - 1);
       return;
     }
-    if (/^y$/i.test(data) || /^a$/i.test(data)) this.choose(0);
+    if (/^y$/i.test(data)) this.choose(0);
+    else if (/^a$/i.test(data)) this.choose(2);
     else if (/^n$/i.test(data) || /^r$/i.test(data)) this.choose(1);
   }
   render(width: number): string[] {

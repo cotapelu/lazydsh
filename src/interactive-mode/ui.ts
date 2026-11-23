@@ -19,6 +19,7 @@ import { commandMenu } from "./commands.ts";
 import type { RuntimeOptions, QuestionResult } from "../interfaces.ts";
 import type { AdmittedPromptContentPart } from "@deepseek-ai/dsh-attachment";
 import { ToolLog, ToolRow } from "./tools.ts";
+import type { ApprovalChoice } from "./approval.ts";
 import { SessionSelector } from "./session-selector.ts";
 import { LoginDialog } from "./components/login-dialog.ts";
 import { AssistantMessageComponent } from "./components/assistant-message.ts";
@@ -48,7 +49,7 @@ import type { TuiAltScreen } from "@earendil-works/pi-tui";
 import { eventText, isAuthFailure } from "../runtime-events.ts";
 import { signIn as signInFlow, signOut as signOutFlow, type AuthHost } from "./auth-flow.ts";
 import type { Runtime } from "../runtime/runtime.ts";
-import type { Route, Callbacks, CredentialSource } from "../interfaces.ts";
+import type { Route, Callbacks, CredentialSource, ApprovalOutcome } from "../interfaces.ts";
 import {
   resumeDirectoryOptions,
   resumeDirectoryTarget,
@@ -658,7 +659,7 @@ export async function runUI(
     onApproval: async (params) => {
       if (closing || params.signal?.aborted) return { outcome: "cancelled" };
       if (decision) throw new Error("Another question is already awaiting an answer.");
-      return new Promise<{ outcome: "allowed-once" | "rejected" | "cancelled" }>((resolve) => {
+      return new Promise<{ outcome: ApprovalOutcome }>((resolve) => {
         // The pending tool-call row already holds the exact arguments; approval
         // requests only carry the call ID, so show them while deciding.
         const callArguments = toolLog.find(params.callId)?.callArguments;
@@ -671,7 +672,7 @@ export async function runUI(
           panelHeight,
         );
         let settled = false;
-        const settle = (outcome: "allowed-once" | "rejected" | "cancelled") => {
+        const settle = (outcome: ApprovalChoice) => {
           if (settled) return;
           settled = true;
           params.signal?.removeEventListener("abort", abort);
@@ -681,7 +682,9 @@ export async function runUI(
             "Permission",
             outcome === "allowed-once"
               ? `${params.toolName}: allowed once`
-              : `${params.toolName}: ${outcome}`,
+              : outcome === "allowed-always"
+                ? `${params.toolName}: always allowed this session`
+                : `${params.toolName}: ${outcome}`,
           );
           resolve({ outcome });
         };

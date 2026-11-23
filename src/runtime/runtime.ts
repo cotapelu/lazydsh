@@ -40,7 +40,13 @@ import type {} from "@deepseek-ai/dsh-skill";
 import { JobId } from "@deepseek-ai/dsh-jobs";
 import { formatFileMention } from "@deepseek-ai/dsh-file-reference/grammar";
 import { builtinProviders } from "@earendil-works/pi-ai/providers/all";
+import {
+  KILO_PROVIDER_ID,
+  KILO_DISPLAY_NAME,
+  KILO_API_KEY_ENV,
+} from "./custom-providers/kilo-config.js";
 import { registerCommands } from "./native-commands.ts";
+import { ApprovalGrants, resolveApprovalOutcome } from "./approvals.ts";
 import { ActivitySet } from "./activities.ts";
 import { contentText, isAuthFailure, type RuntimeEvent } from "../runtime-events.ts";
 
@@ -113,6 +119,8 @@ export class Runtime {
    */
   private readonly messageCounts = new Map<string, number>();
   private limits?: AccountLimits;
+  /** Tool names the user allowed for the whole session ("always allow"). */
+  private readonly approvalGrants = new ApprovalGrants();
   authFailed = false;
   constructor(ctx: Context, options: RuntimeOptions = {}) {
     this.ctx = ctx;
@@ -120,19 +128,19 @@ export class Runtime {
     registerCommands(ctx);
     ctx.on("approval/request", async (request, next) => {
       if (!this.owns(request.agent)) return next();
-      return (
-        (
-          await this.callbacks.onApproval?.({
-            toolName: request.toolName,
-            ...(request.reason === undefined ? {} : { reason: request.reason }),
-            ...(request.displayReason === undefined
-              ? {}
-              : { displayReason: request.displayReason }),
-            ...(request.callId === undefined ? {} : { callId: String(request.callId) }),
-            ...(request.signal === undefined ? {} : { signal: request.signal }),
-          })
-        )?.outcome ?? "rejected"
-      );
+      // A session grant short-circuits the prompt entirely.
+      if (this.approvalGrants.has(request.toolName)) return "allowed-once";
+      const choice = (
+        await this.callbacks.onApproval?.({
+          toolName: request.toolName,
+          ...(request.reason === undefined ? {} : { reason: request.reason }),
+          ...(request.displayReason === undefined ? {} : { displayReason: request.displayReason }),
+          ...(request.callId === undefined ? {} : { callId: String(request.callId) }),
+          ...(request.signal === undefined ? {} : { signal: request.signal }),
+        })
+      )?.outcome;
+      if (choice === undefined) return "rejected";
+      return resolveApprovalOutcome(choice, this.approvalGrants, request.toolName);
     });
     ctx.on("user-questions/request", async (request, next) => {
       if (!request.agent || !this.owns(request.agent)) return next();
@@ -644,16 +652,29 @@ export class Runtime {
       : this.ctx.workingDirectory.set(this.agent, path);
   }
   authProviders() {
+    const fromAuthorization = this.ctx.authorization
+      .list()
+      .filter((flow) => flow.key.startsWith("llm-pi-ai/"))
+      .map((flow) => ({
+        value: flow.key.slice("llm-pi-ai/".length),
+        label: flow.label,
+        description: `${flow.key.slice("llm-pi-ai/".length)} · ${flow.methods.map((method) => (method.id === "oauth" ? "OAuth" : "API key")).join(" / ")}`,
+      }));
+    // Custom routes such as Kilo do not ship an authorization flow through
+    // llm-pi-ai (they are hand-declared), so they are offered here directly,
+    // mirroring the DeepSeek seam, so the TUI can sign in to them.
+    const extras = [
+      {
+        value: KILO_PROVIDER_ID,
+        label: KILO_DISPLAY_NAME,
+        description: `${KILO_PROVIDER_ID} · API key`,
+      },
+    ];
+    const known = new Set([...fromAuthorization.map((item) => item.value), "deepseek-official"]);
     return [
       { value: "deepseek-official", label: "DeepSeek", description: "deepseek-official · API key" },
-      ...this.ctx.authorization
-        .list()
-        .filter((flow) => flow.key.startsWith("llm-pi-ai/"))
-        .map((flow) => ({
-          value: flow.key.slice("llm-pi-ai/".length),
-          label: flow.label,
-          description: `${flow.key.slice("llm-pi-ai/".length)} · ${flow.methods.map((method) => (method.id === "oauth" ? "OAuth" : "API key")).join(" / ")}`,
-        })),
+      ...extras.filter((item) => !known.has(item.value)),
+      ...fromAuthorization.filter((item) => item.value !== KILO_PROVIDER_ID),
     ];
   }
   /**
@@ -695,6 +716,13 @@ export class Runtime {
         return native.oauth
           ? { kind: "none", label: "Not logged in" }
           : { kind: "keyless", label: "No credentials required" };
+    }
+    if (route === KILO_PROVIDER_ID) {
+      // Kilo is a hand-declared route: honour its declared env reference even
+      // though it has no installed catalog entry or nativeAuth metadata.
+      const info = await this.ctx.credentials.describe(credentialRef(KILO_API_KEY_ENV));
+      if (info.configured) return describeCredentialRef(KILO_API_KEY_ENV, info);
+      return { kind: "none", label: "Not logged in" };
     }
     const installed = builtinProviders().find((item) => item.id === route);
     if (!installed) return { kind: "unknown", label: "Provider-managed credentials" };
@@ -820,6 +848,11 @@ export class Runtime {
             credentialRef("DEEPSEEK_API_KEY"),
             (await prompt({ kind: "secret", message: "DeepSeek API key" })).trim(),
           );
+        } else if (provider === KILO_PROVIDER_ID) {
+          await ctx.credentials.set(
+            credentialRef(KILO_API_KEY_ENV),
+            (await prompt({ kind: "secret", message: "Kilo API key" })).trim(),
+          );
         } else {
           const flow = ctx.authorization
             .list()
@@ -891,7 +924,9 @@ export class Runtime {
     if (source.kind === "none" || source.kind === "keyless") return undefined;
     if (provider === "deepseek-official")
       await this.ctx.credentials.unset(credentialRef("DEEPSEEK_API_KEY"));
-    else {
+    else if (provider === KILO_PROVIDER_ID) {
+      await this.ctx.credentials.unset(credentialRef(KILO_API_KEY_ENV));
+    } else {
       const key = credentialKey("llm-pi-ai", provider);
       if (!this.ctx.authorization.list().some((flow) => flow.key === key))
         throw new Error(`Unknown provider: ${provider}.`);
@@ -901,8 +936,10 @@ export class Runtime {
     const refs =
       provider === "deepseek-official"
         ? ["DEEPSEEK_API_KEY"]
-        : (this.ctx.llm.listConfigurableProviders().find((item) => item.provider === provider)
-            ?.nativeAuth?.env ?? []);
+        : provider === KILO_PROVIDER_ID
+          ? [KILO_API_KEY_ENV]
+          : (this.ctx.llm.listConfigurableProviders().find((item) => item.provider === provider)
+              ?.nativeAuth?.env ?? []);
     const remaining: string[] = [];
     for (const ref of refs)
       if ((await this.ctx.credentials.describe(credentialRef(ref))).configured) remaining.push(ref);

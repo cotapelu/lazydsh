@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { stripVTControlCharacters } from "node:util";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { ApprovalPanel, type ApprovalChoice } from "../src/interactive-mode/approval.ts";
+import { ApprovalGrants, resolveApprovalOutcome } from "../src/runtime/approvals.ts";
 
 const plain = (panel: ApprovalPanel, width = 80) =>
   panel.render(width).map(stripVTControlCharacters).join("\n");
@@ -16,6 +17,7 @@ test("approval renders the tool, reason, and clear choices", () => {
   assert.match(text, /Do you want to allow this\?/);
   assert.match(text, /› 1\) Yes, allow once/);
   assert.match(text, /2\) No, reject/);
+  assert.match(text, /3\) Always allow this session/);
   assert.doesNotMatch(text, /Type your answer|Other/);
   assert.doesNotMatch(text, /[╭╮╰╯]/);
   assert.match(stripVTControlCharacters(panel.render(80)[0]), /^  Approval required\s*$/);
@@ -27,9 +29,12 @@ test("approval keys select, reject, and cancel without free text", () => {
   const cases: [string, ApprovalChoice | "cancel"][] = [
     ["1", "allowed-once"],
     ["2", "rejected"],
+    ["3", "allowed-always"],
     ["\r", "allowed-once"],
     ["y", "allowed-once"],
+    ["a", "allowed-always"],
     ["n", "rejected"],
+    ["r", "rejected"],
     ["\x1b", "cancel"],
   ];
   for (const [key, expected] of cases) {
@@ -44,6 +49,20 @@ test("approval keys select, reject, and cancel without free text", () => {
     panel.handleInput(key);
     assert.equal(choice, expected, `key ${JSON.stringify(key)}`);
   }
+});
+
+test("an always grant answers later requests of the same tool without asking", () => {
+  const grants = new ApprovalGrants();
+  assert.equal(grants.has("bash"), false);
+  assert.equal(resolveApprovalOutcome("allowed-always", grants, "bash"), "allowed-once");
+  assert.equal(grants.has("bash"), true);
+  // A remembered tool is approved straight away; other tools still ask.
+  assert.deepEqual(grants.tools, ["bash"]);
+  assert.equal(resolveApprovalOutcome("allowed-once", grants, "write"), "allowed-once");
+  assert.equal(grants.has("write"), false);
+  assert.equal(resolveApprovalOutcome("rejected", grants, "bash"), "rejected");
+  grants.clear();
+  assert.equal(grants.has("bash"), false);
 });
 
 test("approval summarizes the pending operation and hides raw JSON", () => {

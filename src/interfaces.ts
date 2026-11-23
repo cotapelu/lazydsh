@@ -48,6 +48,16 @@ export type ApprovalRequest = {
   signal?: AbortSignal;
 };
 
+/**
+ * What the UI decided for one approval request.
+ *
+ * `allowed-always` is lazydsh's own extension: DSH's approval seam has no
+ * persistent grant (see `ApprovalOutcome` in `@deepseek-ai/dsh-user-approval`),
+ * so the runtime remembers the tool name for the session and answers every
+ * later request with `allowed-once`.
+ */
+export type ApprovalOutcome = "allowed-once" | "allowed-always" | "rejected" | "cancelled";
+
 /** UI hooks the runtime calls when it needs a human. */
 export type Callbacks = {
   resume?: string;
@@ -56,9 +66,7 @@ export type Callbacks = {
     params: Record<string, unknown>,
     signal?: AbortSignal,
   ) => Promise<unknown>;
-  onApproval?: (
-    params: ApprovalRequest,
-  ) => Promise<{ outcome: "allowed-once" | "rejected" | "cancelled" }>;
+  onApproval?: (params: ApprovalRequest) => Promise<{ outcome: ApprovalOutcome }>;
   onUserQuestion?: (
     request: AskUserQuestionRequest,
     context: { signal: AbortSignal },

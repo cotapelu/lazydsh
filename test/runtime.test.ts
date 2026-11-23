@@ -436,6 +436,58 @@ test.concurrent("reports credentials read from the environment", async () => {
   );
 });
 
+test.concurrent("approval remembers an always-allow grant for the session", async () => {
+  const patches = [
+    {
+      id: "llm-pi-ai",
+      config: {
+        providers: {
+          "opencode-go": {
+            api: "openai-completions",
+            baseURL: "https://lazydsh-test.invalid/v1",
+            models: [{ id: "test-model", contextWindow: 131072, maxTokens: 4096 }],
+          },
+        },
+      },
+    },
+  ];
+  await nativeTest(
+    executable,
+    `
+    const route = {provider:"opencode-go",model:"test-model"};
+    let calls = 0;
+    ctx.on("agent/pre-step", async ({agent}, next) => {
+      assert.equal(await ctx.approval.request({agent, toolName:"test", reason:"first"}), "allowed-once");
+      assert.equal(await ctx.approval.request({agent, toolName:"test", reason:"second"}), "allowed-once");
+      assert.equal(calls, 1, "a remembered tool must not ask again");
+      assert.equal(await ctx.approval.request({agent, toolName:"other", reason:"third"}), "rejected");
+      assert.equal(calls, 2);
+      return next();
+    });
+    const callbacks = { onApproval: async (params) => {
+      calls++;
+      return params.toolName === "other" ? {outcome:"rejected"} : {outcome:"allowed-always"};
+    } };
+    await runtime.open(route, callbacks);
+    assert.equal((await runtime.run("Say hello.")).finishReason, "completed");
+    await runtime.close();
+  `,
+    patches,
+    `
+    process.env.OPENCODE_API_KEY="test-only";
+    globalThis.fetch=async(input,init)=>{
+      const request=new Request(input,init);
+      assert.ok(request.url.startsWith("https://lazydsh-test.invalid/"),request.url);
+      const chunks=[
+        {choices:[{index:0,delta:{content:"ok"},finish_reason:null}]},
+        {choices:[{index:0,delta:{},finish_reason:"stop"}],usage:{prompt_tokens:10,completion_tokens:4,total_tokens:14}},
+      ];
+      return new Response(chunks.map(chunk=>'data: '+JSON.stringify({id:'test',object:'chat.completion.chunk',model:'test-model',...chunk})+'\\n\\n').join('')+'data: [DONE]\\n\\n',{headers:{'content-type':'text/event-stream'}});
+    };
+  `,
+  );
+});
+
 test.concurrent("login and logout", async () => {
   await nativeTest(
     executable,

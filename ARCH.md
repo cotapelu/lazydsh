@@ -112,7 +112,7 @@ rows, deferred plugin activation with 5 s per-plugin timeout.
 ## Security boundaries
 
 The TUI never holds credentials: `authorization`/`credentials` services resolve
-keys per request. Tool execution stays inside DSH's sandbox + approval policy;
+keys per request. Tool execution stays inside DSH's sandbox + approval policy ("always allow" is enforced by the launcher as a session-scoped grant, since DSH's approval seam has no persistent grant);
 the launcher only adds UI. Proxy: `installProxyFromEnvironment`.
 
 ## Extension points
@@ -129,9 +129,7 @@ the launcher only adds UI. Proxy: `installProxyFromEnvironment`.
 
 See `TODO.md` REMAINING + `AUDIT.md` §4 for full list. Key gaps:
 
-- **P0 Critical (1):** Login unification — CLI still uses terminal-login.ts/command-runner.ts.
-- **P1 High (2):** `!!cmd` drops output (notice only); queue no visual indicator (basic "N queued" only).
-- **P2 Medium (3):** BashExecutionComponent unused for tool calls; approval no "always allow"; model selector no test connection.
+- **P2 Medium (2):** BashExecutionComponent unused for tool calls; model selector no test connection.
 - **P3 Low (4):** History no search/filter; footer no cost breakdown; session selector no multi-delete; theme no creator UI.
 
 Implemented (removed from list): boot progress indicator, history virtualization, fake OAuth options fixed, tool streaming wired, footer git watcher (FSWatcher), theme DA1 async, Ctrl+C simplified, auth silent retry fixed, nested panels global ESC, mermaid streaming enabled.

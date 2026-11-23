@@ -1,7 +1,7 @@
 import { test, vi } from "vite-plus/test";
 import assert from "node:assert/strict";
 import open from "open";
-import { openAuthUrl } from "../src/interactive-mode/terminal-login.ts";
+import { openAuthUrl } from "../src/interactive-mode/open-url.ts";
 
 vi.mock("open", () => ({ default: vi.fn() }));
 

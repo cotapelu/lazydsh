@@ -158,9 +158,7 @@ Flags:
 
 詳細は `TODO.md` REMAINING および `AUDIT.md` §4 を参照。残りの制限:
 
-- **P0:** ログイン統合 (CLI はまだ terminal-login/command-runner を使用)
-- **P1:** `!!cmd` の出力が transcript に残らない (通知のみ); キューの視覚インジケータ (基本的な "N queued" のみ)
-- **P2:** ツール呼び出し用 BashExecutionComponent; 承認の "always allow"; モデルセレクタの接続テスト
+- **P2:** ツール呼び出し用 BashExecutionComponent; モデルセレクタの接続テスト
 - **P3:** 履歴検索/フィルタ; フッターのコスト内訳; セッションセレクタの複数削除; テーマ作成 UI
 
 実装済み: 起動進捗、履歴仮想化、偽 OAuth 修正、ツールストリーミング、フッター git ウォッチャー、DA1 非同期、Ctrl+C 簡素化、認証サイレントリトライ、グローバル ESC、Mermaid ストリーミング。

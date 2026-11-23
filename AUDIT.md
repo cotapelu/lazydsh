@@ -159,7 +159,7 @@
 - `parseBashMode(text)` → `{command, prefix, excludeFromContext}`.
 - `runBash(intent)` → `runtime.shell(command, {signal})` → `ShellExecutor` (DSH sandbox).
 - `BashExecutionComponent` streams stdout/stderr, shows exit code, truncation (10k lines / 1MB).
-- `bashContextBlock(intent, result)` → prepend to next prompt (`!cmd`) or drop (`!!cmd`).
+- `bashContextBlock(intent, result)` → prepend to next prompt (`!cmd`) or drop (`!!cmd`); the card renders the output either way.
 
 #### Branch B: Queue Follow-up (`Alt+Enter`)
 
@@ -233,10 +233,11 @@
 
 #### Entry 1: CLI `lazydsh login [provider]`
 
-- `cli.ts` → `plugin.ts` → `command-runner.ts` → `terminal-login.ts`
-- **Creates own `TuiAltScreen`** (separate terminal session).
-- `SearchPicker` for provider → `runtime.authenticate()` with inline `onAuth` using `Input`/`SecretInput`/`SearchPicker`.
-- **Disconnected from main TUI** — different keybindings, no overlay, no transcript.
+- `cli.ts` → `plugin.ts` → `command-runner.ts` → `cli-auth.ts` → `auth-flow.ts`
+- Runs **without a TUI**: a terminal `AuthHost` (`cli-auth.ts`) turns transcript
+  notices into stdout lines and the dialogs into stdin prompts (numbered
+  select, masked secret) — the same `authenticateProvider()` flow the TUI uses.
+- **One auth path** — `terminal-login.ts` was deleted; `cli.test.ts` still covers the non-TTY guards and message formats.
 
 #### Entry 2: TUI `/login [provider]`
 
@@ -369,7 +370,7 @@
 - `parseBashMode(text)` → `!cmd` / `!!cmd` → `{command, prefix, excludeFromContext}`.
 - `runBash()` → `runtime.shell()` → `ShellExecutor` (DSH sandbox policy applies).
 - `BashExecutionComponent` → streaming output, expandable, truncation (10k lines / 1MB).
-- `bashContextBlock()` → `!cmd` prepends `[! cmd — exit N]\noutput` to next prompt; `!!cmd` drops.
+- `bashContextBlock()` → `!cmd` prepends `[! cmd — exit N]\noutput` to next prompt; `!!cmd` drops (its output still renders in the transcript card).
 
 ---
 
@@ -524,16 +525,13 @@ tui.onTerminalColorSchemeChange(scheme):
 
 ### P0 — Critical
 
-| #   | Flow              | Problem                                                                          | Impact                   |
-| --- | ----------------- | -------------------------------------------------------------------------------- | ------------------------ |
-| 1   | Login (CLI entry) | CLI still uses terminal-login.ts/command-runner.ts (not unified with TUI signIn) | Duplicate auth code path |
+| #   | Flow | Problem | Impact |
+| --- | ---- | ------- | ------ |
 
 ### P1 — High
 
-| #   | Flow    | Problem                                            | Impact                |
-| --- | ------- | -------------------------------------------------- | --------------------- |
-| 2   | `!!cmd` | Output dropped from transcript (only notice added) | User loses context    |
-| 3   | Queue   | No distinct visual indicator for queued vs sent    | Unclear message state |
+| #   | Flow | Problem | Impact |
+| --- | ---- | ------- | ------ |
 
 ### P2 — Medium
 
@@ -564,7 +562,7 @@ tui.onTerminalColorSchemeChange(scheme):
 
 ### 5.2 Technical Debt (Needs refactor)
 
-- **Login**: 3 code paths → should unify CLI entry through TUI `signIn()` (terminal-login.ts/command-runner.ts still separate).
+- **Login**: unified — the CLI entry runs `auth-flow.ts`'s `authenticateProvider()` through a terminal `AuthHost` (`cli-auth.ts`); `terminal-login.ts` deleted.
 - **Tool Rendering**: `bash-execution.ts:BashExecutionComponent` used for Bash mode only; `tool_execution_update` already wired to ToolRow.
 - **History**: Virtualized (max 500 rows). Search/filter still missing.
 - **Boot**: Progress indicator implemented.
@@ -593,39 +591,35 @@ Completed:
 
 Remaining (priority order):
 
-1. **Unify Login** (P0) — route CLI `lazydsh login` through main TUI `signIn()`; delete terminal-login.ts/command-runner.ts login.
-2. **Redesign LoginDialog Notice** (P0) — add progress, buttons, auto-close.
-3. **`!!cmd` output** (P1) — add output to transcript, not just notice.
-4. **Queue Indicator** (P1) — distinct style for queued vs sent.
-5. **BashExecutionComponent for tools** (P2) — use rich renderer for tool calls.
-6. **Approval "always allow"** (P2).
-7. **Model selector test connection** (P2).
-8. **History search/filter** (P3).
-9. **Footer cost breakdown** (P3).
-10. **Session selector multi-delete** (P3).
-11. **Theme creator UI** (P3).
+1. **Redesign LoginDialog Notice** (P0 follow-up) — add progress, buttons, auto-close to the OAuth notice kind.
+2. **BashExecutionComponent for tools** (P2) — use the rich renderer for tool calls.
+3. **Model selector test connection** (P2).
+4. **History search/filter** (P3).
+5. **Footer cost breakdown** (P3).
+6. **Session selector multi-delete** (P3).
+7. **Theme creator UI** (P3).
 
 ---
 
 ## 7. FILE MAP (Key logic locations)
 
-| Flow         | Primary Files                                                                                                                                          |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Boot         | `ui.ts` (~2120–2180), `runtime/dsh-boot.ts`, `runtime/deferred.ts`                                                                                     |
-| Connect      | `ui.ts` (~740–820), `runtime/runtime.ts` (open)                                                                                                        |
-| Input/Submit | `ui.ts` (1112–1755)                                                                                                                                    |
-| Streaming    | `ui.ts` (1738–1915), `streaming.ts`, `stream-highlight.ts`                                                                                             |
-| Auth         | `ui.ts` (1035–1156), `auth-flow.ts`, `runtime/runtime.ts` (712–834), `components/login-dialog.ts`, `components/oauth-selector.ts`, `terminal-login.ts` |
-| Tools        | `tools.ts`, `detail.ts`, `bash-execution.ts`                                                                                                           |
-| Panels       | `ui.ts` (766–810), `components/*.ts`                                                                                                                   |
-| Sessions     | `ui.ts` (2020–2060), `session-selector.ts`, `session-select.ts`                                                                                        |
-| Models       | `ui.ts` (904–991), `model-selector.ts`, `model-cycle.ts`                                                                                               |
-| Status       | `components/status-container.ts`, `components/status-indicator.ts`                                                                                     |
-| Theme        | `theme/theme.ts`, `theme/theme-controller.ts`, `theme/system-theme.ts`                                                                                 |
-| Footer       | `footer.ts`, `footer-data-provider.ts`                                                                                                                 |
-| History      | `history.ts`, `tools.ts`                                                                                                                               |
-| Bash         | `bash-mode.ts`, `bash-execution.ts`                                                                                                                    |
-| Settings     | `settings-selector.ts`, `settings-store.ts`                                                                                                            |
+| Flow         | Primary Files                                                                                                                                                        |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Boot         | `ui.ts` (~2120–2180), `runtime/dsh-boot.ts`, `runtime/deferred.ts`                                                                                                   |
+| Connect      | `ui.ts` (~740–820), `runtime/runtime.ts` (open)                                                                                                                      |
+| Input/Submit | `ui.ts` (1112–1755)                                                                                                                                                  |
+| Streaming    | `ui.ts` (1738–1915), `streaming.ts`, `stream-highlight.ts`                                                                                                           |
+| Auth         | `ui.ts` (1035–1156), `auth-flow.ts`, `runtime/runtime.ts` (712–834), `components/login-dialog.ts`, `components/oauth-selector.ts`, `cli-auth.ts` (CLI terminal host) |
+| Tools        | `tools.ts`, `detail.ts`, `bash-execution.ts`                                                                                                                         |
+| Panels       | `ui.ts` (766–810), `components/*.ts`                                                                                                                                 |
+| Sessions     | `ui.ts` (2020–2060), `session-selector.ts`, `session-select.ts`                                                                                                      |
+| Models       | `ui.ts` (904–991), `model-selector.ts`, `model-cycle.ts`                                                                                                             |
+| Status       | `components/status-container.ts`, `components/status-indicator.ts`                                                                                                   |
+| Theme        | `theme/theme.ts`, `theme/theme-controller.ts`, `theme/system-theme.ts`                                                                                               |
+| Footer       | `footer.ts`, `footer-data-provider.ts`                                                                                                                               |
+| History      | `history.ts`, `tools.ts`                                                                                                                                             |
+| Bash         | `bash-mode.ts`, `bash-execution.ts`                                                                                                                                  |
+| Settings     | `settings-selector.ts`, `settings-store.ts`                                                                                                                          |
 
 ---
 

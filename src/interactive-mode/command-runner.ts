@@ -1,4 +1,4 @@
-import { formatNotification, terminalColor } from "./theme.ts";
+import { cliLogin, cliLogout } from "./cli-auth.ts";
 import type { Runtime } from "../runtime/runtime.ts";
 
 export type CommandOptions = {
@@ -11,38 +11,14 @@ export type CommandOptions = {
 };
 
 export async function runCommand(runtime: Runtime, config: CommandOptions, signal: AbortSignal) {
+  // `login`/`logout` reuse the TUI's auth flows (auth-flow.ts) through a
+  // terminal host, so both entry points share one auth path.
   if (config.command === "login") {
-    const { terminalAuth } = await import("./terminal-login.ts");
-    const result = await terminalAuth(runtime, "login", config.provider, signal);
-    if (result.notice !== undefined) {
-      console.log(formatNotification("Login", result.notice, terminalColor(process.stdout)));
-      return;
-    }
-    console.log(formatNotification("Logged in", result.provider, terminalColor(process.stdout)));
+    await cliLogin(runtime, config.provider, signal);
     return;
   }
   if (config.command === "logout") {
-    let provider = config.provider;
-    if (provider === undefined) {
-      const { terminalAuth } = await import("./terminal-login.ts");
-      provider = (await terminalAuth(runtime, "logout", undefined, signal)).provider;
-    }
-    const remaining = await runtime.logout(provider);
-    if (remaining === undefined) {
-      console.log(
-        formatNotification(
-          "Logout",
-          `Not logged in to ${provider}.`,
-          terminalColor(process.stdout),
-        ),
-      );
-      return;
-    }
-    console.log(formatNotification("Logged out", provider, terminalColor(process.stdout)));
-    if (remaining.length)
-      console.error(
-        `Credentials are still available from ${remaining.join(", ")}. Unset them to disconnect.`,
-      );
+    await cliLogout(runtime, config.provider);
     return;
   }
   if (!config.provider) throw new Error("Choose a provider with --provider before using ask.");

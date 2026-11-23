@@ -59,9 +59,7 @@ Implemented (code exists):
 
 Remaining (not implemented in code):
 
-- P0: Login unification (CLI still uses terminal-login/command-runner).
-- P1: `!!cmd` output dropped (only notice added); queue visual indicator (basic "N queued" only).
-- P2: BashExecutionComponent for tool calls; approval "always allow"; model selector test connection.
+- P2: BashExecutionComponent for tool calls; model selector test connection.
 - P3: History search/filter; footer cost breakdown; session selector multi-delete; theme creator UI.
 
 ## Layer Layout
@@ -82,7 +80,7 @@ Full comparison (all reference files + 84 lazydsh files read):
 - Keyboard shortcuts (27 actions: Ctrl+C/D/Z/X/G/T, Alt+Enter/Up, `!`/`!!`)
 - Theme system (tokens, DA1 terminal query, auto light/dark, user themes, watcher)
 - Settings (settings-selector, settings-store) — simplified but functional
-- Login/OAuth (login-dialog, oauth-selector, terminal-login)
+- Login/OAuth (login-dialog, oauth-selector, cli-auth — one path for TUI and CLI)
 - Model selector (fuzzy, scoped/all, current marker, default badge, Ctrl+S)
 - Session selector (DSH-native: tree, search with `re:`/`"exact"`, scope/sort/name/path)
 - Approval panel (operation preview, expandable details)
@@ -157,7 +155,7 @@ Full comparison (all reference files + 84 lazydsh files read):
 - `interrupt.ts` — Ctrl+C state machine
 - `stream-highlight.ts` — Incremental syntax highlighting
 - `streaming.ts` — Streaming markdown
-- `terminal-login.ts` — Terminal login flow
+- `cli-auth.ts` — Terminal login flow (shares auth-flow.ts)
 - `open-url.ts` — Open URL helper
 - `picker.ts` — Search picker component
 - `question.ts` — Question panel

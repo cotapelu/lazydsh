@@ -244,9 +244,7 @@ path when the output is truncated) and works while a turn is running.
 
 See `TODO.md` REMAINING + `AUDIT.md` §4 for full list. Implemented gaps removed; remaining:
 
-- **P0:** Login unification (CLI still uses terminal-login/command-runner).
-- **P1:** `!!cmd` output dropped (notice only); queue visual indicator (basic "N queued" only).
-- **P2:** BashExecutionComponent for tool calls; approval "always allow"; model selector test connection.
+- **P2:** BashExecutionComponent for tool calls; model selector test connection.
 - **P3:** History search/filter; footer cost breakdown; session selector multi-delete; theme creator UI.
 
 Implemented: boot progress, history virtualization, fake OAuth fix, tool streaming, footer git watcher, DA1 async, Ctrl+C simplify, auth silent retry, global ESC, mermaid streaming.

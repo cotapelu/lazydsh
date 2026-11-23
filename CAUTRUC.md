@@ -61,7 +61,7 @@ root (cli, plugin, types, contracts) → may reference both layers
 | `settings-selector.ts`, `settings-store.ts`                                                | settings panel + persisted prefs                                            |
 | `changelog.ts`, `show-changelog.ts`, `bug-report.ts`, `session-share.ts`                   | panels                                                                      |
 | `clipboard.ts`, `external-editor.ts`, `open-url.ts`, `program-status.ts`, `tui-console.ts` | OS integration                                                              |
-| `terminal-login.ts`, `command-runner.ts`                                                   | CLI auth + ask/login/logout runners                                         |
+| `cli-auth.ts`, `command-runner.ts`                                                         | CLI auth (stdin prompts + terminal `AuthHost`) + ask/login/logout runners   |
 | `streaming.ts`, `stream-highlight.ts`, `highlight.ts`, `diff.ts`, `markdown-transform.ts`  | rendering helpers                                                           |
 | `stats.ts`, `limits.ts` (FE copies live in `utils/`)                                       | footer/status formatting                                                    |
 

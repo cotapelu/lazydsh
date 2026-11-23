@@ -92,7 +92,7 @@ export async function buildLoginProviderOptions(host: AuthHost): Promise<Provide
  * callbacks own the OAuth notice and the API-key prompt — so this is a single
  * path, not a per-type branch.
  */
-async function authenticateProvider(host: AuthHost, providerId: string): Promise<void> {
+export async function authenticateProvider(host: AuthHost, providerId: string): Promise<void> {
   try {
     const notice = await host.runtime.authenticate(host.signal, {
       provider: providerId,
