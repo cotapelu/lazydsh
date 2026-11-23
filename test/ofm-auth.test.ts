@@ -13,6 +13,7 @@ const moduleUrl = (path: string) => pathToFileURL(resolve(path)).href;
 
 test("ofm kilo", async () => {
   const directory = await mkdtemp(join(process.cwd(), "lazydsh-ofm-"));
+  void directory;
   const patch = join(directory, "patch.json");
   const driver = join(directory, "driver.mjs");
   await writeFile(

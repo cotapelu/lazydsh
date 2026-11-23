@@ -347,8 +347,12 @@ export class Runtime {
       this.options.reasoningEffort ??
       (previous?.provider === route.provider && previous.model === route.model
         ? previous.reasoningEffort
-        : undefined);
-    agent.model.select({ ...route, ...(reasoningEffort ? { reasoningEffort } : {}) });
+        : undefined) ??
+      (route.provider === OFM_KILO_PROVIDER_ID ? "high" : undefined);
+    agent.model.select({
+      ...route,
+      ...(reasoningEffort ? { reasoningEffort: reasoningEffort as any } : {}),
+    });
   }
   async open(route: Route, callbacks: Callbacks = {}) {
     const ctx = this.ctx;
