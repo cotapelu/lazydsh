@@ -728,9 +728,10 @@ export class Runtime {
           : { kind: "keyless", label: "No credentials required" };
     }
     if (route === OFM_KILO_PROVIDER_ID) {
-      const info = await this.ctx.credentials.describe(credentialRef(OFM_KILO_API_KEY_ENV));
-      if (info.configured) return describeCredentialRef(OFM_KILO_API_KEY_ENV, info);
-      return { kind: "none", label: "Not logged in" };
+      const ref = credentialRef(OFM_KILO_API_KEY_ENV);
+      const info = await this.ctx.credentials.describe(ref);
+      if (!info.configured) await this.ctx.credentials.set(ref, "public");
+      return { kind: "keyless", label: "No credentials required" };
     }
     if (route === KILO_PROVIDER_ID) {
       // Kilo is a hand-declared route: honour its declared env reference even
