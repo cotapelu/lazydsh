@@ -107,7 +107,7 @@ Events (`runtime-events.ts`): `session.event` (DSH events, incl. `llm/retry`,
 
 ```bash
 npm run check    # format + lint + types (must be warning-free)
-npm test         # vitest — 150 tests, 41 files
+npm test         # vitest — 150 tests, 42 files
 npm run build    # vite-plus bundle → dist/
 node dist/cli.mjs --version
 ```

@@ -63,7 +63,7 @@ editor.onSubmit → add("You", text) → runtime.run(text, onEvent)
   → ui.ts: ToolRow / AssistantMessageComponent / status rows / footer
 ```
 
-**Note:** `tool_execution_update` event type exists in `RuntimeEvent` union but is never emitted by runtime — no live arg/result streaming.
+**Note:** `tool_execution_update` event type exists in `RuntimeEvent` union and is wired to `ToolRow.updateArgs/updateResult` — live arg/result streaming works.
 
 Session resume replays `historyRows()` from the JSONL log — same components as
 the live path.
@@ -129,9 +129,11 @@ the launcher only adds UI. Proxy: `installProxyFromEnvironment`.
 
 See `TODO.md` REMAINING + `AUDIT.md` §4 for full list. Key gaps:
 
-- **P0 Critical (4):** Boot no progress indicator; history no virtualization; login 3 entry points with bugs; tool streaming missing (`tool_execution_update` not wired).
-- **P1 High (6):** Footer git polling 5s; Theme DA1 blocks first paint; Ctrl+C 4-state confusing; `!!cmd` drops output; queue no visual indicator; silent retry in auth.
-- **P2 Medium (5):** Nested panels no global ESC; mermaid disabled during stream; BashExecutionComponent unused for tool calls; approval no "always allow"; model selector no test connection.
+- **P0 Critical (1):** Login unification — CLI still uses terminal-login.ts/command-runner.ts.
+- **P1 High (2):** `!!cmd` drops output (notice only); queue no visual indicator (basic "N queued" only).
+- **P2 Medium (3):** BashExecutionComponent unused for tool calls; approval no "always allow"; model selector no test connection.
 - **P3 Low (4):** History no search/filter; footer no cost breakdown; session selector no multi-delete; theme no creator UI.
+
+Implemented (removed from list): boot progress indicator, history virtualization, fake OAuth options fixed, tool streaming wired, footer git watcher (FSWatcher), theme DA1 async, Ctrl+C simplified, auth silent retry fixed, nested panels global ESC, mermaid streaming enabled.
 
 Full comparison: `GOAL.md` "Comparison with pi-coding-agent interactive mode".

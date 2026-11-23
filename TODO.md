@@ -4,7 +4,7 @@
 
 **Version 0.2.11** · Suite **150/150 passing** (42 test files) · `npm run check` clean · `npm run build` clean · dist boots.
 
-**Core complete.** The pi-coding-agent interactive-mode port is **functionally complete** — every advertised keybinding fires, every advertised panel opens, theme/settings persist, retry + compaction states are live, and the DSH bridge loads the full `@deepseek-ai/dsh-base` profile (101 plugin rows) with only the 14 services the TUI actually needs mounted eagerly. Most P0/P1/P2 gaps fixed; 10 UX gaps remain (see AUDIT.md §4).
+**Core complete.** The pi-coding-agent interactive-mode port is **functionally complete** — every advertised keybinding fires, every advertised panel opens, theme/settings persist, retry + compaction states are live, and the DSH bridge loads the full `@deepseek-ai/dsh-base` profile (101 plugin rows) with only the 14 services the TUI actually needs mounted eagerly. Most P0/P1/P2 gaps fixed; **10 UX gaps remain** (see AUDIT.md §4) plus **14 orphan files** awaiting wiring (see §C below).
 
 **Layout** (applied in §8.0 / CAUTRUC.md — three layers + root contracts):
 
@@ -19,8 +19,7 @@ src/
 └── utils/ (7 files)                   # pure helpers, no pi-tui, no dsh
 ```
 
-Rule: `interactive-mode/` → imports contracts, `utils/`, `runtime/`; `runtime/` →
-imports contracts, `utils/` only; root files may reference both.
+Rule: `interactive-mode/` → imports contracts, `utils/`, `runtime/`; `runtime/` → imports contracts, `utils/` only; root files may reference both.
 
 ---
 
@@ -140,7 +139,7 @@ verification.
 
 2. **`session-selector.ts` `widthForLabel` hoisting** — ✅ FIXED (defined above first use).
 
-3. **`ui.ts` decomposition** — 🔄 IN PROGRESS: auth cluster (`signIn`, `signOut`, provider options, logout) extracted to `auth-flow.ts` with an explicit `AuthHost` interface; duplicated oauth/api-key login branches merged into one `authenticateProvider`. Next: `pickModel` cluster.
+3. **`ui.ts` decomposition** — 🔄 IN PROGRESS: auth cluster (`signIn`, `signOut`, provider options, logout) extracted to `auth-flow.ts` with an explicit `AuthHost` interface; duplicated oauth/api-key login branches merged into one `authenticateProvider`. `ui.ts` is still ~2322 lines; next clusters to extract: `pickModel`/`pickProviderModel`, streaming loop, session management, keybinding input handler.
 
 4. **`ui.ts` `connect()` many parameters** — ✅ FIXED: options object (`ConnectOptions`: sessionId, notifyModel, startup, directory, keepTranscript); param renamed `connection` to avoid shadowing the outer `options`.
 
@@ -152,70 +151,76 @@ verification.
 
 8. **`components/session-selector-search.ts` simplified search** — ✅ FIXED: tiered fuzzy search (TIER_NAME / TIER_TEXT / TIER_FUZZY), regex mode and phrase matching merged into the component version.
 
+9. **Mermaid streaming partial** — `createMermaidMarkdownTransformer` exists but is **disabled during streaming** (raw markdown shown until completion). Mode "streaming" is accepted but the transformer returns raw markdown when `context.isStreaming && mode !== "streaming"`; need to enable live mermaid during stream.
+
+---
+
 ### C. Orphan files (ported, typechecked, no call site — need product decision)
 
 These files are **complete implementations** ported from pi-coding-agent. They are NOT dead code — they represent features that DSH provides and the TUI needs to display. They should be **wired, not deleted**.
 
 #### C1. Need wiring (DSH provides the feature, TUI needs to display it)
 
-9. **`branch-summary-message.ts` (105 lines)** — Renders branch summary messages.
+1. **`branch-summary-message.ts` (105 lines)** — Renders branch summary messages.
    - DSH provides `branch_summary` events. lazydsh **does not** render branch summaries currently.
-   - **Action:** Wire into transcript rendering.
+   - **Action:** Wire into transcript rendering (handle `branch_summary` session event in `ui.ts`).
 
-10. **`compaction-summary-message.ts` (107 lines)** — Renders compaction summary messages. ✅ WIRED
-    - Wired into `compaction/summary` session events in ui.ts (renders summary text + tokensBefore).
+2. **`compaction-summary-message.ts` (107 lines)** — ✅ WIRED
+   - Wired into `compaction/summary` session events in `ui.ts` (renders summary text + tokensBefore).
 
-11. **`trust-selector.ts` (151 lines)** — Project trust decision UI.
-    - DSH has `ProjectTrustStore` and trust management. lazydsh has no trust UI.
-    - **Action:** Wire into `/trust` command or settings.
+3. **`trust-selector.ts` (151 lines)** — Project trust decision UI.
+   - DSH has `ProjectTrustStore` and trust management. lazydsh has no trust UI.
+   - **Action:** Wire into `/trust` command or settings.
 
-12. **`user-message-selector.ts` (176 lines)** — Fork from message selector.
-    - DSH supports fork from message. lazydsh has `/fork` but uses `forkPoints()` + `select()` instead of this component.
-    - **Action:** Wire into `/fork` command.
+4. **`user-message-selector.ts` (176 lines)** — Fork from message selector.
+   - DSH supports fork from message. lazydsh has `/fork` but uses `forkPoints()` + `select()` instead of this component.
+   - **Action:** Wire into `/fork` command.
 
-13. **`custom-entry.ts` (85 lines)** — Renders custom session entries from extensions.
-    - DSH provides custom entries via extension system.
-    - **Action:** Wire when extension system is implemented.
+5. **`custom-entry.ts` (85 lines)** — Renders custom session entries from extensions.
+   - DSH provides custom entries via extension system.
+   - **Action:** Wire when extension system is implemented.
 
-14. **`custom-message.ts` (152 lines)** — Renders custom messages from extensions.
-    - DSH provides custom messages via extension system.
-    - **Action:** Wire when extension system is implemented.
+6. **`custom-message.ts` (152 lines)** — Renders custom messages from extensions.
+   - DSH provides custom messages via extension system.
+   - **Action:** Wire when extension system is implemented.
 
-15. **`extension-editor.ts` (136 lines)** — Multi-line editor for extensions.
-    - DSH extension system needs this.
-    - **Action:** Wire when extension system is implemented.
+7. **`extension-editor.ts` (136 lines)** — Multi-line editor for extensions.
+   - DSH extension system needs this.
+   - **Action:** Wire when extension system is implemented.
 
-16. **`extension-input.ts` (101 lines)** — Text input for extensions.
-    - DSH extension system needs this.
-    - **Action:** Wire when extension system is implemented.
+8. **`extension-input.ts` (101 lines)** — Text input for extensions.
+   - DSH extension system needs this.
+   - **Action:** Wire when extension system is implemented.
 
-17. **`extension-selector.ts` (131 lines)** — Generic selector for extensions.
-    - DSH extension system needs this.
-    - **Action:** Wire when extension system is implemented.
+9. **`extension-selector.ts` (131 lines)** — Generic selector for extensions.
+   - DSH extension system needs this.
+   - **Action:** Wire when extension system is implemented.
 
-18. **`first-time-setup.ts` (155 lines)** — First-time setup dialog (theme + analytics).
+10. **`first-time-setup.ts` (155 lines)** — First-time setup dialog (theme + analytics).
     - DSH onboarding. lazydsh has no first-time setup.
     - **Action:** Wire into startup flow.
 
-19. **`settings-submenu.ts` (251 lines)** — SelectSubmenu, SteppedSubmenu for complex settings.
+11. **`settings-submenu.ts` (251 lines)** — SelectSubmenu, SteppedSubmenu for complex settings.
     - DSH settings with submenus. lazydsh settings selector is simplified.
     - **Action:** Wire into settings selector.
 
-20. **`show-images-selector.ts` (55 lines)** — Show images yes/no selector.
+12. **`show-images-selector.ts` (55 lines)** — Show images yes/no selector.
     - DSH settings. lazydsh settings selector is simplified.
     - **Action:** Wire into settings selector.
 
-21. **`bordered-loader.ts` (50 lines)** — Loader with borders for extension UI.
+13. **`bordered-loader.ts` (50 lines)** — Loader with borders for extension UI.
     - Utility component. Used by bug-report in reference.
     - **Action:** Wire when needed.
 
-22. **`countdown-timer.ts` (41 lines)** — Countdown timer for dialogs.
+14. **`countdown-timer.ts` (41 lines)** — Countdown timer for dialogs.
     - Utility component. Used by extension-input and RetryStatusIndicator.
-    - **Action:** Wire when needed.
+    - **Action:** Already used by `RetryStatusIndicator`; keep available for other dialogs.
 
 #### C2. Quality improvements (merge or wire)
 
-23. **`session-selector-search.ts` top-level (330 lines)** — ✅ DELETED: content merged into `components/session-selector-search.ts`; keeping both would duplicate the search engine.
+15. **`session-selector-search.ts` top-level (330 lines)** — ✅ DELETED: content merged into `components/session-selector-search.ts`; keeping both would duplicate the search engine.
+
+---
 
 ### D. Remaining UX gaps (aligned with AUDIT.md §4 priorities)
 
@@ -234,36 +239,42 @@ Implemented (code exists) — removed from remaining list:
 
 Still remaining (not implemented in code):
 
-- [ ] P0: Login unification — CLI still uses terminal-login.ts/command-runner.ts (not routed through TUI signIn)
-- [ ] P1: `!!cmd` output in transcript — only a notice added, output still dropped
-- [ ] P1: Queue visual indicator — only basic "N queued" status, no distinct transcript style
-- [ ] P2: BashExecutionComponent for tool calls — only used for bash mode
-- [ ] P2: Approval "always allow" option
-- [ ] P2: Model selector test connection
-- [ ] P3: History search/filter
-- [ ] P3: Footer cost breakdown per model
-- [ ] P3: Session selector multi-delete
-- [ ] P3: Theme creator UI
+| Priority | # | Flow | Problem | Impact |
+|----------|---|------|---------|--------|
+| P0 | 1 | Login (CLI entry) | CLI still uses terminal-login.ts/command-runner.ts (not unified with TUI signIn) | Duplicate auth code path |
+| P1 | 2 | `!!cmd` | Output dropped from transcript (only notice added) | User loses context |
+| P1 | 3 | Queue | No distinct visual indicator for queued vs sent | Unclear message state |
+| P2 | 4 | BashExecutionComponent | Only used for bash mode, not for tool calls | Inconsistent tool rendering |
+| P2 | 5 | ApprovalPanel | No "Always allow" option | Repeated prompts for same tool |
+| P2 | 6 | ModelSelector | No "test connection" button | Can't verify route before selecting |
+| P3 | 7 | History | No search/filter in transcript | Hard to find old content |
+| P3 | 8 | Footer | No cost breakdown per model | Unclear spending |
+| P3 | 9 | SessionSelector | No "delete multiple" | Tedious session cleanup |
+| P3 | 10 | Theme | No custom theme creator UI | Users must hand-edit JSON |
+
+---
 
 ### E. Missing features (gaps vs pi-coding-agent reference)
 
-28. **Session tree view** — Navigation, folding, filtering, labeling, copying, branch summarization.
-29. **Scoped models** — Toggle models for Ctrl+P, enable/disable all, reorder, persist.
-30. **Skill invocation UI** — Render skill blocks with expand/collapse.
-31. **Config selector** — Resource management: enable/disable extensions/skills/prompts/themes.
-32. **Radius MCP** — Radius MCP integration with animated shimmer.
-33. **Easter eggs / mascot** — `armin.js`, `easter-egg-3d.js`, `earendil-announcement.js` (cosmetic).
-34. **Pi logo** — Half-block logo with Apple Terminal fallback.
-35. **Custom editor component** — Extends Editor with app keybindings.
-36. **Extension system** — Full extension API (custom editors, widgets, dialogs, shortcuts, commands, tools, resources, RPC, MCP).
-37. **Commands missing** — `/clone`, `/import`, `/reload`, `/debug`, `/hotkeys`, `/tree`, `/scoped`, `/trust`, `/skill:*`.
+16. **Session tree view** — Navigation, folding, filtering, labeling, copying, branch summarization.
+17. **Scoped models** — Toggle models for Ctrl+P, enable/disable all, reorder, persist.
+18. **Skill invocation UI** — Render skill blocks with expand/collapse.
+19. **Config selector** — Resource management: enable/disable extensions/skills/prompts/themes.
+20. **Radius MCP** — Radius MCP integration with animated shimmer.
+21. **Easter eggs / mascot** — `armin.js`, `easter-egg-3d.js`, `earendil-announcement.js` (cosmetic).
+22. **Pi logo** — Half-block logo with Apple Terminal fallback.
+23. **Custom editor component** — Extends Editor with app keybindings.
+24. **Extension system** — Full extension API (custom editors, widgets, dialogs, shortcuts, commands, tools, resources, RPC, MCP). See `docs/EXTENSION_API_DESIGN.md` for draft design.
+25. **Commands missing** — `/clone`, `/import`, `/reload`, `/debug`, `/hotkeys`, `/tree`, `/scoped`, `/trust`, `/skill:*`.
+
+---
 
 ### E. Docs / parity
 
-39. **README translations outdated** — `README.ja.md`, `README.zh-CN.md` describe pre-refactor layout.
+26. **README translations outdated** — `README.ja.md`, `README.zh-CN.md` describe pre-refactor layout.
     - **Action:** Refresh when next touched.
 
-40. **Extension system API** — Needs real API design, beyond "lazy" TUI.
+27. **Extension system API** — Needs real API design, beyond "lazy" TUI.
     - **Action:** Design and implement extension API.
 
 ---
@@ -319,22 +330,29 @@ Remaining (not implemented in code):
 
 **Suite: 150/150 passing** (42 test files).
 
+---
+
 ## Dependencies
 
 `diff`, `highlight.js`, `open`, `typebox`, `zod` (direct); DSH packages per
 UI on `@earendil-works/pi-tui`.
 
+---
+
 ## Next Actions (priority order per AUDIT.md §6)
 
-1. **Unify Login** (P0#3) — delete `terminal-login.ts`, `command-runner.ts` login; route CLI `lazydsh login` through main TUI `signIn()`.
-2. **Fix Fake OAuth Options** (P0#3) — `buildLoginProviderOptions()` → query `flow.methods` from `authorization`.
-3. **Redesign LoginDialog Notice** (P0#3) — add progress, buttons, auto-close.
-4. **Virtualize History** (P0#2) — render only visible transcript window + sentinel.
-5. **Wire Tool Streaming** (P0#4) — implement `tool_execution_update` → `ToolRow.updateArgs()` / partial result.
-6. **Boot Progress** (P0#1) — show deferred plugin activation progress in status area.
-7. **Footer Git** (P1#5) — switch to file watcher (`.git/HEAD`) or async spawn.
-8. **Ctrl+C Simplify** (P1#7) — 2 states: clear draft / interrupt turn.
-9. **Fix Silent Retry** (P1#10) — throw on cancel, show "Cancelled" notice.
-10. **Queue Indicator** (P1#9) — distinct style for queued messages.
+1. **Unify Login** (P0#1) — delete `terminal-login.ts`, `command-runner.ts` login; route CLI `lazydsh login` through main TUI `signIn()`.
+2. **Redesign LoginDialog Notice** (P0#1 follow-up) — add progress, buttons, auto-close to the OAuth notice kind.
+3. **`!!cmd` output** (P1#2) — add output to transcript, not just notice.
+4. **Queue Indicator** (P1#3) — distinct style for queued vs sent messages in QueueView.
+5. **BashExecutionComponent for tools** (P2#4) — use rich renderer for tool calls instead of plain ToolRow.
+6. **Approval "always allow"** (P2#5) — add "Always allow" choice to ApprovalPanel.
+7. **Model selector test connection** (P2#6) — add "test connection" button/flow to ModelSelectorComponent.
+8. **Mermaid streaming enable** (B#9) — enable live mermaid rendering during streaming mode.
+9. **`ui.ts` decomposition continued** (B#3) — extract `pickModel`/`pickProviderModel` cluster, streaming loop, session management, keybinding input handler into separate modules.
+10. **History search/filter** (P3#7) — add search/filter to transcript.
+11. **Footer cost breakdown** (P3#8) — per-model cost breakdown.
+12. **Session selector multi-delete** (P3#9) — multi-delete support.
+13. **Theme creator UI** (P3#10) — UI for creating custom themes.
 
-Then P2/P3 items, then missing features vs reference (defer to v0.3.0).
+Then orphan file wiring (C1 items 1, 3, 4), then missing features vs reference (defer to v0.3.0).

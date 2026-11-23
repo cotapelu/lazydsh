@@ -513,7 +513,7 @@ tui.onTerminalColorSchemeChange(scheme):
 - History virtualization (max 500 rows + omitted marker)
 - Login: fake OAuth options fixed (buildLoginProviderOptions queries authorization flow methods)
 - Tool streaming (`tool_execution_update` wired → ToolRow.updateArgs/updateResult)
-- Footer git watcher (FSWatcher on .git/HEAD; updateGitBranch still uses spawnSync 1s)
+- Footer git watcher (FSWatcher on .git/HEAD)
 - Theme DA1 async (non-blocking first paint, `void waitForTerminalColors()`)
 - Ctrl+C simplified (clear/interrupt/exit, 3 states)
 - Auth silent retry fixed (goingBack guard throws on cancel)
@@ -526,31 +526,31 @@ tui.onTerminalColorSchemeChange(scheme):
 
 | #   | Flow              | Problem                                                                          | Impact                   |
 | --- | ----------------- | -------------------------------------------------------------------------------- | ------------------------ |
-| 3   | Login (CLI entry) | CLI still uses terminal-login.ts/command-runner.ts (not unified with TUI signIn) | Duplicate auth code path |
+| 1   | Login (CLI entry) | CLI still uses terminal-login.ts/command-runner.ts (not unified with TUI signIn) | Duplicate auth code path |
 
 ### P1 — High
 
 | #   | Flow    | Problem                                            | Impact                |
 | --- | ------- | -------------------------------------------------- | --------------------- |
-| 8   | `!!cmd` | Output dropped from transcript (only notice added) | User loses context    |
-| 9   | Queue   | No distinct visual indicator for queued vs sent    | Unclear message state |
+| 2   | `!!cmd` | Output dropped from transcript (only notice added) | User loses context    |
+| 3   | Queue   | No distinct visual indicator for queued vs sent    | Unclear message state |
 
 ### P2 — Medium
 
 | #   | Flow                   | Problem                                     |
 | --- | ---------------------- | ------------------------------------------- |
-| 13  | BashExecutionComponent | Only used for bash mode, not for tool calls |
-| 14  | ApprovalPanel          | No "Always allow" option                    |
-| 15  | ModelSelector          | No "test connection" button                 |
+| 4   | BashExecutionComponent | Only used for bash mode, not for tool calls |
+| 5   | ApprovalPanel          | No "Always allow" option                    |
+| 6   | ModelSelector          | No "test connection" button                 |
 
 ### P3 — Low
 
 | #   | Flow            | Problem                        |
 | --- | --------------- | ------------------------------ |
-| 16  | History         | No search/filter in transcript |
-| 17  | Footer          | No cost breakdown per model    |
-| 18  | SessionSelector | No "delete multiple"           |
-| 19  | Theme           | No custom theme creator UI     |
+| 7   | History         | No search/filter in transcript |
+| 8   | Footer          | No cost breakdown per model    |
+| 9   | SessionSelector | No "delete multiple"           |
+| 10  | Theme           | No custom theme creator UI     |
 
 ---
 
