@@ -3,32 +3,42 @@
   "phases": [
     {
       "id": "phase-1",
-      "name": "Phân tích pi-coding-agent modes/interactive",
+      "name": "Audit toàn bộ codebase lazydsh",
       "tasks": [
         {
           "id": "task-1",
-          "content": "Inventory modes/interactive/ của reference lib",
+          "content": "Chạy quality gate, lint, typecheck, test, security scan",
           "status": "in_progress"
         },
         {
           "id": "task-2",
-          "content": "So khớp parity claims (GOAL §Comparison) vs reference thực tế",
+          "content": "Audit src/runtime (boot, runtime.ts, deferred, plugin-patch)",
           "status": "pending"
         },
         {
           "id": "task-3",
-          "content": "Verify 'missing' items: mermaid disabled in stream, scoped models, session tree, skill UI, config selector...",
+          "content": "Audit src/interactive-mode (ui.ts, components, theme)",
           "status": "pending"
         },
         {
           "id": "task-4",
-          "content": "Kết luận: audit nói đúng/ sai/ thổi phồng ở đâu",
+          "content": "Audit src/providers + ofm-provider (transport, fingerprint, token-saver)",
+          "status": "pending"
+        },
+        {
+          "id": "task-5",
+          "content": "Audit contracts, utils, cli, plugin, scripts",
+          "status": "pending"
+        },
+        {
+          "id": "task-6",
+          "content": "Tổng hợp báo cáo: lỗi thật, rủi ro, dead code, đề xuất sửa",
           "status": "pending"
         }
       ]
     }
   ],
-  "nextTaskId": 5,
+  "nextTaskId": 7,
   "nextPhaseId": 2,
-  "updatedAt": "2026-11-22T01:21:45.037Z"
+  "updatedAt": "2026-11-24T00:03:07.733Z"
 }
