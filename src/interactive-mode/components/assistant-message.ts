@@ -185,7 +185,7 @@ export class AssistantMessageComponent extends Container {
                   0,
                   this.markdownTheme,
                   {
-                    color: (text: string) => theme.fg("thinkingText", text),
+                    color: (text: string) => theme.italic(theme.fg("thinkingText", text)),
                     italic: true,
                   },
                   {

@@ -241,7 +241,7 @@ export class FooterComponent {
 
     // Build right side with thinking level
     let rightSideWithoutProvider = modelName;
-    if (state.model?.reasoning) {
+    if (state.thinkingLevel !== undefined || state.model?.reasoning) {
       const thinkingLevel = state.thinkingLevel || "off";
       rightSideWithoutProvider =
         thinkingLevel === "off"
