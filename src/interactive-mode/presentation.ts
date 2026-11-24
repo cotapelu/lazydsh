@@ -1,6 +1,6 @@
 import { extractAnsiCode } from "@earendil-works/pi-tui/dist/utils.js";
 import { stripVTControlCharacters } from "node:util";
-import { accent, dim, fg, gray, safeText, formatNotification } from "./theme.ts";
+import { accent, dim, fg, gray, safeText, formatNotification, success, error } from "./theme.ts";
 import { formatStats, type SessionStats } from "../utils/stats.ts";
 import {
   Editor,
@@ -13,7 +13,10 @@ import {
 } from "@earendil-works/pi-tui";
 
 export function activityLine(summary: string) {
-  return accent(summary.slice(0, 1)) + dim(summary.slice(1));
+  const icon = summary.slice(0, 1);
+  const rest = summary.slice(1);
+  const color = icon === "✓" ? success : icon === "✗" ? error : icon === "·" ? accent : accent;
+  return color(icon) + dim(rest);
 }
 
 // Official deepseek.com SVG silhouette sampled into 2×4 Braille cells (52×44 pixels).
