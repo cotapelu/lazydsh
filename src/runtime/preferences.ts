@@ -21,7 +21,18 @@ export async function loadModel(path: string): Promise<SavedRoute | undefined> {
       value.provider.trim() &&
       typeof value.model === "string" &&
       value.model.trim()
-    )
+    ) {
+      // Ignore stale preferences that reference a provider no longer present
+      // in the catalog (e.g. after a provider is removed), so startup falls
+      // back to the default route instead of crashing on "Unknown provider".
+      try {
+        const catalog = await import("./catalog.ts");
+        const normalized = catalog.normalizeProvider(value.provider);
+        if (!catalog.providers.includes(value.provider) && !catalog.providers.includes(normalized))
+          return undefined;
+      } catch {
+        // If the catalog cannot be loaded, keep the previous behavior.
+      }
       return {
         provider: value.provider,
         model: value.model,
@@ -29,6 +40,7 @@ export async function loadModel(path: string): Promise<SavedRoute | undefined> {
           ? { effort: value.effort }
           : {}),
       };
+    }
   } catch (error) {
     if (!(error instanceof SyntaxError) && (error as NodeJS.ErrnoException).code !== "ENOENT")
       throw error;
