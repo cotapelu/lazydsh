@@ -17,7 +17,7 @@ let generatedModels: Record<string, Record<string, any>> = {};
 
 try {
   const gen = await import("./custom-models.generated.js");
-  generatedModels = gen.CUSTOM_MODELS || {}; // ← ĐÚNG TÊN
+  generatedModels = gen.CUSTOM_MODELS || {};
 } catch {
   // No generated models file - will use hardcoded fallbacks
 }
@@ -28,7 +28,7 @@ try {
 export function getProviderModels(providerName: string): any[] {
   const providerModels = generatedModels[providerName];
   if (providerModels) {
-    return Object.values(providerModels); // ← CONVERT OBJECT TO ARRAY
+    return Object.values(providerModels);
   }
 
   // Fallback to hardcoded

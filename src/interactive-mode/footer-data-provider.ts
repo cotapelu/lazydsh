@@ -7,7 +7,7 @@
  * - CWD formatting
  * - Available provider count
  */
-import { spawnSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import { existsSync, watch, type FSWatcher } from "node:fs";
 import { resolve, relative, isAbsolute, sep, join } from "node:path";
 
@@ -55,6 +55,7 @@ export interface FooterDataProvider {
   onBranchChange(callback: () => void): void;
   setCwd(cwd: string): void;
   getCwd(): string;
+  dispose(): void;
 }
 
 /**
@@ -69,23 +70,22 @@ export function createFooterDataProvider(initialCwd: string): FooterDataProvider
 
   /** Update git branch and notify listeners */
   function updateGitBranch(): void {
-    try {
-      const result = spawnSync("git", ["branch", "--show-current"], {
-        cwd,
-        encoding: "utf-8",
-        timeout: 1000,
-      });
-      const newBranch = result.stdout?.trim();
-      if (newBranch && newBranch !== gitBranch) {
-        gitBranch = newBranch;
-        branchChangeCallbacks.forEach((cb) => cb());
-      } else if (!newBranch && gitBranch) {
-        gitBranch = undefined;
-        branchChangeCallbacks.forEach((cb) => cb());
-      }
-    } catch {
-      // Ignore git errors
-    }
+    execFile(
+      "git",
+      ["branch", "--show-current"],
+      { cwd, encoding: "utf-8", timeout: 1000 },
+      (error, stdout) => {
+        if (error) return;
+        const newBranch = stdout?.trim();
+        if (newBranch && newBranch !== gitBranch) {
+          gitBranch = newBranch;
+          branchChangeCallbacks.forEach((cb) => cb());
+        } else if (!newBranch && gitBranch) {
+          gitBranch = undefined;
+          branchChangeCallbacks.forEach((cb) => cb());
+        }
+      },
+    );
   }
 
   /** Start watching for git branch changes */
@@ -151,6 +151,11 @@ export function createFooterDataProvider(initialCwd: string): FooterDataProvider
 
     getCwd(): string {
       return cwd;
+    },
+
+    dispose(): void {
+      branchWatcher?.close();
+      branchWatcher = undefined;
     },
   };
 }

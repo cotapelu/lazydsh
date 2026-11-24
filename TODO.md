@@ -377,7 +377,7 @@ full details.
 
 13. **`src/providers/models/index.ts:20` — Vietnamese comments in an English codebase** (e.g. `// ← ĐÚNG TÊN`). **Action:** Translate or remove.
 
-14. **`vite.config.ts:11` — provider tests (`src/providers/ofm-provider/test/*`) excluded from `npm test`** (only `test/**/*.test.ts` is included). **Action:** Add `src/providers/**/*.test.ts` to `test.include`.
+14. **`vite.config.ts:11` — provider tests (`src/providers/ofm-provider/test/*`) use a different test runner** (they import from `../dist/` which requires a separate build step). **Action:** These tests need `npm --prefix pi-extension run build` first, then a separate test command. Do NOT add to vite.config `test.include` (causes module resolution failures). Document the separate test command in README.
 
 ### Resource leaks (not previously documented)
 

@@ -84,7 +84,7 @@ import { theme as themeProxy } from "./theme/theme.ts";
 import { currentThemeName_ } from "./theme/theme.ts";
 
 const identity = (text: string) => text;
-const bold = (text: string) => `\x1b[1m${text}\x1b[0m`;
+const bold = (text: string) => themeProxy.bold(text);
 export const markdownTheme = {
   highlightCode,
   heading: bold,
@@ -1823,7 +1823,15 @@ export async function runUI(
         // produced before its tool calls — while only the stop reason comes
         // from the persisted record (DSH messages carry no stop reason).
         if (liveAssistant !== undefined) {
-          const events = await runtime.history().catch(() => []);
+          let events: Awaited<ReturnType<Runtime["history"]>> = [];
+          try {
+            events = await runtime.history();
+          } catch (error) {
+            add(
+              "Error",
+              `Could not read session history: ${error instanceof Error ? error.message : String(error)}`,
+            );
+          }
           const final = events.findLast((item) => item.type === "assistant/message");
           const stop =
             final?.type === "assistant/message" && final.data.interrupted === true
@@ -2313,6 +2321,9 @@ export async function runUI(
     process.off("SIGINT", signalHandler);
     process.off("SIGTERM", signalHandler);
     decision?.(null);
+    keybindings.dispose();
+    themeController.dispose();
+    footerDataProvider.dispose();
     themeController.disableAutoSync();
     tui.stop({ preserveScreen: true });
     try {

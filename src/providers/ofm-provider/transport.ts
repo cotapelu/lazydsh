@@ -51,11 +51,13 @@ export function createDsmlScrubber() {
 
 /** Classify the beginning of a body by shape (ported from src/http.js). */
 export function sniffBody(text: unknown) {
-  const head = String(text ?? "")
-    .replace(/^﻿/, "")
-    .trimStart();
-  if (head === "") return "empty";
-  if (head.startsWith(":") || /^(?:data|event|id|retry)[ \t]*:/m.test(head.slice(0, 64)))
+  const head = text?.toString() ?? "";
+  const normalized = head.replace(/^﻿/, "").trimStart();
+  if (normalized === "") return "empty";
+  if (
+    normalized.startsWith(":") ||
+    /^(?:data|event|id|retry)[ \t]*:/m.test(normalized.slice(0, 64))
+  )
     return "sse";
   if (head.startsWith("{") || head.startsWith("[")) return "json";
   return "unknown";

@@ -39,10 +39,9 @@ export async function editInExternalEditor(options: {
     // console input read active after stdin is paused, racing the editor for
     // the input buffer. `null` means the editor could not be launched.
     const exit = await new Promise<number | string | null>((resolve) => {
-      const [editor, ...editorArgs] = options.command.split(" ");
-      const child = spawn(editor, [...editorArgs, filePath], {
+      const child = spawn(options.command + " " + JSON.stringify(filePath), {
         stdio: "inherit",
-        shell: process.platform === "win32",
+        shell: true,
       });
       child.on("error", () => resolve(null));
       child.on("close", (code, signal) => resolve(code ?? signal));

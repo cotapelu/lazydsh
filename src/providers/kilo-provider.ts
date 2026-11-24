@@ -33,26 +33,41 @@ function perMillion(value: unknown): number {
 }
 
 /** Map one Kilo gateway listing row onto pi's model config. Paid rows only. */
-export function kiloRowToModel(row: any): any | null {
+export function kiloRowToModel(row: Record<string, unknown>): null | {
+  id: string;
+  name: string;
+  baseUrl: string;
+  api: string;
+  reasoning: boolean;
+  input: string[];
+  cost: { input: number; output: number; cacheRead: number; cacheWrite: number };
+  contextWindow: number;
+  maxTokens: number;
+} {
   if (!row || typeof row.id !== "string" || row.id.trim() === "") return null;
   if (row.isFree === true) return null; // free pool belongs to ofm-kilo, not here
 
-  const inputMods: string[] = Array.isArray(row?.architecture?.input_modalities)
-    ? row.architecture.input_modalities
+  const arch = (row as Record<string, unknown>)?.architecture as
+    | Record<string, unknown>
+    | undefined;
+  const inputMods: string[] = Array.isArray(arch?.input_modalities)
+    ? (arch.input_modalities as string[])
     : [];
   const vision = inputMods.includes("image");
-  const params: string[] = Array.isArray(row?.supported_parameters) ? row.supported_parameters : [];
+  const supported = (row as Record<string, unknown>)?.supported_parameters;
+  const params: string[] = Array.isArray(supported) ? (supported as string[]) : [];
   const reasoning = params.includes("reasoning") || params.includes("reasoning_effort");
 
-  const pricing = row?.pricing ?? {};
+  const top = (row as Record<string, unknown>)?.top_provider as Record<string, unknown> | undefined;
+  const pricing =
+    ((row as Record<string, unknown>)?.pricing as Record<string, unknown> | undefined) ?? {};
   const contextWindow =
     (typeof row?.context_length === "number" && row.context_length) ||
-    (typeof row?.top_provider?.context_length === "number" && row.top_provider.context_length) ||
+    (typeof top?.context_length === "number" && top.context_length) ||
     4096;
   const maxTokens =
-    (typeof row?.top_provider?.max_completion_tokens === "number" &&
-      row.top_provider.max_completion_tokens) ||
-    (typeof row?.top_provider?.max_tokens === "number" && row.top_provider.max_tokens) ||
+    (typeof top?.max_completion_tokens === "number" && top.max_completion_tokens) ||
+    (typeof top?.max_tokens === "number" && top.max_tokens) ||
     4096;
 
   return {
@@ -70,7 +85,7 @@ export function kiloRowToModel(row: any): any | null {
     },
     contextWindow,
     maxTokens,
-  } as any;
+  } satisfies ReturnType<typeof kiloRowToModel>;
 }
 
 /** Fetch the paid roster live from Kilo's gateway. Throws on failure. */

@@ -1,6 +1,6 @@
 import { extractAnsiCode } from "@earendil-works/pi-tui/dist/utils.js";
 import { stripVTControlCharacters } from "node:util";
-import { accent, dim, gray, safeText, formatNotification } from "./theme.ts";
+import { accent, dim, fg, gray, safeText, formatNotification } from "./theme.ts";
 import { formatStats, type SessionStats } from "../utils/stats.ts";
 import {
   Editor,
@@ -58,17 +58,13 @@ export class StatusPanel extends Text {
     this.updateStats(stats);
   }
   updateStats(stats: SessionStats) {
-    const gray = (text: string) => `\x1b[38;2;160;166;172m${text}\x1b[39m`;
     const content = safeText(formatStats(stats))
       .split("\n")
       .map((line: string) =>
         line
           .replace(/^([^:]+: +)/, gray)
           .replace(/\([^)]*\)/g, gray)
-          .replace(
-            /░+/g,
-            (cells: string) => `\x1b[38;2;60;63;68m${"█".repeat(cells.length)}\x1b[39m`,
-          )
+          .replace(/░+/g, (cells: string) => fg.borderMuted("█".repeat(cells.length)))
           .replace(/·+/g, gray),
       )
       .join("\n");
@@ -150,7 +146,7 @@ function highlightReferences(text: string) {
         const from = Math.max(0, match.index - start);
         const to = Math.min(part.length, match.index + match[0].length - start);
         if (from >= to) continue;
-        result += part.slice(cursor, from) + `\x1b[38;2;77;107;254m${part.slice(from, to)}\x1b[39m`;
+        result += part.slice(cursor, from) + accent(part.slice(from, to));
         cursor = to;
       }
       return result + part.slice(cursor);

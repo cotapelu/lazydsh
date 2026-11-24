@@ -39,7 +39,6 @@ import { allSavings } from "./saver-stats.js";
 import { describeSavings } from "./token-saver/index.js";
 import { activePrompts, CAVEMAN_LEVELS, PONYTAIL_LEVELS, OFF } from "./token-saver/prompts.js";
 import { noticeText, shouldNotice, writeAck } from "./disclaimer.js";
-import fs from "node:fs";
 import { kiloModels, kiloProvider, PROVIDER_ID as KILO_ID } from "./kilo.js";
 import { opencodeModels, opencodeProvider, PROVIDER_ID as OPENECODE_ID } from "./opencode.js";
 
@@ -131,16 +130,6 @@ function describeChains(ctx: any, chains: any[]) {
  * route upstream.
  */
 export default async function (pi: any) {
-  fs.appendFileSync("/tmp/ofm-debug.log", "factory ran\n");
-  pi.on("session_start", () => {
-    fs.appendFileSync("/tmp/ofm-debug.log", "session_start fired\n");
-  });
-  pi.on("before_agent_start", (event: any) => {
-    fs.appendFileSync(
-      "/tmp/ofm-debug.log",
-      "before_agent_start syslen=" + String(event.systemPrompt).length + "\n",
-    );
-  });
   const [kilo, opencode, chains] = await Promise.all([
     kiloModels(),
     opencodeModels(),
@@ -483,7 +472,7 @@ export default async function (pi: any) {
             notify(`usage: /ofm saver ${verb} ${levels.join("|")}`);
             return;
           }
-          const stored = writeSaver({ [verb]: level } as any);
+          writeSaver({ [verb]: level });
           notify(
             level === OFF
               ? `${verb} off — the prompt family is no longer added to the system prompt`

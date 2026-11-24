@@ -20,9 +20,6 @@
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import ofmProvider from "./ofm-provider/index.js";
-import { createLogger } from "../utils/logger.js";
-
-const log = createLogger("ofm-provider");
 
 /** Lanes registered in this process; the aggregator must not double-register. */
 let registered = false;
@@ -41,6 +38,8 @@ export async function registerOfmProvider(api: ExtensionAPI): Promise<void> {
     registered = true;
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    log.error(`failed to register the ofm-provider lanes (ofm-kilo, ofm-opencode): ${reason}`);
+    console.error(
+      `[ofm-provider] failed to register the ofm-provider lanes (ofm-kilo, ofm-opencode): ${reason}`,
+    );
   }
 }

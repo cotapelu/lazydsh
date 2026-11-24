@@ -132,6 +132,7 @@ class UserMessageList implements Component {
  */
 export class UserMessageSelectorComponent extends Container {
   private messageList: UserMessageList;
+  private autoCancelTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
     messages: SelectableUserMessage[],
@@ -166,7 +167,14 @@ export class UserMessageSelectorComponent extends Container {
     this.addChild(new DynamicBorder());
     // Auto-cancel if no messages
     if (messages.length === 0) {
-      setTimeout(() => onCancel(), 100);
+      this.autoCancelTimer = setTimeout(() => onCancel(), 100);
+    }
+  }
+
+  dispose(): void {
+    if (this.autoCancelTimer !== undefined) {
+      clearTimeout(this.autoCancelTimer);
+      this.autoCancelTimer = undefined;
     }
   }
 

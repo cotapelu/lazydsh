@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import { accent, dim, safeText } from "./theme.ts";
+import { accent, dim, fg, safeText } from "./theme.ts";
 
 /**
  * The subset used for auto-detection when a code fence has no language. Each
@@ -151,7 +151,7 @@ const theme: Record<string, (text: string) => string> = {
   title: lines(accent),
   attr: lines(accent),
   meta: lines(accent),
-  string: lines((text) => `\x1b[38;2;155;175;255m${text}\x1b[0m`),
+  string: lines((text) => fg.syntaxString(text)),
   comment: lines(dim),
   doctag: lines(dim),
 };

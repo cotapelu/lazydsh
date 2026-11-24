@@ -255,11 +255,11 @@
 
 #### Shared: `callbacks.onAuth` (ui.ts ~607–658)
 
-| Method                   | UI Component                                                                   |
-| ------------------------ | ------------------------------------------------------------------------------ |
+| Method                   | UI Component                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------- |
 | `lazydsh/auth-notice`    | `LoginDialog(kind: "notice")` — spinner only, no progress/buttons (see Bug inventory) |
-| `secret` (API key)       | `LoginDialog(kind: "secret")` — masked `Input`                                 |
-| `select` (method picker) | `LoginDialog(kind: "select")` — `SearchPicker`                                 |
+| `secret` (API key)       | `LoginDialog(kind: "secret")` — masked `Input`                                        |
+| `select` (method picker) | `LoginDialog(kind: "select")` — `SearchPicker`                                        |
 
 #### `runtime.authenticate()` (runtime.ts ~834–974)
 
@@ -296,13 +296,13 @@
 
 ### 2.8 Session Management
 
-| Action                     | Flow                                                                                                                                              |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sessions()`               | `runtime.sessions()` → `SessionRecord[]` → `SessionSelector` (threaded tree, fuzzy search, scope toggle, sort toggle, named filter, path toggle). |
-| `forkSession(boundary)`    | `runtime.forkPoints()` → pick turn → `runtime.forkSession(boundary)` → new session → `connect(childId)`.                                          |
-| `renameSession(id, title)` | `runtime.renameSession(id, title)`.                                                                                                               |
-| `manageSession(id, archive \| restore \| pin \| unpin)` | `runtime.manageSession()` → workspace registry. |
-| `resume`                   | `selectSession()` → `SessionSelector` → optional `selectResumeDirectory()` → `connect(id, directory)`.                                            |
+| Action                                                  | Flow                                                                                                                                              |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sessions()`                                            | `runtime.sessions()` → `SessionRecord[]` → `SessionSelector` (threaded tree, fuzzy search, scope toggle, sort toggle, named filter, path toggle). |
+| `forkSession(boundary)`                                 | `runtime.forkPoints()` → pick turn → `runtime.forkSession(boundary)` → new session → `connect(childId)`.                                          |
+| `renameSession(id, title)`                              | `runtime.renameSession(id, title)`.                                                                                                               |
+| `manageSession(id, archive \| restore \| pin \| unpin)` | `runtime.manageSession()` → workspace registry.                                                                                                   |
+| `resume`                                                | `selectSession()` → `SessionSelector` → optional `selectResumeDirectory()` → `connect(id, directory)`.                                            |
 
 ---
 
@@ -558,77 +558,77 @@ tui.onTerminalColorSchemeChange(scheme):
 
 ### Critical (must fix before release)
 
-| # | File:Line | Issue | Fix |
-|---|-----------|-------|-----|
-| 1 | `src/types.ts` | Dead code — duplicates `interfaces.ts`, never imported anywhere in `src/` or `test/` | Remove file or make `interfaces.ts` the single contract |
-| 2 | `src/runtime/runtime.ts:136-164` | `Runtime` constructor monkey-patches `globalThis.fetch` globally with `__ofmFetchWrapped` flag. Affects all `fetch` calls in the process; not reversible | Move to a module-level function called once at boot, or pass a custom fetch per-provider |
-| 3 | `src/providers/ofm-provider/index.ts:134-143` | `fs.appendFileSync("/tmp/ofm-debug.log", ...)` on every `session_start`/`before_agent_start`, including `event.systemPrompt.length`. Blocks event loop, leaks prompt-size info, no on/off switch | Delete the three `appendFileSync` blocks |
-| 4 | `tsconfig.json:14` + `vite.config.ts:13` | `src/providers/**` excluded from type-check and lint. ~4,000 lines of ofm-provider code ship unverified | Remove exclusion; fix resulting type errors |
-| 5 | `src/runtime/runtime.ts:992` | `this.ctx.authorization.cancel(key)` called without `await`. Sibling calls (`unset`, `deleteRecord`) are awaited. If `cancel()` returns a Promise, race condition | Verify if `cancel()` is async; add `await` if so |
+| #   | File:Line                                     | Issue                                                                                                                                                                                            | Fix                                                                                      |
+| --- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| 1   | `src/types.ts`                                | Dead code — duplicates `interfaces.ts`, never imported anywhere in `src/` or `test/`                                                                                                             | Remove file or make `interfaces.ts` the single contract                                  |
+| 2   | `src/runtime/runtime.ts:136-164`              | `Runtime` constructor monkey-patches `globalThis.fetch` globally with `__ofmFetchWrapped` flag. Affects all `fetch` calls in the process; not reversible                                         | Move to a module-level function called once at boot, or pass a custom fetch per-provider |
+| 3   | `src/providers/ofm-provider/index.ts:134-143` | `fs.appendFileSync("/tmp/ofm-debug.log", ...)` on every `session_start`/`before_agent_start`, including `event.systemPrompt.length`. Blocks event loop, leaks prompt-size info, no on/off switch | Delete the three `appendFileSync` blocks                                                 |
+| 4   | `tsconfig.json:14` + `vite.config.ts:13`      | `src/providers/**` excluded from type-check and lint. ~4,000 lines of ofm-provider code ship unverified                                                                                          | Remove exclusion; fix resulting type errors                                              |
+| 5   | `src/runtime/runtime.ts:992`                  | `this.ctx.authorization.cancel(key)` called without `await`. Sibling calls (`unset`, `deleteRecord`) are awaited. If `cancel()` returns a Promise, race condition                                | Verify if `cancel()` is async; add `await` if so                                         |
 
 ### High
 
-| # | File:Line | Issue | Fix |
-|---|-----------|-------|-----|
-| 6 | `src/interactive-mode/keybindings.ts:264-268` | `dispose()` may call `unwatchFile` on a path never watched if `watchFile` threw | Guard with a flag tracking whether watch actually started |
+| #   | File:Line                                     | Issue                                                                           | Fix                                                       |
+| --- | --------------------------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| 6   | `src/interactive-mode/keybindings.ts:264-268` | `dispose()` may call `unwatchFile` on a path never watched if `watchFile` threw | Guard with a flag tracking whether watch actually started |
 
 ### Medium
 
-| # | File:Line | Issue | Fix |
-|---|-----------|-------|-----|
-| 7 | `src/interactive-mode/ui.ts:87` | Hardcoded `\x1b[1m` (bold) instead of theme token | Use `theme.fg()` or `theme.bold()` |
-| 8 | `src/interactive-mode/highlight.ts:154` | Hardcoded `\x1b[38;2;155;175;255m` (string color) | Use `theme.fg("syntaxString", ...)` |
-| 9 | `src/interactive-mode/presentation.ts:61` | Hardcoded `\x1b[38;2;160;166;172m` (gray) | Use `theme.fg("muted", ...)` |
-| 10 | `src/interactive-mode/presentation.ts:70` | Hardcoded `\x1b[38;2;60;63;68m` | Use `theme.fg("borderMuted", ...)` |
-| 11 | `src/interactive-mode/presentation.ts:153` | Hardcoded `\x1b[38;2;77;107;254m` (accent) | Use `theme.fg("accent", ...)` |
-| 12 | `src/interactive-mode/components/custom-message.ts:120` | Hardcoded `\x1b[1m[...]\x1b[22m` (bold) | Use `theme.bold()` |
-| 13 | `src/interactive-mode/components/branch-summary-message.ts:63` | Hardcoded `\x1b[1m[branch]\x1b[22m` | Use `theme.bold()` |
-| 14 | `src/interactive-mode/components/compaction-summary-message.ts:65` | Hardcoded `\x1b[1m[compaction]\x1b[22m` | Use `theme.bold()` |
-| 15 | `src/interactive-mode/keybindings.ts:38,69` | `ctrl+p` bound to both `app.model.cycleForward` and `app.session.togglePath` | Reassign one binding |
-| 16 | `src/interactive-mode/keybindings.ts:37,70` | `ctrl+s` bound to both `app.thinking.save` and `app.session.toggleSort` | Reassign one binding |
-| 17 | `src/interactive-mode/footer-data-provider.ts:73` | `spawnSync("git", ...)` blocks event loop on every 5s poll | Replace with async `spawn` or move off render path |
-| 18 | `src/interactive-mode/external-editor.ts:42` | Editor command split on spaces without shell quoting | Use shell-quote parser or `shell: true` |
-| 19 | `src/interactive-mode/components/user-message-selector.ts:169` | `setTimeout(() => onCancel(), 100)` timer ID not stored; may fire after unmount | Store timer ID and `clearTimeout` in `dispose()` |
+| #   | File:Line                                                          | Issue                                                                           | Fix                                                |
+| --- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------- | -------------------------------------------------- |
+| 7   | `src/interactive-mode/ui.ts:87`                                    | Hardcoded `\x1b[1m` (bold) instead of theme token                               | Use `theme.fg()` or `theme.bold()`                 |
+| 8   | `src/interactive-mode/highlight.ts:154`                            | Hardcoded `\x1b[38;2;155;175;255m` (string color)                               | Use `theme.fg("syntaxString", ...)`                |
+| 9   | `src/interactive-mode/presentation.ts:61`                          | Hardcoded `\x1b[38;2;160;166;172m` (gray)                                       | Use `theme.fg("muted", ...)`                       |
+| 10  | `src/interactive-mode/presentation.ts:70`                          | Hardcoded `\x1b[38;2;60;63;68m`                                                 | Use `theme.fg("borderMuted", ...)`                 |
+| 11  | `src/interactive-mode/presentation.ts:153`                         | Hardcoded `\x1b[38;2;77;107;254m` (accent)                                      | Use `theme.fg("accent", ...)`                      |
+| 12  | `src/interactive-mode/components/custom-message.ts:120`            | Hardcoded `\x1b[1m[...]\x1b[22m` (bold)                                         | Use `theme.bold()`                                 |
+| 13  | `src/interactive-mode/components/branch-summary-message.ts:63`     | Hardcoded `\x1b[1m[branch]\x1b[22m`                                             | Use `theme.bold()`                                 |
+| 14  | `src/interactive-mode/components/compaction-summary-message.ts:65` | Hardcoded `\x1b[1m[compaction]\x1b[22m`                                         | Use `theme.bold()`                                 |
+| 15  | `src/interactive-mode/keybindings.ts:38,69`                        | `ctrl+p` bound to both `app.model.cycleForward` and `app.session.togglePath`    | Reassign one binding                               |
+| 16  | `src/interactive-mode/keybindings.ts:37,70`                        | `ctrl+s` bound to both `app.thinking.save` and `app.session.toggleSort`         | Reassign one binding                               |
+| 17  | `src/interactive-mode/footer-data-provider.ts:73`                  | `spawnSync("git", ...)` blocks event loop on every 5s poll                      | Replace with async `spawn` or move off render path |
+| 18  | `src/interactive-mode/external-editor.ts:42`                       | Editor command split on spaces without shell quoting                            | Use shell-quote parser or `shell: true`            |
+| 19  | `src/interactive-mode/components/user-message-selector.ts:169`     | `setTimeout(() => onCancel(), 100)` timer ID not stored; may fire after unmount | Store timer ID and `clearTimeout` in `dispose()`   |
 
 ### Low
 
-| # | File:Line | Issue | Fix |
-|---|-----------|-------|-----|
-| 20 | `src/interactive-mode/ui.ts:1826` | `runtime.history().catch(() => [])` swallows errors silently | Log or surface the error |
-| 21 | `src/providers/models/index.ts:20` | Vietnamese comments in English codebase (`// ← ĐÚNG TÊN`) | Translate or remove |
-| 22 | `vite.config.ts:11` | Provider tests (`src/providers/ofm-provider/test/*`) excluded from `npm test` | Add to `test.include` |
-| 23 | `src/interactive-mode/components/user-message-selector.ts:169` (same as #19) | Timer leak — already listed | — |
+| #   | File:Line                                                                    | Issue                                                                         | Fix                      |
+| --- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------ |
+| 20  | `src/interactive-mode/ui.ts:1826`                                            | `runtime.history().catch(() => [])` swallows errors silently                  | Log or surface the error |
+| 21  | `src/providers/models/index.ts:20`                                           | Vietnamese comments in English codebase (`// ← ĐÚNG TÊN`)                     | Translate or remove      |
+| 22  | `vite.config.ts:11`                                                          | Provider tests (`src/providers/ofm-provider/test/*`) excluded from `npm test` | Add to `test.include`    |
+| 23  | `src/interactive-mode/components/user-message-selector.ts:169` (same as #19) | Timer leak — already listed                                                   | —                        |
 
 ### Resource Leaks (not previously documented)
 
-| # | File:Line | Issue | Fix |
-|---|-----------|-------|-----|
-| 24 | `src/interactive-mode/ui.ts:1855` | `keybindings.startWatching()` called but `keybindings.dispose()` never called in `finally` block | Add `keybindings.dispose()` to `finally` |
-| 25 | `src/interactive-mode/ui.ts:2316` | `themeController.disableAutoSync()` called but `themeController.dispose()` not called (file watcher stays active) | Add `themeController.dispose()` to `finally` |
-| 26 | `src/interactive-mode/footer-data-provider.ts` | `FooterDataProvider` has `branchWatcher` (FSWatcher) but no `dispose()` method | Add `dispose()` method and call it in `ui.ts` `finally` |
+| #   | File:Line                                      | Issue                                                                                                             | Fix                                                     |
+| --- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| 24  | `src/interactive-mode/ui.ts:1855`              | `keybindings.startWatching()` called but `keybindings.dispose()` never called in `finally` block                  | Add `keybindings.dispose()` to `finally`                |
+| 25  | `src/interactive-mode/ui.ts:2316`              | `themeController.disableAutoSync()` called but `themeController.dispose()` not called (file watcher stays active) | Add `themeController.dispose()` to `finally`            |
+| 26  | `src/interactive-mode/footer-data-provider.ts` | `FooterDataProvider` has `branchWatcher` (FSWatcher) but no `dispose()` method                                    | Add `dispose()` method and call it in `ui.ts` `finally` |
 
 ---
 
 ## 7. FILE MAP (Key logic locations)
 
-| Flow         | Primary Files                                                                                                                                                        |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Boot         | `ui.ts` (~2288–2325), `runtime/dsh-boot.ts`, `runtime/deferred.ts`                                                                                                   |
-| Connect      | `ui.ts` (~737–827), `runtime/runtime.ts` (open)                                                                                                                      |
-| Input/Submit | `ui.ts` (1186–1851)                                                                                                                                                  |
-| Streaming    | `ui.ts` (1629–1851), `stream-highlight.ts` (note: `streaming.ts` is dead code, not used in source)                                                                  |
+| Flow         | Primary Files                                                                                                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Boot         | `ui.ts` (~2288–2325), `runtime/dsh-boot.ts`, `runtime/deferred.ts`                                                                                                 |
+| Connect      | `ui.ts` (~737–827), `runtime/runtime.ts` (open)                                                                                                                    |
+| Input/Submit | `ui.ts` (1186–1851)                                                                                                                                                |
+| Streaming    | `ui.ts` (1629–1851), `stream-highlight.ts` (note: `streaming.ts` is dead code, not used in source)                                                                 |
 | Auth         | `ui.ts` (607–658), `auth-flow.ts`, `runtime/runtime.ts` (834–974), `components/login-dialog.ts`, `components/oauth-selector.ts`, `cli-auth.ts` (CLI terminal host) |
-| Tools        | `tools.ts`, `detail.ts`, `bash-execution.ts`                                                                                                                         |
-| Panels       | `ui.ts` (871–925), `components/*.ts`                                                                                                                                 |
-| Sessions     | `ui.ts` (2056–2111), `session-selector.ts`, `session-select.ts`                                                                                                      |
-| Models       | `ui.ts` (1031–1052), `model-selector.ts`, `model-cycle.ts`                                                                                                             |
-| Status       | `components/status-container.ts`, `components/status-indicator.ts`                                                                                                   |
-| Theme        | `theme/theme.ts`, `theme/theme-controller.ts`, `theme/system-theme.ts`                                                                                               |
-| Footer       | `footer.ts`, `footer-data-provider.ts`                                                                                                                               |
-| History      | `history.ts`, `tools.ts`                                                                                                                                             |
-| Bash         | `bash-mode.ts`, `bash-execution.ts`                                                                                                                                  |
-| Settings     | `settings-selector.ts`, `settings-store.ts`                                                                                                                          |
-| Providers    | `runtime/catalog.ts`, `runtime/custom-providers/`, `providers/`, `providers/ofm-provider/`                                                                          |
+| Tools        | `tools.ts`, `detail.ts`, `bash-execution.ts`                                                                                                                       |
+| Panels       | `ui.ts` (871–925), `components/*.ts`                                                                                                                               |
+| Sessions     | `ui.ts` (2056–2111), `session-selector.ts`, `session-select.ts`                                                                                                    |
+| Models       | `ui.ts` (1031–1052), `model-selector.ts`, `model-cycle.ts`                                                                                                         |
+| Status       | `components/status-container.ts`, `components/status-indicator.ts`                                                                                                 |
+| Theme        | `theme/theme.ts`, `theme/theme-controller.ts`, `theme/system-theme.ts`                                                                                             |
+| Footer       | `footer.ts`, `footer-data-provider.ts`                                                                                                                             |
+| History      | `history.ts`, `tools.ts`                                                                                                                                           |
+| Bash         | `bash-mode.ts`, `bash-execution.ts`                                                                                                                                |
+| Settings     | `settings-selector.ts`, `settings-store.ts`                                                                                                                        |
+| Providers    | `runtime/catalog.ts`, `runtime/custom-providers/`, `providers/`, `providers/ofm-provider/`                                                                         |
 
 ---
 
@@ -637,11 +637,13 @@ tui.onTerminalColorSchemeChange(scheme):
 **AUDIT.md** is approximately **85% correct** on architecture and flow description. It accurately describes the 3-layer contract, two-phase boot, overlay stack, safe runtime access, ToolRow lifecycle, incremental highlighting, streaming (via `AssistantMessageComponent`, not `StreamingMarkdown`), Mermaid, theme system, status indicators, shutdown, extension points, bash mode, clipboard, autocomplete, history replay, footer, settings, and all 8 system-level loops.
 
 However, it is **~15% inaccurate** on specific technical claims:
+
 1. `tool_execution_update` is **not** "defined but never emitted" — it is emitted and consumed.
 2. Several features listed as "Remaining / not implemented" are actually implemented (approval always-allow, boot progress, history virtualization, fake OAuth fix, tool streaming, footer git watcher, DA1 async, Ctrl+C simplify, auth silent retry, global ESC, Mermaid streaming).
 3. It does not mention any of the 23 bug groups (5 Critical, 1 High, 11 Medium, 4 Low, 3 resource leaks) found by the line-by-line source scan.
 
 **AUDIT_REPORT.md** is more thorough in finding actual code bugs (5 Critical, 5 Medium, 4 Low, 3 resource leaks) and correctly identifies 6 points where AUDIT.md is stale. However, it has 9 factual errors of its own:
+
 1. "2 test fail" — false (all 182 pass).
 2. "`npm run check` fails due to 13 temp files" — misleading (temp test artifacts, not source).
 3. `session-select.ts:169` timer leak — wrong file (it's `user-message-selector.ts:169`).

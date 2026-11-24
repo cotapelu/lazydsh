@@ -10,5 +10,8 @@ export default defineConfig({
   },
   test: { include: ["test/**/*.test.ts"], testTimeout: 120_000 },
   fmt: {},
-  lint: { ignorePatterns: ["src/providers/**"], options: { typeAware: true, typeCheck: true } },
+  lint: {
+    ignorePatterns: ["src/providers/ofm-provider/test/**"],
+    options: { typeAware: true, typeCheck: true },
+  },
 });

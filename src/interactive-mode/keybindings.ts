@@ -66,7 +66,7 @@ export const APP_KEYBINDINGS = {
   },
   "app.session.new": { defaultKeys: keys(), description: "Start a new session" },
   "app.session.resume": { defaultKeys: keys(), description: "Resume a session" },
-  "app.session.togglePath": { defaultKeys: "ctrl+p", description: "Toggle session path display" },
+  "app.session.togglePath": { defaultKeys: keys(), description: "Toggle session path display" },
   "app.session.toggleSort": { defaultKeys: "ctrl+s", description: "Toggle session sort mode" },
   "app.session.rename": { defaultKeys: "ctrl+r", description: "Rename session" },
   "app.session.delete": { defaultKeys: "ctrl+d", description: "Delete session" },

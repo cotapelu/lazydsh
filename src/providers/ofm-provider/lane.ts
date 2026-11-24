@@ -47,13 +47,13 @@ export function restoreAliases(
 ) {
   const outer = createAssistantMessageEventStream();
   const scrubber = scrubDsml ? createDsmlScrubber() : null;
-  let lastText = null;
+  let lastText: any = null;
   // The provider appends every delta to the message's text block as it goes,
   // and it can be ahead of this wrapper (the SDK pushes without waiting for us),
   // so the block is written from this accumulator rather than by editing out a
   // suffix: `block.text = cleanSoFar` is right however much the SDK has appended.
   let cleanSoFar = "";
-  (async () => {
+  async function processEvents() {
     try {
       for await (const event of inner) {
         if (
@@ -95,7 +95,8 @@ export function restoreAliases(
       outer.push({ type: "error", reason: "error", error: errorMessageOf(error) });
       outer.end();
     }
-  })();
+  }
+  void processEvents();
   return outer;
 }
 
@@ -163,16 +164,15 @@ export function composeFetches(base: typeof fetch = fetch, ...wrappers: any[]) {
  */
 export function fetchWithoutHeader(header: string, baseFetch: typeof fetch = fetch) {
   const name = header.toLowerCase();
-  return (next: typeof fetch) => (input: any, init?: any) => {
-    if (typeof input === "string") {
-      const headers = new Headers(init?.headers);
-      headers.delete(name);
-      return next(input, { ...init, headers });
-    }
-    const headers = new Headers(input.headers);
-    headers.delete(name);
-    return next(new Request(input, { headers }));
-  };
+  return (input: any, init?: any) =>
+    baseFetch(input, {
+      ...init,
+      headers: (() => {
+        const h = new Headers(typeof input === "string" ? init?.headers : input.headers);
+        h.delete(name);
+        return h;
+      })(),
+    });
 }
 
 /**
