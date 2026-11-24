@@ -6,7 +6,7 @@ import { normalizeProvider } from "./runtime/provider.ts";
 import type {} from "./plugin.ts";
 import { parseArgs } from "node:util";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
-import { homedir, tmpdir } from "node:os";
+import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { enableCompileCache } from "node:module";
@@ -249,7 +249,8 @@ async function main() {
     import("@deepseek-ai/dsh-app-boot"),
     import("./runtime/plugin-patch.ts"),
   ]);
-  const directory = await mkdtemp(join(tmpdir(), "lazydsh-"));
+  const tmpRoot = process.env.TMPDIR ?? "/tmp";
+  const directory = await mkdtemp(join(tmpRoot, "lazydsh-"));
   try {
     const patch = join(directory, "providers.json");
     const resumeArgs = [

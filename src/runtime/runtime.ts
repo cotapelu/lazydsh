@@ -50,6 +50,11 @@ import {
   OFM_KILO_DISPLAY_NAME,
   OFM_KILO_API_KEY_ENV,
 } from "./custom-providers/ofm-kilo-config.js";
+import {
+  OFM_OPENCODE_PROVIDER_ID,
+  OFM_OPENCODE_DISPLAY_NAME,
+} from "./custom-providers/ofm-opencode-config.js";
+import { gatewayHeaders, sessionFor } from "./custom-providers/ofm-provider/fingerprint.js";
 import { registerCommands } from "./native-commands.ts";
 import { ApprovalGrants, resolveApprovalOutcome } from "./approvals.ts";
 import { ActivitySet } from "./activities.ts";
@@ -126,6 +131,8 @@ export class Runtime {
   private limits?: AccountLimits;
   /** Tool names the user allowed for the whole session ("always allow"). */
   private readonly approvalGrants = new ApprovalGrants();
+  /** OFM OpenCode session id per conversation seed (DSH session id). */
+  private readonly ofmOpencodeSessionIds = new Map<string, string>();
   authFailed = false;
   constructor(ctx: Context, options: RuntimeOptions = {}) {
     this.ctx = ctx;
@@ -182,6 +189,24 @@ export class Runtime {
     ctx.on("llm-pi-ai/request-headers", (request, headers, next) => {
       const result = next();
       if (request.provider === OFM_KILO_PROVIDER_ID) result.delete("authorization");
+      if (request.provider === OFM_OPENCODE_PROVIDER_ID) {
+        // Inject OpenCode free-lane fingerprint headers
+        const seed = request.sessionId ?? "global";
+        let sessionId = this.ofmOpencodeSessionIds.get(seed);
+        if (!sessionId) {
+          sessionId = sessionFor(seed);
+          this.ofmOpencodeSessionIds.set(seed, sessionId as string);
+        }
+        // sessionFor always returns a string (mints new if not exists)
+        const fpHeaders = gatewayHeaders({ session: sessionId!, stream: true });
+        for (const [key, value] of Object.entries(fpHeaders)) {
+          if (key.toLowerCase() !== "authorization" && key.toLowerCase() !== "content-type") {
+            result.set(key, value);
+          }
+        }
+        // Ensure authorization is the pooled public credential
+        result.set("authorization", "Bearer public");
+      }
       return result;
     });
     ctx.on("user-questions/request", async (request, next) => {
@@ -720,6 +745,11 @@ export class Runtime {
         label: OFM_KILO_DISPLAY_NAME,
         description: `${OFM_KILO_PROVIDER_ID} · No credentials required`,
       },
+      {
+        value: OFM_OPENCODE_PROVIDER_ID,
+        label: OFM_OPENCODE_DISPLAY_NAME,
+        description: `${OFM_OPENCODE_PROVIDER_ID} · No credentials required`,
+      },
     ];
     const known = new Set([...fromAuthorization.map((item) => item.value), "deepseek-official"]);
     return [
@@ -772,6 +802,9 @@ export class Runtime {
       const ref = credentialRef(OFM_KILO_API_KEY_ENV);
       const info = await this.ctx.credentials.describe(ref);
       if (!info.configured) await this.ctx.credentials.set(ref, "public");
+      return { kind: "keyless", label: "No credentials required" };
+    }
+    if (route === OFM_OPENCODE_PROVIDER_ID) {
       return { kind: "keyless", label: "No credentials required" };
     }
     if (route === KILO_PROVIDER_ID) {
