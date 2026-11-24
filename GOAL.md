@@ -127,7 +127,7 @@ Full comparison (all reference files + 84 lazydsh files read):
 | 5   | TODO.md stale (bash mode)               | ✅ Fixed — bash mode wired (§8.20)                      |
 | 6   | `safeSessionName` always undefined      | ⚠️ Dead code (low impact)                               |
 | 7   | `widthForLabel` hoisting                | ⚠️ Works (unusual)                                      |
-| 8   | `ui.ts` 2178 lines                      | ⚠️ Maintainability                                      |
+| 8   | `ui.ts` ~2336 lines                     | ⚠️ Maintainability                                      |
 | 9   | `connect()` many params                 | ⚠️ Maintainability                                      |
 | 10  | `ask()` / `select()` race condition     | ⚠️ By design                                            |
 | 11  | `sessionManager` getter fallback        | ⚠️ Low risk                                             |

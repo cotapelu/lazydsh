@@ -38,7 +38,7 @@ DeepSeek plus every pi-ai provider (OpenAI, Anthropic, Google, OpenCode, …) ou
 | Model selector   | ✅ Fuzzy search across every provider, scoped/all, current marker, Ctrl+S save default                       |
 | Session selector | ✅ Tree view, `re:`/`"exact"` search, scope/sort/name/path toggles, archive/rename                           |
 | Theme            | ✅ Token theming, DA1 terminal sync, auto light/dark pair, live reload, user themes, selection persists      |
-| Keybindings      | ✅ 27 actions, hot reload, platform defaults                                                                 |
+| Keybindings      | ✅ 25 actions, hot reload, platform defaults                                                                 |
 | Tool rows        | ✅ Arguments, diffs, and output in one expandable row (shared with the approval panel)                       |
 | Alt-screen       | ✅ Transcript search (`Ctrl+Shift+F`), select-to-copy, URL click-through                                     |
 | Login            | ✅ OAuth (device code) and API key flows                                                                     |

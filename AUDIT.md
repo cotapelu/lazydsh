@@ -2,659 +2,403 @@
 
 > **Scope**: Every logic flow in `src/interactive-mode/` + `src/runtime/` integration.
 > **Perspective**: LLM-readable architectural audit — no code dumps, pure logic descriptions.
-> **Order**: Atomic operations → Composed flows → System-level loops → Bug inventory.
-> **Last verified**: 2026-11-24 (every line of every `.ts` file in `src/` and `test/` read and cross-checked).
+> **Order**: Atomic operations → Composed flows → System-level loops → Status inventory.
+> **Last verified**: 2026-11-24 (full source scan of `src/` and `test/`; `npm run check` clean, 182/182 tests pass, build clean).
 
 ---
 
-## 0. GLOSSARY (Terms used throughout)
+## 0. GLOSSARY
 
-| Term                 | Meaning                                                                                                              |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| **TUI**              | `@earendil-works/pi-tui` — React-like terminal UI framework (components, layout, input, overlay, ANSI rendering).    |
-| **Runtime**          | `src/runtime/runtime.ts:Runtime` — TypeScript wrapper around DSH Agent, exposes async API to UI.                     |
-| **DSH**              | DeepSeek Harness — Cordis-based agent platform (101 plugins). Runs in same process.                                  |
-| **Callbacks**        | `interfaces.ts:Callbacks` — Three hooks Runtime calls when it needs human: `onAuth`, `onApproval`, `onUserQuestion`. |
-| **Overlay**          | `tui.showOverlay(panel)` — Modal panel stacked above editor; `dismissPanel()` pops.                                  |
-| **Deferred Plugins** | 33 deferred entries (`DEFERRED_ENTRY_IDS` in `runtime/deferred.ts`), full profile activates ~50+ rows at boot.       |
-| **ToolRow**          | `tools.ts:ToolRow` — One expandable row per tool call (pending → result/diff).                                       |
-| **Streaming**        | Incremental rendering: reasoning + answer deltas → same `AssistantMessageComponent`.                                 |
+| Term                 | Meaning                                                                                                                |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **TUI**              | `@earendil-works/pi-tui` — React-like terminal UI framework (components, layout, input, overlay, ANSI rendering).      |
+| **Runtime**          | `src/runtime/runtime.ts:Runtime` — TypeScript wrapper around DSH Agent, exposes async API to UI.                       |
+| **DSH**              | DeepSeek Harness — Cordis-based agent platform (101 plugins + 11 extra services). Runs in same process.                |
+| **Callbacks**        | `interfaces.ts:Callbacks` — Three hooks Runtime calls when it needs a human: `onAuth`, `onApproval`, `onUserQuestion`. |
+| **Overlay**          | `tui.showOverlay(panel)` — Modal panel stacked above editor; `dismissPanel()` pops.                                    |
+| **Deferred Plugins** | 33 deferred entries (`DEFERRED_ENTRY_IDS`), full profile activates ~50+ rows at boot.                                  |
+| **ToolRow**          | `tools.ts:ToolRow` — One expandable row per tool call (pending → result/diff).                                         |
+| **Streaming**        | Incremental rendering: reasoning + answer deltas → same `AssistantMessageComponent`.                                   |
 
 ---
 
-## 1. ATOMIC OPERATIONS (Smallest reusable logic units)
+## 1. ATOMIC OPERATIONS
 
 ### 1.1 Theme Token Resolution
 
-- **Input**: Token name (e.g., `"accent"`), text string.
-- **Process**: `theme.fg(token, text)` → looks up ANSI sequence from active `Theme` instance (proxy).
-- **Fallback**: Token `""` → terminal default (`\x1b[39m` / `\x1b[49m`).
-- **Dim**: `dimTokens` set → wraps with `\x1b[2m`.
-- **Key property**: Proxy ensures every component reads **current** theme on every render — no rebuild needed on theme switch.
+- `theme.fg(token, text)` → ANSI sequence from active `Theme` (process-wide proxy). `""` token → terminal default (`\x1b[39m`/`\x1b[49m`). Dim tokens wrap with `\x1b[2m`. Proxy ensures every component reads the current theme on every render — no rebuild needed on theme switch.
 
 ### 1.2 Keybinding Matching
 
-- **Source**: `KeybindingsManager` (pi-tui) + user `~/.config/lazydsh/keybindings.json` (hot-reload via `watchFile`).
-- **Matching**: `kb.matches(inputData, actionId)` → boolean.
-- **Actions**: 25 `app.*` + pi-tui `tui.*` (editor, select, input, altScreen). **Note:** `ctrl+p` and `ctrl+s` are each bound to two different actions (see Bug #8).
-- **Platform diff**: Windows vs Unix defaults (e.g., `Ctrl+Z` only Unix, `Ctrl+Shift+P` vs `Alt+P`).
+- `KeybindingsManager` (pi-tui) + user `~/.config/lazydsh/keybindings.json` (hot-reload via `watchFile`). `kb.matches(inputData, actionId)` → boolean. 25 `app.*` actions + pi-tui `tui.*`. Platform defaults differ (Windows vs Unix). Note: `ctrl+s` is bound to three actions (`app.thinking.save`, `app.session.toggleSort`, `app.models.save`).
 
 ### 1.3 Component Render Cache
 
-- **Pattern**: Every pi-tui `Component` caches `render(width)` output keyed by `(width, revision)`.
-- **Invalidation**: `invalidate()` bumps revision → next render recomputes.
-- **Layout**: `TUI.invalidate()` cascades to all children → full re-render on theme change, resize, overlay open/close.
+- Every pi-tui `Component` caches `render(width)` keyed by `(width, revision)`. `invalidate()` bumps revision. `TUI.invalidate()` cascades to all children.
 
 ### 1.4 Overlay Stack Management
 
-- **Push**: `showPanel(panel)` → `tui.showOverlay()` → returns `OverlayHandle` → push to `overlayHandles[]`.
-- **Pop (single)**: `dismissPanel(false)` → pop last handle → `handle.hide()`.
-- **Pop (all)**: `dismissPanel(true)` → while stack not empty → pop & hide.
-- **Focus**: `tui.setFocus(panel)` on push; `tui.setFocus(editor)` on pop to empty.
-- **Selecting flag**: `selecting = overlayHandles.length > 0` — blocks editor input, pauses queue drain.
+- Push: `showPanel(panel)` → `tui.showOverlay()` → push handle → `tui.setFocus(panel)` → `selecting = true`.
+- Pop single: `dismissPanel(false)` → pop last → `handle.hide()`. Pop all: `dismissPanel(true)`.
+- Focus returns to editor when stack empty. `selecting` blocks editor input and pauses queue drain.
 
 ### 1.5 AbortSignal Composition
 
-- **Pattern**: `AbortSignal.any([signalA, signalB, AbortSignal.timeout(ms)])`.
-- **Usage**: Every async operation (API call, picker load, shell exec) accepts `signal` from caller + local timeout.
-- **Cleanup**: `finally` blocks always `removeEventListener` for abort handlers.
+- `AbortSignal.any([signalA, signalB, AbortSignal.timeout(ms)])`. Every async op accepts caller signal + local timeout. `finally` blocks always remove abort listeners.
 
 ### 1.6 Safe Runtime Access (First Paint)
 
-- **Problem**: Before deferred plugins attach, `Runtime` is a **throwing proxy** — any property access throws "lazydsh is still starting".
-- **Solution**: `safeRead(runtime, () => runtime.xxx)` → returns `undefined` on throw.
-- **Used by**: Footer, status, autocomplete during `starting === true` window.
+- Before deferred plugins attach, `Runtime` is a throwing proxy. `safeRead(runtime, () => runtime.xxx)` returns `undefined` on throw. Used by Footer/status/autocomplete during `starting === true`.
 
-### 1.7 ToolRow Lifecycle (tools.ts)
+### 1.7 ToolRow Lifecycle (`tools.ts`)
 
-- **Create**: `ToolLog.record(output)` → new `ToolRow(summary)` with `callId`.
-- **Pending**: `tool_execution_start` → `row.setCall(rawArgsJson)`.
-- **Streaming**: `tool_execution_update` → `row.updateArgs(partialResult.args)` / `row.updateResult(partialResult.content)`.
-- **Settle**: `tool_execution_end` → `row.finish(status, resultText, reason, meta)`.
-- **Expand**: Click → `row.toggle()` → renders `detail.ts:toolDetails(args, result, meta, width)`.
-- **Replay**: History calls `ToolLog.record()` with final events → same `ToolRow` instances → identical render.
+- Create: `ToolLog.record(output)` → `ToolRow(summary)` with `callId`.
+- Pending: `tool_execution_start` → `row.setCall(rawArgsJson)`.
+- Streaming: `tool_execution_update` → `row.updateArgs()` / `row.updateResult()`.
+- Settle: `tool_execution_end` → `row.finish(status, resultText, reason, meta)`.
+- Expand: click → `row.toggle()` → `detail.ts:toolDetails(...)`.
+- Replay: `historyRows` calls `ToolLog.record()` with final events → identical render.
 
-### 1.8 Incremental Highlighting (stream-highlight.ts)
+### 1.8 Incremental Highlighting (`stream-highlight.ts`)
 
-- **Per-language state machine**: Tracks `blockComment`, `quote` (single/double/backtick), `lineComment`.
-- **Scan**: Line-by-line → emits `ScanState` (unterminated block/quote).
-- **Safe line**: Lines before first unsafe line → frozen, highlighted once.
-- **Tail**: Unsafe region → re-highlighted on each delta, rate-limited (max 400 pending lines, 200ms refresh).
-- **Opaque fallback**: Unknown language → whole-snippet highlight, throttled at 48 lines.
+- Per-language state machine tracks `blockComment`, `quote`, `lineComment`. Line scan emits `ScanState`. Safe (neutral) lines frozen and highlighted once; tail re-highlighted per delta, rate-limited (400 pending lines, 200ms). Unknown language → whole-snippet highlight throttled at 48 lines.
 
-### 1.9 Streaming Markdown (streaming.ts)
+### 1.9 Streaming Markdown (`streaming.ts`)
 
-> **Note:** `streaming.ts` is **dead code** — it is not imported by any source file in `src/`. It is only imported by `test/streaming.test.ts`. The streaming logic in `ui.ts` uses `AssistantMessageComponent` directly, not `StreamingMarkdown`.
+- Note: `streaming.ts` is only imported by `test/streaming.test.ts`, not by source. The live UI uses `AssistantMessageComponent` directly. `StreamScanner` finds completed block boundaries (blank line outside fence/math); completed blocks cached as `Markdown`; tail with incremental highlighter; `setFinal` → single `Markdown`.
 
-- **Scanner**: `StreamScanner` finds completed block boundaries (blank line not inside fence/math).
-- **Blocks**: Completed blocks → cached `Markdown` components (render once).
-- **Tail**: Unfinished fence/math → `StreamingMarkdown` tail with incremental highlighter.
-- **Final**: `setFinal(text)` → single `Markdown` for entire answer (restores fence highlighting).
+### 1.10 Mermaid Transformer (`mermaid.ts`)
 
-### 1.10 Mermaid Transformer (mermaid.ts)
-
-- **Trigger**: Top-level ```mermaid code blocks.
-- **Render**: `lovely-mermaid` → Unicode braille art.
-- **Constraints**: Max width = terminal width; warnings appended if diagram too wide.
-- **Streaming**: Disabled during streaming in `final`/`off` modes; enabled in `streaming` mode (verified by `test/mermaid.test.ts`).
+- Top-level ` ```mermaid ` blocks → `lovely-mermaid` Unicode braille art. Max width = terminal width; warnings appended if too wide. Disabled during streaming in `final`/`off` modes; enabled in `streaming` mode.
 
 ---
 
-## 2. COMPOSED FLOWS (Atomic ops combined)
+## 2. COMPOSED FLOWS
 
-### 2.1 Boot Sequence (ui.ts ~2288–2325)
+### 2.1 Boot Sequence (`ui.ts` ~2296–2336)
 
-1. **Create TUI**: `createInteractiveTui({tuiMode: "fullscreen", mouse: true})` → `TuiAltScreen`.
-2. **Component Tree**:
-   - `HeaderComponent` (whale logo + key hints)
-   - `Transcript` (chat history container)
-   - `QueueView` (queued follow-ups)
-   - `PromptEditor` (input + autocomplete)
-   - `StatusIndicatorContainer` (working/retry/compaction/idle)
-   - `ProgramStatusReporter` (OSC 7501 shell integration)
-   - `FooterContainer` → lazy `FooterComponent` (needs Runtime)
-   - Extension widget containers (above/below editor)
-3. **ThemeController**: `applyFromSettings()` → DA1 query (100ms) → auto-sync light/dark.
-4. **Keybindings**: `getAppKeybindings().startWatching()` → hot-reload.
-5. **Console Capture**: `captureConsole(logFile)` → redirect `console.*` to file.
-6. **Start TUI**: `tui.start()` → enters alt screen, enables raw mode.
-7. **First Paint**: `tui.renderNow()` → header + empty transcript + editor visible.
-8. **After First Paint Hook** (async, blocks editor submit):
-   - `catalog.validateRoute(provider, model)`
-   - `packages.refresh()` (Cordis plugin resolution)
-   - `activateDeferredPlugins(ctx, rows)` — 33 deferred entries mounted in parallel, each with 5s timeout; full profile activates ~50+ rows total
-   - `waitForRuntimeServices(ctx)` — polls 14 services (agents, llm, commands, attachments, sessionProjections, authorization, credentials, userQuestions, sessionTitle, workspaceRegistry, jobs, fileReferences, skills, workingDirectory) — 15s deadline
-   - `pending.attach(await createRuntime(ctx, options, effort))` — **swaps throwing proxy for real Runtime**
-   - `starting = false` → editor enabled.
-9. **Wait DA1**: `themeController.waitForTerminalColors()` — terminal color response.
-10. **Initial Connect**: If `route.model` → `connect()`; else `pickModel()` / `pickProviderModel()`.
+1. Create TUI: `createInteractiveTui({tuiMode: "fullscreen", mouse: true})` → `TuiAltScreen`.
+2. Component tree: Header, Transcript, QueueView, PromptEditor, StatusIndicatorContainer, ProgramStatusReporter, FooterContainer (lazy), extension widget containers.
+3. ThemeController `applyFromSettings()` → DA1 query (100ms) → auto-sync.
+4. Keybindings `startWatching()` (hot-reload).
+5. Console capture → log file.
+6. `tui.start()` → alt screen.
+7. First paint `tui.renderNow()`.
+8. After-first-paint (async, blocks submit): catalog validate, packages refresh, `activateDeferredPlugins` (33 entries, 5s each, ~50+ rows total), `waitForRuntimeServices` (14 services, 15s), `pending.attach(createRuntime())` → proxy swap, `starting = false`.
+9. `waitForTerminalColors()` (DA1).
+10. Initial connect (`connect()` or `pickModel()`).
 
-**Critical UX Gap**: Steps 8 takes 2–5s. Editor disabled, **no progress indicator** (though `statusContainer.show("working", { message: "Loading plugins…" })` is shown). User sees UI but cannot type.
+Editor disabled during step 8; status shows "Loading plugins x/y".
 
-### 2.2 Session Connect (`connect()` — ui.ts ~737–827)
+### 2.2 Session Connect (`connect()`, `ui.ts` ~737–827)
 
-1. `runtime.open(route, callbacks)`:
-   - Resume? → `agents.resume({resumeSessionId, agentOptions})`
-   - New? → `agents.create({sessionId, meta, agentOptions})`
-2. `persistSelection()` → save `{provider, model, effort}` to `$DSH_HOME/lazydsh-model.json`.
-3. `runtime.cd(requestedDirectory)` → switch working dir.
-4. `runtime.commands()` → build `commandMenu()` for autocomplete.
-5. `setAutocomplete()` → new `Autocomplete(commands, cwd, runtime.references)`.
-6. `toolLog.entries.clear()` + `clearQueue()`.
-7. `transcript.clear()` (unless `keepTranscript`).
-8. **History Replay** (sync, blocking):
-   - `runtime.history()` → all `SessionEvent[]`
-   - `historyRows(events, sessionId)` → `HistoryRow[]`:
-     - User messages → `UserMessageComponent`
-     - Assistant → `AssistantMessageComponent` (reasoning folded in)
-     - Tool calls → `ToolRow` (via `ToolLog.record()`)
-     - Commands → `Notification`
-     - Turn metrics → `Text(dim)`
-   - `transcript.addChild()` for each row.
-   - `scroll.scrollToEnd()`.
-9. `probeCredentialSource(provider)` → if env var → notify once.
+1. `runtime.open(route, callbacks)` → resume or create session.
+2. `persistSelection()` → `$DSH_HOME/lazydsh-model.json`.
+3. `runtime.cd(requestedDirectory)`.
+4. `runtime.commands()` → `commandMenu()` for autocomplete.
+5. `setAutocomplete()`.
+6. Clear toolLog + queue.
+7. `transcript.clear()` unless `keepTranscript`.
+8. History replay (sync): `runtime.history()` → `historyRows()` → components → `scroll.scrollToEnd()`.
+9. `probeCredentialSource(provider)`.
 
-**Performance Risk**: `historyRows()` creates **one component per user-facing event**. A session with 10k raw events may produce ~1-2k components = lag/OOM risk. History is virtualized to max 500 rows (added in §8.2).
+History virtualized to max 500 rows (`maxHistoryRows`).
 
-### 2.3 Input Submission (`editor.onSubmit` — ui.ts ~1186–1851)
+### 2.3 Input Submission (`editor.onSubmit`, `ui.ts` ~1186–1859)
 
-#### Branch A: Bash Mode (`!cmd` / `!!cmd`)
+- **Bash mode** (`!cmd`/`!!cmd`): `parseBashMode` → `runBash` → `runtime.shell()` → `BashExecutionComponent` (streaming output, exit code, truncation 10k/1MB). `bashContextBlock` prepends to next prompt (`!`) or drops (`!!`).
+- **Queue follow-up** (Alt+Enter): `enqueue()` → `QueuedMessage` in `QueueView`; `drainQueue()` after turn ends.
+- **Slash commands**: ~30 commands (clear, quit, bug, share, changelog, debug, copy, name, hotkeys, clone, settings, model, new, login/logout, resume/cd/permission, archive/restore/pin/unpin, ps/stop, session, status, file, dsh, fork, rename, effort).
+- **Normal prompt**: credential check → `agent.followup(createUserMessage)` → listeners (session/event, assistant-stream, request-error) → `wait()` → `RunResult`.
 
-- `parseBashMode(text)` → `{command, prefix, excludeFromContext}`.
-- `runBash(intent)` → `runtime.shell(command, {signal})` → `ShellExecutor` (DSH sandbox).
-- `BashExecutionComponent` streams stdout/stderr, shows exit code, truncation (10k lines / 1MB).
-- `bashContextBlock(intent, result)` → prepend to next prompt (`!cmd`) or drop (`!!cmd`); the card renders the output either way.
+### 2.4 Streaming Response Loop (`ui.ts` ~1629–1851)
 
-#### Branch B: Queue Follow-up (`Alt+Enter`)
+1. `ensureLiveAssistant()` → `AssistantMessageComponent` (streaming).
+2. `renderLive(true)` per frame.
+3. Handlers: `assistant.reasoning` → `liveReasoning`; `assistant.delta` → `liveText`; session events (llm/retry, compaction/*, compaction/summary); tool_execution_start/update/end → ToolRow; finish → `renderLive(false, stopReason)`.
 
-- `enqueue(text)` → `QueuedMessage` in `QueueView` + history.
-- `drainQueue()` called after each turn ends → `editor.onSubmit(queuedText)`.
+### 2.5 Authentication Flow
 
-#### Branch C: Slash Commands (~16 unique)
-
-| Command                               | Flow                                                               |
-| ------------------------------------- | ------------------------------------------------------------------ |
-| `/clear`                              | `startNewConversation(true)` → clear transcript, new session       |
-| `/quit`                               | `stop()` → `runtime.close()` → shutdown                            |
-| `/bug`                                | `reportBug()` → GitHub issue URL with context                      |
-| `/share`                              | `generateShareLink()` → placeholder URL                            |
-| `/changelog`                          | `showChangelog()` → `ChangelogComponent` overlay                   |
-| `/debug`                              | Full TUI render dump to console                                    |
-| `/copy`                               | `copyLastMessage()` → clipboard                                    |
-| `/name`                               | `renameSession()` → prompt → `runtime.renameSession()`             |
-| `/hotkeys`                            | Static help text                                                   |
-| `/clone`                              | `forkSession(lastTurn)` → new session → `connect()`                |
-| `/settings`                           | `SettingsSelectorComponent` overlay (categories, toggles, selects) |
-| `/model`                              | `pickModel()` → `ModelSelectorComponent`                           |
-| `/new`                                | `startNewConversation(false)` → keep transcript                    |
-| `/login` `/logout`                    | `signIn()` / `signOut()` → **see Auth Flow (2.5)**                 |
-| `/resume` `/cd` `/permission`         | `runtime.choices(kind)` → `SearchPicker`                           |
-| `/archive` `/restore` `/pin` `/unpin` | `SessionSelector` → `runtime.manageSession()`                      |
-| `/ps` `/stop`                         | Job picker → `runtime.job(id, stop)`                               |
-| `/session`                            | Show session ID                                                    |
-| `/effort`                             | `ThinkingSelectorComponent` → `runtime.run("/effort " + level)`    |
-| `/status`                             | `StatusPanel` → `runtime.stats(connect=true)` (blocking)           |
-| `/file`                               | `runtime.attach(path)` → pending attachment                        |
-| `/dsh`                                | Native DSH command passthrough                                     |
-
-#### Branch D: Normal Prompt → `runtime.run()`
-
-1. `bashContext` (from previous `!cmd`) + user text → single prompt.
-2. `agent.followup(createUserMessage(...))`.
-3. Register listeners:
-   - `session/event` → events + tool events → `onEvent` callback
-   - `agent/assistant-stream` → `assistant.delta` / `assistant.reasoning`
-   - `agent/request-error` → auto-reauth on 401/403
-4. `wait()` → `agent.whenIdle()` + subagent tree wait.
-5. Build `RunResult` from events:
-   - `finalResponse` = last assistant message text (or command output)
-   - `finishReason` = completed / error / aborted
-   - `events` = all session events this turn.
-
----
-
-### 2.4 Streaming Response Loop (ui.ts ~1629–1851)
-
-1. `ensureLiveAssistant()` → create `AssistantMessageComponent` (streaming mode).
-2. `renderLive(true)` → per-frame render.
-3. **Event Handlers**:
-   - `assistant.reasoning` → `liveReasoning += text` → `renderLive(true)`
-   - `assistant.delta` → `liveText += text` → `renderLive(true)`
-   - `session.event`:
-     - `llm/retry` → `statusContainer.show("retry", {count, maxAttempts, delayMs})`
-     - `compaction/start` → `statusContainer.show("compaction", {reason})`
-     - `compaction/end` → `statusContainer.show("working")`
-     - `compaction/summary` → `CompactionSummaryMessageComponent`
-   - `tool_execution_start` → `toolLog.record()` → `ToolRow` (pending, expandable)
-   - `tool_execution_update` → `row.updateArgs()` / `row.updateResult()` (live streaming)
-   - `tool_execution_end` → `toolLog.finish()` → `ToolRow` (result/diff)
-   - `finish` → `renderLive(false, stopReason)` → settle component, clear `liveAssistant`.
-
----
-
-### 2.5 Authentication Flow (3 Entry Points)
-
-#### Entry 1: CLI `lazydsh login [provider]`
-
-- `cli.ts` → `plugin.ts` → `command-runner.ts` → `cli-auth.ts` → `auth-flow.ts`
-- Runs **without a TUI**: a terminal `AuthHost` (`cli-auth.ts`) turns transcript
-  notices into stdout lines and the dialogs into stdin prompts (numbered
-  select, masked secret) — the same `authenticateProvider()` flow the TUI uses.
-
-#### Entry 2: TUI `/login [provider]`
-
-- `signIn(provider?)` → if no provider: `buildLoginProviderOptions()` → queries `authorization.list()` for methods.
-- `OAuthSelectorComponent` overlay (fuzzy search, auth-type tabs, status badges).
-- User picks `(providerId, authType)` → `startProviderLogin()`.
-- `runtime.authenticate({provider, onAuth: callbacks.onAuth})`.
-
-#### Entry 3: Auto-Reauth (during `runtime.run`)
-
-- `runtime.authenticate({reauthenticate: true})` → skips "already logged in" check.
-- Same `callbacks.onAuth` → `LoginDialog`.
-
-#### Shared: `callbacks.onAuth` (ui.ts ~607–658)
-
-| Method                   | UI Component                                                                          |
-| ------------------------ | ------------------------------------------------------------------------------------- |
-| `lazydsh/auth-notice`    | `LoginDialog(kind: "notice")` — spinner only, no progress/buttons (see Bug inventory) |
-| `secret` (API key)       | `LoginDialog(kind: "secret")` — masked `Input`                                        |
-| `select` (method picker) | `LoginDialog(kind: "select")` — `SearchPicker`                                        |
-
-#### `runtime.authenticate()` (runtime.ts ~834–974)
-
-1. `credentialSource(provider)` → if not `none`/`unknown` & not `reauthenticate` → return "Already logged in".
-2. Loop:
-   - `deepseek-official` → prompt `secret` (API key) → `ctx.credentials.set()`.
-   - Others → `ctx.authorization.list().find(llm-pi-ai/${provider})` → if multiple methods → prompt `select` → `ctx.authorization.begin({interaction: {prompt, notify}})`.
-3. `notify` → `onAuth("lazydsh/auth-notice", {url, code})` → `LoginDialog(notice)`.
-4. `prompt` → `onAuth("lazydsh/auth-prompt", {kind, message, options?})` → `LoginDialog(secret/select)`.
-5. **Silent Retry**: User cancels `select` → `goingBack = true` → loop restarts silently, no user feedback (fixed in §8.11 per TODO.md).
-
----
+- **CLI** `lazydsh login [provider]`: `cli-auth.ts` terminal `AuthHost` (stdin prompts) reuses `auth-flow.ts`.
+- **TUI** `/login [provider]`: `signIn()` → `buildLoginProviderOptions()` → `OAuthSelectorComponent` → `runtime.authenticate()`.
+- **Auto-reauth**: during `runtime.run()` on 401/403 → `authenticate({reauthenticate: true})`.
+- `callbacks.onAuth`: `lazydsh/auth-notice` → `LoginDialog(notice)`; `secret` → masked Input; `select` → SearchPicker.
+- `runtime.authenticate()`: credentialSource check → deepseek-official API key prompt or authorization flow (method select → begin). Going back on cancel restarts the attempt.
 
 ### 2.6 Tool Execution Rendering
 
-1. **Log** (`tools.ts:ToolLog`): `record(output)` → creates/updates `ToolRow` keyed by `[sessionId, callId]`.
-2. **Detail** (`detail.ts`): `toolDetails(args, result, meta, width)` → args (pretty JSON), result, diffs (intra-line).
-3. **Rich Card** (`bash-execution.ts:BashExecutionComponent`): used for Bash mode (`!cmd`/`!!cmd`), not wired into main transcript flow for regular tool calls.
-4. **Live Streaming**: `tool_execution_update` → `ToolRow.updateArgs()` / `updateResult()` (wired since §8.4).
-
----
+- `ToolLog` records/updates `ToolRow` keyed by `[sessionId, callId]`.
+- `detail.ts` renders args/result/diffs (one engine, replay-safe).
+- `BashExecutionComponent` used for bash mode only.
+- Live streaming wired via `tool_execution_update`.
 
 ### 2.7 Overlay Panel System
 
-- **Stack**: `overlayHandles: OverlayHandle[]` — LIFO.
-- **Push**: `showPanel(panel)` → `tui.showOverlay({anchor: "center", margin: 2, minWidth: 50, maxHeight: rows-8})` → push handle → `tui.setFocus(panel)` → `selecting = true`.
-- **Pop**: `dismissPanel(clearAll?)` → pop (or all) → `handle.hide()` → `selecting = overlayHandles.length > 0` → if false `tui.setFocus(editor)`.
-- **Panels** (12+): `LoginDialog`, `ApprovalPanel`, `QuestionPanel`, `OAuthSelectorComponent`, `ModelSelectorComponent`, `SessionSelector`, `ThemeSelectorComponent`, `ThinkingSelectorComponent`, `SettingsSelectorComponent`, `FirstTimeSetupComponent`, `ChangelogComponent`.
-- **Focus**: `panel.focused` setter → `tui.setFocus(panel)`.
-- **Input**: `panel.handleInput(keyData)` → pi-tui `matchesKey` → navigation, confirm, cancel.
-- **Height Budget**: `panelHeight()` → `terminal.rows - statusContainer.render().length` — dynamic on resize.
-
----
+- Stack `overlayHandles[]` (LIFO). Push: `showPanel()` → overlay + focus + `selecting=true`. Pop: `dismissPanel(clearAll?)`. Height budget `panelHeight()` dynamic. Panels: LoginDialog, ApprovalPanel, QuestionPanel, OAuthSelector, ModelSelector, SessionSelector, ThemeSelector, ThinkingSelector, SettingsSelector, FirstTimeSetup, Changelog, SearchPicker.
 
 ### 2.8 Session Management
 
-| Action                                                  | Flow                                                                                                                                              |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sessions()`                                            | `runtime.sessions()` → `SessionRecord[]` → `SessionSelector` (threaded tree, fuzzy search, scope toggle, sort toggle, named filter, path toggle). |
-| `forkSession(boundary)`                                 | `runtime.forkPoints()` → pick turn → `runtime.forkSession(boundary)` → new session → `connect(childId)`.                                          |
-| `renameSession(id, title)`                              | `runtime.renameSession(id, title)`.                                                                                                               |
-| `manageSession(id, archive \| restore \| pin \| unpin)` | `runtime.manageSession()` → workspace registry.                                                                                                   |
-| `resume`                                                | `selectSession()` → `SessionSelector` → optional `selectResumeDirectory()` → `connect(id, directory)`.                                            |
-
----
+- `sessions()` → `SessionRecord[]` → `SessionSelector` (threaded tree, fuzzy search, scope/sort/named/path toggles).
+- `forkSession(boundary)` → pick turn → new session → `connect()`.
+- `renameSession`, `manageSession` (archive/restore/pin/unpin).
+- `resume` → `selectSession()` → optional `selectResumeDirectory()` → `connect()`.
 
 ### 2.9 Model/Provider Cycling
 
-- `cycleModel(±1)` → `model-cycle.ts:nextProvider(authenticatedProviders, current, direction)` → `connect({provider, model})`.
-- `pickModel()` → `ModelSelectorComponent`:
-  - Scoped/All toggle (authenticated providers vs all catalog).
-  - Fuzzy search (`provider/model/name` + "default" badge).
-  - Current marker ✓, default badge.
-  - Live catalog refresh (15s timeout, shared coordinator).
-  - Save-as-default (Ctrl+S) → `saveModel()`.
-
----
+- `cycleModel(±1)` → `nextProvider(authenticated, current, direction)` → `connect()`.
+- `pickModel()` → `ModelSelectorComponent`: scoped/all toggle, fuzzy search, current/default markers, live refresh (15s, shared coordinator), save-as-default (Ctrl+S).
 
 ### 2.10 Status Indicators
 
-- `StatusIndicatorContainer.show(kind, options)`:
-  - `working` → `WorkingStatusIndicator` (spinner + message).
-  - `retry` → `RetryStatusIndicator` (countdown timer, attempt/max).
-  - `compaction` → `CompactionStatusIndicator` (reason: manual/overflow).
-  - `idle` → `IdleStatus` (message).
-- `ProgramStatusReporter` → OSC 7501 (idle/working/blocked/done/error) for shell integration.
-
----
+- `StatusIndicatorContainer.show(kind, options)`: working/retry/compaction/idle.
+- `ProgramStatusReporter` → OSC 7501 (idle/working/blocked/done/error).
 
 ### 2.11 Theme System
 
-- `ThemeController`:
-  - `applyFromSettings()` → resolve setting → `setTheme()` → `themeController.setAutoSync()` → `tui.setTerminalColorSchemeNotifications()`.
-  - DA1 query (100ms) → `terminalColors` → `Theme` regenerates `colors` getter.
-  - File watcher on `~/.config/lazydsh/themes/<name>.json` (100ms debounce) → hot reload.
-  - Terminal color scheme change → `setTerminalColorScheme(scheme)` → reapply if auto.
-- **Theme Proxy**: `theme` global proxy → every `theme.fg(token, text)` hits active `Theme` instance → instant update on switch.
-
----
+- `ThemeController`: apply setting → `setTheme()` → auto-sync → DA1 query (100ms) → `terminalColors` → theme regenerates `colors`. File watcher on custom themes (100ms debounce) → hot reload. Terminal scheme change → reapply if auto.
+- `theme` global proxy → instant update on switch.
 
 ### 2.12 Shutdown
 
-1. `stop()` → `closing = true` → `decision?.(null)` → `runtime.close()` → `finish()`.
-2. Signal handlers (SIGINT, SIGTERM) → `stop()`.
-3. `restoreConsole()` → restore `console.*`.
-4. `themeController.disableAutoSync()` → stop DA1, file watcher.
-5. `tui.stop({preserveScreen: true})` → exit alt screen.
-6. `continuationCommand(sessionId, resumeArgs)` → print `lazydsh resume <id> ...`.
+1. `stop()` → `closing=true` → `decision?.(null)` → `runtime.close()` → `finish()`.
+2. Signal handlers (SIGINT/SIGTERM) → `stop()`.
+3. `restoreConsole()`, `themeController.disableAutoSync()`, `tui.stop({preserveScreen: true})`, print continuation command.
 
-**Resource Leak Note**: `keybindings.dispose()` is never called (watcher stays active). `themeController.dispose()` is not called (only `disableAutoSync()`). `FooterDataProvider` has no `dispose()` method (git watcher stays active). See Bug #9, #10, #13.
-
----
+Note: `keybindings.dispose()` and `themeController.dispose()` are not called in the `finally` block (watchers stay active) — see status inventory.
 
 ### 2.13 Extensions
 
-- `ExtensionWidgetRegistry` → `register(widget)` / `getWidgets(position)`.
-- `createExtensionWidgetContainer(registry, "above"|"below")` → renders in layout.
-- `FooterDataProvider` → `setExtensionStatus(id, text)` / `getExtensionStatuses()` → footer line 3.
-
----
+- `ExtensionWidgetRegistry` → register/get by position. `FooterDataProvider` → extension statuses on footer line 3.
 
 ### 2.14 Bash Mode
 
-- `parseBashMode(text)` → `!cmd` / `!!cmd` → `{command, prefix, excludeFromContext}`.
-- `runBash()` → `runtime.shell()` → `ShellExecutor` (DSH sandbox policy applies).
-- `BashExecutionComponent` → streaming output, expandable, truncation (10k lines / 1MB).
-- `bashContextBlock()` → `!cmd` prepends `[! cmd — exit N]\noutput` to next prompt; `!!cmd` drops (its output still renders in the transcript card).
-
----
+- `parseBashMode(text)` → `!cmd`/`!!cmd`. `runBash()` → `runtime.shell()` (DSH sandbox). `BashExecutionComponent` (streaming, expandable, truncation). `bashContextBlock()` prepends (`!`) or drops (`!!`).
 
 ### 2.15 Clipboard / External Editor
 
-- `copyToClipboard(text)` → native clipboard / `pbcopy` / `clip` / `wl-copy` / `xclip`.
-- `editInExternalEditor({content, command})` → temp file → `$EDITOR`/`$VISUAL` (fallback `nano`/`notepad`) → read back → strip VT codes.
-
----
+- `copyToClipboard()` → native / pbcopy / clip / wl-copy / xclip.
+- `editInExternalEditor()` → temp file → `$EDITOR`/`$VISUAL` → read back, strip VT codes.
 
 ### 2.16 Autocomplete
 
-- `Autocomplete` extends `CombinedAutocompleteProvider` (pi-tui):
-  - Triggers: `@` / `/`
-  - `@` → `runtime.references(query, signal)` → files, skills, subagents.
-  - `/` → `commandMenu()` slash commands.
-  - File paths → pi-tui built-in.
-
----
+- `Autocomplete` extends `CombinedAutocompleteProvider`: `@` → `runtime.references()` (files, skills, subagents); `/` → `commandMenu()`; file paths → pi-tui built-in.
 
 ### 2.17 History Replay
 
-- `historyRows(events, sessionId)` → `HistoryRow[]`:
-  - `UserMessageComponent`
-  - `AssistantMessageComponent` (reasoning folded)
-  - `ToolRow` (same instances as live — `ToolLog` replay)
-  - `Notification` (commands, notices)
-  - `Text(dim)` (turn metrics)
-- `continuationCommand()` on exit → prints `lazydsh resume <id> ...`.
-
----
+- `historyRows(events, sessionId)` → UserMessage, AssistantMessage (reasoning folded), ToolRow (replay), Notification, Text(dim metrics). `continuationCommand()` on exit.
 
 ### 2.18 Footer
 
-- **Line 1**: `pwd (git branch) • session name` — `FooterDataProvider` (git watcher 5s poll).
-- **Line 2**: `↑tokens ↓tokens R/W CH% $cost context% model thinking` — computed from `SessionStats` + `FooterDataProvider`.
-- **Line 3**: Extension statuses (sorted by id).
-- **Git Branch**: `spawnSync("git", ["branch", "--show-current"], {cwd, timeout: 1s})` every 5s.
+- Line 1: `pwd (git branch) • session name` (git watcher, 5s).
+- Line 2: `↑↓tokens R/W CH% $cost context% model thinking`.
+- Line 3: extension statuses (sorted).
 
----
+### 2.19 Code Highlighting
 
-### 2.19 Mermaid / Code Highlighting
-
-- **Mermaid**: `createMermaidMarkdownTransformer()` → `lovely-mermaid` → Unicode braille. Disabled during streaming in `final`/`off` modes; enabled in `streaming` mode. Max width = terminal width.
-- **Incremental Highlight**: `IncrementalHighlighter` (per-language state machine, rate-limited).
-- **Highlight.js**: Lazy language load (77 aliases), `highlightAuto` for unknown.
-
----
+- Mermaid: `createMermaidMarkdownTransformer()` → lovely-mermaid → braille. Disabled during streaming in final/off; enabled in streaming.
+- Incremental: `IncrementalHighlighter` (per-language, rate-limited).
+- Highlight.js: lazy language load (77 aliases), `highlightAuto` fallback.
 
 ### 2.20 Settings
 
-- `SettingsSelectorComponent` (categories: general/appearance/keybindings/extensions/about).
-- `UiSettings` persisted to `~/.config/lazydsh/settings.json` (`confirmExit`, `mermaidMode`).
-- Theme row → opens real `ThemeSelectorComponent` (live preview).
+- `SettingsSelectorComponent` (general/appearance/keybindings/extensions/about). `UiSettings` persisted to `~/.config/lazydsh/settings.json` (`confirmExit`, `mermaidMode`). Theme row → opens real `ThemeSelectorComponent`.
 
 ---
 
-## 3. SYSTEM-LEVEL LOOPS (Largest cycles)
+## 3. SYSTEM-LEVEL LOOPS
 
 ### 3.1 Main Event Loop
 
 ```
 tui.start() → raw mode + alt screen
-  └─ input → keybindings → editor.onSubmit / panel.handleInput
-       └─ editor.onSubmit → runtime.run() → streaming loop → renderLive()
-            └─ session.event / assistant.delta / tool events → UI updates
-       └─ panel.handleInput → overlay navigation → confirm/cancel
-  └─ tui.requestRender() → layout → component.render(width) → ANSI → stdout
-  └─ SIGINT/SIGTERM → stop() → shutdown
+  input → keybindings → editor.onSubmit / panel.handleInput
+    editor.onSubmit → runtime.run() → streaming loop → renderLive()
+      session.event / assistant.delta / tool events → UI updates
+    panel.handleInput → overlay navigation → confirm/cancel
+  tui.requestRender() → layout → component.render(width) → ANSI → stdout
+  SIGINT/SIGTERM → stop() → shutdown
 ```
 
-### 3.2 Deferred Plugin Activation (Once per session)
+### 3.2 Deferred Plugin Activation (once per session)
 
 ```
 afterFirstPaint:
   catalog.validateRoute()
   packages.refresh()
-  activateDeferredPlugins(33 entries from DEFERRED_ENTRY_IDS) → parallel mount, 5s timeout each; full DSH-base profile ~50+ rows total
+  activateDeferredPlugins(33 entries) → parallel, 5s timeout each (~50+ rows total)
   waitForRuntimeServices(14 services, 15s)
   pending.attach(createRuntime()) → proxy swap
 ```
 
-### 3.3 Auto-Reauth Loop (Per failed request)
+### 3.3 Auto-Reauth Loop (per failed request)
 
 ```
 runtime.run() → agent/request-error (401/403)
-  → runtime.authenticate({reauthenticate: true})
-       → callbacks.onAuth → LoginDialog
-       → success → retry original request
+  → runtime.authenticate({reauthenticate: true}) → callbacks.onAuth → LoginDialog
+  → success → retry original request
 ```
 
-### 3.4 Compaction Loop (Context pressure)
+### 3.4 Compaction Loop
 
 ```
 session.event: compaction/start → statusContainer.show("compaction")
-  → DSH summarizes history
-  → session.event: compaction/summary → CompactionSummaryMessageComponent
-  → session.event: compaction/end → statusContainer.show("working")
+  → DSH summarizes → compaction/summary → CompactionSummaryMessageComponent
+  → compaction/end → statusContainer.show("working")
 ```
 
 ### 3.5 Retry Loop (LLM failures)
 
 ```
 session.event: llm/retry → statusContainer.show("retry", {count, maxAttempts, delayMs})
-  → wait delayMs
-  → session.event: llm/retry-started → statusContainer.show("working")
-  → repeat up to maxAttempts
+  → wait → llm/retry-started → statusContainer.show("working") → repeat up to maxAttempts
 ```
 
 ### 3.6 Git Branch Watcher (Footer)
 
 ```
-setInterval(5000):
-  spawnSync("git", ["branch", "--show-current"], {cwd})
-  → if changed → branchChangeCallbacks.forEach(cb()) → tui.requestRender()
+setInterval(5000): spawnSync git branch --show-current
+  → if changed → branchChangeCallbacks → tui.requestRender()
 ```
 
 ### 3.7 Theme File Watcher
 
 ```
-watch(customThemesDir):
-  on change <name>.json → 100ms debounce → setTheme(name) → tui.invalidate() + requestRender()
+watch(customThemesDir): on change <name>.json → 100ms debounce → setTheme → invalidate + requestRender
 ```
 
-### 3.8 Terminal Color Scheme Sync (Auto Theme)
+### 3.8 Terminal Color Scheme Sync
 
 ```
-tui.onTerminalColorSchemeChange(scheme):
-  setTerminalColorScheme(scheme)
-  if appearance changed → reapplyTheme() → DA1 query → tui.invalidate() + requestRender()
+tui.onTerminalColorSchemeChange(scheme): setTerminalColorScheme → if appearance changed → reapply → DA1 query → invalidate + requestRender
 ```
 
 ---
 
-## 4. UX PROBLEMS INVENTORY (Prioritized)
+## 4. STATUS INVENTORY
 
-### Implemented (code exists — verified against source)
+### Implemented
 
-- Boot progress indicator during deferred plugin activation (statusContainer "Loading plugins x/y")
-- History virtualization (max 500 rows + omitted marker)
-- Login: fake OAuth options fixed (buildLoginProviderOptions queries authorization flow methods)
-- Tool streaming (`tool_execution_update` wired → ToolRow.updateArgs/updateResult)
-- Footer git watcher (FSWatcher on .git/HEAD)
-- Theme DA1 async (non-blocking first paint, `void waitForTerminalColors()`)
-- Ctrl+C simplified (clear/interrupt/exit, 3 states)
-- Auth silent retry fixed (goingBack guard throws on cancel)
-- Nested panels global ESC (dismissPanel(true) on ESC when selecting)
-- Mermaid streaming enabled (mode "streaming")
-- Approval "always allow" (session-scoped grants via `runtime/approvals.ts`)
+- Boot progress indicator during deferred plugin activation.
+- History virtualization (max 500 rows + omitted marker).
+- Login: provider options from authorization flow methods.
+- Tool streaming (`tool_execution_update` wired).
+- Footer git watcher (FSWatcher on .git/HEAD).
+- Theme DA1 async (non-blocking first paint).
+- Ctrl+C simplified (clear/interrupt/exit).
+- Auth silent retry fixed.
+- Nested panels global ESC.
+- Mermaid streaming enabled.
+- Approval "always allow" (session-scoped grants).
 
-### Remaining (not implemented in code)
+### Remaining (not implemented)
 
-| Priority | #   | Flow                   | Problem                                     | Impact                              |
-| -------- | --- | ---------------------- | ------------------------------------------- | ----------------------------------- |
-| P2       | 1   | BashExecutionComponent | Only used for bash mode, not for tool calls | Inconsistent tool rendering         |
-| P2       | 2   | ModelSelector          | No "test connection" button                 | Can't verify route before selecting |
-| P3       | 3   | History                | No search/filter in transcript              | Hard to find old content            |
-| P3       | 4   | Footer                 | No cost breakdown per model                 | Unclear spending                    |
-| P3       | 5   | SessionSelector        | No "delete multiple"                        | Tedious session cleanup             |
-| P3       | 6   | Theme                  | No custom theme creator UI                  | Users must hand-edit JSON           |
+| Priority | Flow                   | Problem                                 | Impact                              |
+| -------- | ---------------------- | --------------------------------------- | ----------------------------------- |
+| P2       | BashExecutionComponent | Only used for bash mode, not tool calls | Inconsistent tool rendering         |
+| P2       | ModelSelector          | No "test connection" button             | Can't verify route before selecting |
+| P3       | History                | No search/filter in transcript          | Hard to find old content            |
+| P3       | Footer                 | No cost breakdown per model             | Unclear spending                    |
+| P3       | SessionSelector        | No multi-delete                         | Tedious cleanup                     |
+| P3       | Theme                  | No custom theme creator UI              | Hand-edit JSON                      |
+
+### Resource leaks (documented)
+
+- `keybindings.dispose()` never called in `finally` (watcher stays active).
+- `themeController.dispose()` not called (only `disableAutoSync()`; file watcher stays active).
+- `FooterDataProvider` has no `dispose()` (git watcher stays active).
 
 ---
 
 ## 5. ARCHITECTURAL OBSERVATIONS
 
-### 5.1 Clean Separation (Good)
+### Clean separation (good)
 
-- **Runtime ↔ UI**: Only via `interfaces.ts` (types) + `runtime-events.ts` (events). No circular deps.
-- **Callbacks**: UI owns all pixels; Runtime only sends structured events.
-- **Theme**: Token-based, proxy — instant global updates.
+- Runtime ↔ UI only via `interfaces.ts` (types) + `runtime-events.ts` (events). No circular deps.
+- Callbacks: UI owns pixels; Runtime sends structured events.
+- Theme: token-based proxy — instant global updates.
 
-### 5.2 Technical Debt (Needs refactor)
+### Technical debt
 
-- **Tool Rendering**: `bash-execution.ts:BashExecutionComponent` used for Bash mode only; `tool_execution_update` already wired to ToolRow.
-- **History**: Virtualized (max 500 rows). Search/filter still missing.
-- **Boot**: Progress indicator implemented.
-- **Dead Code**: `src/types.ts` (never imported), `src/interactive-mode/diff.ts` (never imported by source or test), `src/interactive-mode/streaming.ts` (only test import), `src/interactive-mode/theme/system-theme.ts` exports unused `Theme` class.
-- **Resource Leaks**: `keybindings.dispose()` never called; `themeController.dispose()` not called (only `disableAutoSync()`); `FooterDataProvider` has no `dispose()` method (git watcher stays active).
+- `ui.ts` (~2336 lines) and `runtime.ts` (~1473 lines) are orchestration hotspots.
+- `Theme` class duplicated between `theme/theme.ts` and `theme/system-theme.ts` (system-theme version unused by source).
+- `sanitizeStatusText` duplicated in `footer.ts` and `footer-data-provider.ts`.
+- `streaming.ts` only imported by test, not source.
+- `session-share.ts` uses placeholder URL.
 
-### 5.3 Performance Risks
+### Performance risks
 
 - `historyRows()` O(n) components — linear memory/time.
-- `Footer` git `spawnSync` every 5s — blocks Node event loop briefly.
-- `StreamingMarkdown` tail re-renders on every delta — fine for small, heavy for large code blocks.
+- Footer git `spawnSync` every 5s — blocks event loop briefly.
+- `StreamingMarkdown` tail re-renders on every delta — heavy for large code blocks.
 
 ---
 
-## 6. BUG INVENTORY (Full line-by-line source scan, 2026-11-24)
+## 6. BUG INVENTORY (corrected, 2026-11-24)
 
-### Critical (must fix before release)
+### Critical
 
-| #   | File:Line                                     | Issue                                                                                                                                                                                            | Fix                                                                                      |
-| --- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| 1   | `src/types.ts`                                | Dead code — duplicates `interfaces.ts`, never imported anywhere in `src/` or `test/`                                                                                                             | Remove file or make `interfaces.ts` the single contract                                  |
-| 2   | `src/runtime/runtime.ts:136-164`              | `Runtime` constructor monkey-patches `globalThis.fetch` globally with `__ofmFetchWrapped` flag. Affects all `fetch` calls in the process; not reversible                                         | Move to a module-level function called once at boot, or pass a custom fetch per-provider |
-| 3   | `src/providers/ofm-provider/index.ts:134-143` | `fs.appendFileSync("/tmp/ofm-debug.log", ...)` on every `session_start`/`before_agent_start`, including `event.systemPrompt.length`. Blocks event loop, leaks prompt-size info, no on/off switch | Delete the three `appendFileSync` blocks                                                 |
-| 4   | `tsconfig.json:14` + `vite.config.ts:13`      | `src/providers/**` excluded from type-check and lint. ~4,000 lines of ofm-provider code ship unverified                                                                                          | Remove exclusion; fix resulting type errors                                              |
-| 5   | `src/runtime/runtime.ts:992`                  | `this.ctx.authorization.cancel(key)` called without `await`. Sibling calls (`unset`, `deleteRecord`) are awaited. If `cancel()` returns a Promise, race condition                                | Verify if `cancel()` is async; add `await` if so                                         |
-
-### High
-
-| #   | File:Line                                     | Issue                                                                           | Fix                                                       |
-| --- | --------------------------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| 6   | `src/interactive-mode/keybindings.ts:264-268` | `dispose()` may call `unwatchFile` on a path never watched if `watchFile` threw | Guard with a flag tracking whether watch actually started |
+| #   | File:Line                        | Issue                                                                                                                                    | Fix                                                                              |
+| --- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| 1   | `src/runtime/runtime.ts:136-164` | `Runtime` constructor monkey-patches `globalThis.fetch` globally with `__ofmFetchWrapped` flag; not reversible, affects all fetch calls. | Move wrapper to module-level function called once at boot, or scope per-runtime. |
+| 2   | `src/runtime/runtime.ts:992`     | `this.ctx.authorization.cancel(key)` called without `await` in `logout()`; siblings are awaited.                                         | Verify if `cancel()` returns a Promise; add `await` if so.                       |
 
 ### Medium
 
-| #   | File:Line                                                          | Issue                                                                           | Fix                                                |
-| --- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------- | -------------------------------------------------- |
-| 7   | `src/interactive-mode/ui.ts:87`                                    | Hardcoded `\x1b[1m` (bold) instead of theme token                               | Use `theme.fg()` or `theme.bold()`                 |
-| 8   | `src/interactive-mode/highlight.ts:154`                            | Hardcoded `\x1b[38;2;155;175;255m` (string color)                               | Use `theme.fg("syntaxString", ...)`                |
-| 9   | `src/interactive-mode/presentation.ts:61`                          | Hardcoded `\x1b[38;2;160;166;172m` (gray)                                       | Use `theme.fg("muted", ...)`                       |
-| 10  | `src/interactive-mode/presentation.ts:70`                          | Hardcoded `\x1b[38;2;60;63;68m`                                                 | Use `theme.fg("borderMuted", ...)`                 |
-| 11  | `src/interactive-mode/presentation.ts:153`                         | Hardcoded `\x1b[38;2;77;107;254m` (accent)                                      | Use `theme.fg("accent", ...)`                      |
-| 12  | `src/interactive-mode/components/custom-message.ts:120`            | Hardcoded `\x1b[1m[...]\x1b[22m` (bold)                                         | Use `theme.bold()`                                 |
-| 13  | `src/interactive-mode/components/branch-summary-message.ts:63`     | Hardcoded `\x1b[1m[branch]\x1b[22m`                                             | Use `theme.bold()`                                 |
-| 14  | `src/interactive-mode/components/compaction-summary-message.ts:65` | Hardcoded `\x1b[1m[compaction]\x1b[22m`                                         | Use `theme.bold()`                                 |
-| 15  | `src/interactive-mode/keybindings.ts:38,69`                        | `ctrl+p` bound to both `app.model.cycleForward` and `app.session.togglePath`    | Reassign one binding                               |
-| 16  | `src/interactive-mode/keybindings.ts:37,70`                        | `ctrl+s` bound to both `app.thinking.save` and `app.session.toggleSort`         | Reassign one binding                               |
-| 17  | `src/interactive-mode/footer-data-provider.ts:73`                  | `spawnSync("git", ...)` blocks event loop on every 5s poll                      | Replace with async `spawn` or move off render path |
-| 18  | `src/interactive-mode/external-editor.ts:42`                       | Editor command split on spaces without shell quoting                            | Use shell-quote parser or `shell: true`            |
-| 19  | `src/interactive-mode/components/user-message-selector.ts:169`     | `setTimeout(() => onCancel(), 100)` timer ID not stored; may fire after unmount | Store timer ID and `clearTimeout` in `dispose()`   |
+| #   | File:Line                                                      | Issue                                                                                               | Fix                                               |
+| --- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| 3   | `src/interactive-mode/keybindings.ts`                          | `ctrl+s` bound to three actions (`app.thinking.save`, `app.session.toggleSort`, `app.models.save`). | Reassign conflicting bindings.                    |
+| 4   | `src/interactive-mode/footer-data-provider.ts:73`              | `spawnSync("git", ...)` blocks event loop on every footer render (5s poll).                         | Replace with async spawn or move off render path. |
+| 5   | `src/interactive-mode/external-editor.ts:42`                   | Editor command split on spaces without shell quoting.                                               | Use `shell: true` or proper shell-quote parser.   |
+| 6   | `src/interactive-mode/components/user-message-selector.ts:169` | `setTimeout(() => onCancel(), 100)` timer ID not stored; may fire after unmount.                    | Store timer ID and `clearTimeout` in `dispose()`. |
 
 ### Low
 
-| #   | File:Line                                                                    | Issue                                                                         | Fix                      |
-| --- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------ |
-| 20  | `src/interactive-mode/ui.ts:1826`                                            | `runtime.history().catch(() => [])` swallows errors silently                  | Log or surface the error |
-| 21  | `src/providers/models/index.ts:20`                                           | Vietnamese comments in English codebase (`// ← ĐÚNG TÊN`)                     | Translate or remove      |
-| 22  | `vite.config.ts:11`                                                          | Provider tests (`src/providers/ofm-provider/test/*`) excluded from `npm test` | Add to `test.include`    |
-| 23  | `src/interactive-mode/components/user-message-selector.ts:169` (same as #19) | Timer leak — already listed                                                   | —                        |
+| #   | File:Line                                     | Issue                                                                            | Fix                       |
+| --- | --------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------- |
+| 7   | `src/interactive-mode/ui.ts:1826`             | `runtime.history().catch(() => [])` swallows errors silently.                    | Log or surface the error. |
+| 8   | `src/interactive-mode/keybindings.ts:264-268` | `dispose()` may call `unwatchFile` on a path never watched if `watchFile` threw. | Guard with a flag.        |
 
-### Resource Leaks (not previously documented)
+### Removed (stale claims from prior audit)
 
-| #   | File:Line                                      | Issue                                                                                                             | Fix                                                     |
-| --- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| 24  | `src/interactive-mode/ui.ts:1855`              | `keybindings.startWatching()` called but `keybindings.dispose()` never called in `finally` block                  | Add `keybindings.dispose()` to `finally`                |
-| 25  | `src/interactive-mode/ui.ts:2316`              | `themeController.disableAutoSync()` called but `themeController.dispose()` not called (file watcher stays active) | Add `themeController.dispose()` to `finally`            |
-| 26  | `src/interactive-mode/footer-data-provider.ts` | `FooterDataProvider` has `branchWatcher` (FSWatcher) but no `dispose()` method                                    | Add `dispose()` method and call it in `ui.ts` `finally` |
+- `src/types.ts` dead duplicate — file does not exist; contract lives in `interfaces.ts`.
+- `src/providers/ofm-provider/index.ts` debug `appendFileSync` — path does not exist (provider is under `src/runtime/custom-providers/ofm-provider/`); no such debug code present.
+- `src/providers/models/index.ts` Vietnamese comments — path does not exist.
+- `src/providers/**` tsconfig/vite exclusion — paths do not exist; `vite.config.ts` only ignores `src/providers/ofm-provider/test/**` (nonexistent).
+- Hardcoded ANSI escape claims — the cited lines (`ui.ts:87`, `highlight.ts:154`, `presentation.ts:61/70/153`, `custom-message.ts:120`, `branch-summary-message.ts:63`, `compaction-summary-message.ts:65`) do not contain hardcoded ANSI; they use theme helpers.
+- `streaming.ts` "dead code" is accurate (only test import) and retained in §1.9.
 
 ---
 
-## 7. FILE MAP (Key logic locations)
+## 7. FILE MAP
 
-| Flow         | Primary Files                                                                                                                                                      |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Boot         | `ui.ts` (~2288–2325), `runtime/dsh-boot.ts`, `runtime/deferred.ts`                                                                                                 |
-| Connect      | `ui.ts` (~737–827), `runtime/runtime.ts` (open)                                                                                                                    |
-| Input/Submit | `ui.ts` (1186–1851)                                                                                                                                                |
-| Streaming    | `ui.ts` (1629–1851), `stream-highlight.ts` (note: `streaming.ts` is dead code, not used in source)                                                                 |
-| Auth         | `ui.ts` (607–658), `auth-flow.ts`, `runtime/runtime.ts` (834–974), `components/login-dialog.ts`, `components/oauth-selector.ts`, `cli-auth.ts` (CLI terminal host) |
-| Tools        | `tools.ts`, `detail.ts`, `bash-execution.ts`                                                                                                                       |
-| Panels       | `ui.ts` (871–925), `components/*.ts`                                                                                                                               |
-| Sessions     | `ui.ts` (2056–2111), `session-selector.ts`, `session-select.ts`                                                                                                    |
-| Models       | `ui.ts` (1031–1052), `model-selector.ts`, `model-cycle.ts`                                                                                                         |
-| Status       | `components/status-container.ts`, `components/status-indicator.ts`                                                                                                 |
-| Theme        | `theme/theme.ts`, `theme/theme-controller.ts`, `theme/system-theme.ts`                                                                                             |
-| Footer       | `footer.ts`, `footer-data-provider.ts`                                                                                                                             |
-| History      | `history.ts`, `tools.ts`                                                                                                                                           |
-| Bash         | `bash-mode.ts`, `bash-execution.ts`                                                                                                                                |
-| Settings     | `settings-selector.ts`, `settings-store.ts`                                                                                                                        |
-| Providers    | `runtime/catalog.ts`, `runtime/custom-providers/`, `providers/`, `providers/ofm-provider/`                                                                         |
+| Flow         | Primary Files                                                                                                                                  |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Boot         | `ui.ts` (~2296–2336), `runtime/dsh-boot.ts`, `runtime/deferred.ts`                                                                             |
+| Connect      | `ui.ts` (737–827), `runtime/runtime.ts` (open)                                                                                                 |
+| Input/Submit | `ui.ts` (1186–1859)                                                                                                                            |
+| Streaming    | `ui.ts` (1629–1851), `stream-highlight.ts`                                                                                                     |
+| Auth         | `ui.ts` (607–658), `auth-flow.ts`, `runtime/runtime.ts` (834–974), `components/login-dialog.ts`, `components/oauth-selector.ts`, `cli-auth.ts` |
+| Tools        | `tools.ts`, `detail.ts`, `bash-execution.ts`                                                                                                   |
+| Panels       | `ui.ts` (871–925), `components/*.ts`                                                                                                           |
+| Sessions     | `ui.ts` (2056–2111), `session-selector.ts`, `session-select.ts`                                                                                |
+| Models       | `ui.ts` (1031–1052), `model-selector.ts`, `model-cycle.ts`                                                                                     |
+| Status       | `components/status-container.ts`, `components/status-indicator.ts`                                                                             |
+| Theme        | `theme/theme.ts`, `theme/theme-controller.ts`, `theme/system-theme.ts`                                                                         |
+| Footer       | `footer.ts`, `footer-data-provider.ts`                                                                                                         |
+| History      | `history.ts`, `tools.ts`                                                                                                                       |
+| Bash         | `bash-mode.ts`, `bash-execution.ts`                                                                                                            |
+| Settings     | `settings-selector.ts`, `settings-store.ts`                                                                                                    |
+| Providers    | `runtime/catalog.ts`, `runtime/custom-providers/`                                                                                              |
 
 ---
 
 ## 8. VERDICT
 
-**AUDIT.md** is approximately **85% correct** on architecture and flow description. It accurately describes the 3-layer contract, two-phase boot, overlay stack, safe runtime access, ToolRow lifecycle, incremental highlighting, streaming (via `AssistantMessageComponent`, not `StreamingMarkdown`), Mermaid, theme system, status indicators, shutdown, extension points, bash mode, clipboard, autocomplete, history replay, footer, settings, and all 8 system-level loops.
+AUDIT.md architecture and flow descriptions are accurate (3-layer contract, two-phase boot, overlay stack, safe runtime access, ToolRow lifecycle, incremental highlighting, streaming via `AssistantMessageComponent`, Mermaid, theme, status indicators, shutdown, extension points, bash mode, clipboard, autocomplete, history replay, footer, settings, all 8 system-level loops).
 
-However, it is **~15% inaccurate** on specific technical claims:
+The prior bug inventory contained stale/wrong claims (nonexistent paths, wrong line numbers, nonexistent `AUDIT_REPORT.md` reference). The corrected inventory is in §6 above and mirrored in `TODO.md` §Bug-Fix Backlog.
 
-1. `tool_execution_update` is **not** "defined but never emitted" — it is emitted and consumed.
-2. Several features listed as "Remaining / not implemented" are actually implemented (approval always-allow, boot progress, history virtualization, fake OAuth fix, tool streaming, footer git watcher, DA1 async, Ctrl+C simplify, auth silent retry, global ESC, Mermaid streaming).
-3. It does not mention any of the 23 bug groups (5 Critical, 1 High, 11 Medium, 4 Low, 3 resource leaks) found by the line-by-line source scan.
-
-**AUDIT_REPORT.md** is more thorough in finding actual code bugs (5 Critical, 5 Medium, 4 Low, 3 resource leaks) and correctly identifies 6 points where AUDIT.md is stale. However, it has 9 factual errors of its own:
-
-1. "2 test fail" — false (all 182 pass).
-2. "`npm run check` fails due to 13 temp files" — misleading (temp test artifacts, not source).
-3. `session-select.ts:169` timer leak — wrong file (it's `user-message-selector.ts:169`).
-4. `cli.ts:44` hardcoded ANSI — debatable (CLI, not TUI).
-5. `ctrl+d` conflict — overstates (context-gated).
-6. `thinking-selector.ts` dead code — false (exported from `components/index.ts`).
-7. `Theme` class duplication — mischaracterizes (unused, not duplicate).
-8. "Theme not found" build issue — unverified.
-9. `current()` potentially undefined — debatable (defensive, not a real bug).
-
-**Final conclusion:** Both documents are useful but neither is fully accurate. The corrected bug inventory is in `TODO.md` §Bug-Fix Backlog. The corrected architecture description is in this file. All stale claims have been corrected in both documents.
+**Counts (verified):** 153 src files, ~33.9k LOC, 52 test files, 182 tests. `npm run check` clean, `npm test` 182/182, `npm run build` clean. `ui.ts` ~2336 lines, `runtime.ts` ~1473 lines.
 
 ---
 

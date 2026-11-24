@@ -22,7 +22,7 @@ root (cli, plugin, types, contracts) → may reference both layers
 | `plugin.ts`         | app plugin: creates `Runtime` (or pending proxy), runs ask/resume/login/logout or the TUI, `afterFirstPaint` hook                                          |
 | `interfaces.ts`     | contract: `Route`, `RuntimeOptions`, `Callbacks`, `RunResult`, `CredentialSource`, `ApprovalRequest`, `QuestionResult`, `ModelRuntime`, `AutocompleteItem` |
 | `runtime-events.ts` | contract: `RuntimeEvent` union, `eventText`, `reasoningText`, `contentText`, `isAuthFailure`                                                               |
-| `types.ts`          | barrel re-export of the contracts                                                                                                                          |
+| `types.ts`          | (removed — contract lives in `interfaces.ts`)                                                                                                              |
 
 ## runtime/ (11 files) — DSH bridge + boot
 

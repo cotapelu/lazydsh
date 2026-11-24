@@ -11,7 +11,7 @@ own process and wraps the Agent in a `Runtime` class for the TUI.
   `src/runtime/plugin-patch.ts`)
 - UI: `@earendil-works/pi-tui` (React-like component system)
 - Language: TypeScript ESM, Node ≥ 24.9, bundled by `vite-plus`
-- Suite: 150/150 · `npm run check` (format + lint + types) · `npm run build`
+- Suite: 182/182 · `npm run check` (format + lint + types) · `npm run build`
 
 ## Architecture (3 layers + contracts)
 
@@ -29,7 +29,7 @@ src/
 │   ├── preferences.ts                  #   $DSH_HOME/lazydsh-model.json
 │   ├── pending-runtime.ts, upgrade.ts
 ├── interactive-mode/                   # the TUI (imports contracts, utils, runtime)
-│   ├── ui.ts                           #   orchestration (~2338 lines)
+│   ├── ui.ts                           #   orchestration (~2336 lines)
 │   ├── auth-flow.ts                    #   login/logout flows extracted from ui.ts
 │   ├── presentation.ts, presentation   #   editor/status/transcript primitives
 │   ├── tools.ts, detail.ts,            #   tool rows + the one render engine
@@ -107,7 +107,7 @@ Events (`runtime-events.ts`): `session.event` (DSH events, incl. `llm/retry`,
 
 ```bash
 npm run check    # format + lint + types (must be warning-free)
-npm test         # vitest — 150 tests, 42 files
+npm test         # vitest — 182 tests, 49 files
 npm run build    # vite-plus bundle → dist/
 node dist/cli.mjs --version
 ```
@@ -157,4 +157,4 @@ node dist/cli.mjs --list    # providers/models without a session
 
 ## Status
 
-Core complete. Many UX gaps fixed (see AUDIT.md §4). Remaining: login unification (CLI), !!cmd output, queue indicator, bash execution for tools, approval always-allow, model test connection, history search, footer cost breakdown, session multi-delete, theme creator UI.
+Core complete. Many UX gaps fixed (see AUDIT.md §4). Remaining: bash execution for tools, model test connection, history search, footer cost breakdown, session multi-delete, theme creator UI, ui.ts decomposition.
