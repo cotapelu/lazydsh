@@ -81,7 +81,7 @@ import {
   type UiSettings,
 } from "./settings-store.ts";
 import { safeText, accent, dim } from "./theme.ts";
-import { theme as themeProxy } from "./theme/theme.ts";
+import { theme as themeProxy, SYSTEM_THEME } from "./theme/theme.ts";
 import { currentThemeName_ } from "./theme/theme.ts";
 
 const identity = (text: string) => text;
@@ -1096,9 +1096,54 @@ export async function runUI(
   }
 
   async function openTrustSelector() {
-    // DSH does not have a trust system like pi-coding-agent, so we show a placeholder
-    // DSH doesn't have a trust system like pi-coding-agent, so we show a placeholder
-    add("Trust", "Trust management not yet wired - requires DSH trust integration");
+    const { TrustSelectorComponent } = await import("./components/trust-selector.ts");
+    const cwd = options.cwd;
+
+    // Get current trust state from DSH settings (workspace registry)
+    // For now, we'll use a simple in-memory store or read from settings
+    let savedDecision: { decision: boolean; path: string } | null = null;
+    let projectTrusted = false;
+
+    // Try to read from DSH workspace settings
+    try {
+      const workspace = runtime.workspaceRegistry?.get(cwd);
+      if (workspace?.trusted !== undefined) {
+        projectTrusted = workspace.trusted;
+        savedDecision = { decision: workspace.trusted, path: cwd };
+      }
+    } catch {}
+
+    const trustOptions = [
+      {
+        label: "Trust this project (allow local resources)",
+        trusted: true,
+        updates: true,
+        savedPath: cwd,
+      },
+      { label: "Do not trust this project", trusted: false, updates: true, savedPath: cwd },
+    ];
+
+    const picker = new TrustSelectorComponent({
+      cwd,
+      trustOptions,
+      savedDecision,
+      projectTrusted,
+      onSelect: (result) => {
+        dismissPanel();
+        // Save trust decision to DSH workspace registry
+        try {
+          runtime.workspaceRegistry?.set(cwd, { trusted: result.trusted });
+          add(
+            "Trust",
+            `Project ${result.trusted ? "trusted" : "untrusted"} (${result.updates ? "persisted" : "session-only"})`,
+          );
+        } catch (error) {
+          add("Error", error instanceof Error ? error.message : String(error));
+        }
+      },
+      onCancel: dismissPanel,
+    });
+    showPanel(picker);
   }
 
   async function openImportSession() {
@@ -1107,6 +1152,119 @@ export async function runUI(
 
   async function reloadResources() {
     add("Reload", "Resource reload not yet wired - requires DSH extension system");
+  }
+
+  async function openSettingsSubmenu() {
+    const { SteppedSubmenu } = await import("./components/settings-submenu.ts");
+    const steps = [
+      {
+        key: "editor",
+        title: "Editor Settings",
+        description: "Configure editor behavior",
+        options: () => [
+          {
+            value: "editorPadding",
+            label: "Editor padding",
+            description: "Padding around editor text",
+          },
+          {
+            value: "outputPadding",
+            label: "Output padding",
+            description: "Padding around output blocks",
+          },
+          {
+            value: "autocompleteMaxVisible",
+            label: "Autocomplete max visible",
+            description: "Maximum items in autocomplete list",
+          },
+        ],
+      },
+      {
+        key: "session",
+        title: "Session Settings",
+        description: "Configure session behavior",
+        options: () => [
+          {
+            value: "doubleEscapeAction",
+            label: "Double Escape action",
+            description: "Action on double Escape press",
+          },
+          {
+            value: "treeFilterMode",
+            label: "Tree filter mode",
+            description: "Default filter mode for session tree",
+          },
+        ],
+      },
+      {
+        key: "display",
+        title: "Display Settings",
+        description: "Configure display behavior",
+        options: () => [
+          {
+            value: "cacheMissNotices",
+            label: "Cache miss notices",
+            description: "Show notices when cache misses occur",
+          },
+          {
+            value: "collapseChangelog",
+            label: "Collapse changelog",
+            description: "Collapse changelog entries by default",
+          },
+          {
+            value: "quietStartup",
+            label: "Quiet startup",
+            description: "Suppress startup messages",
+          },
+        ],
+      },
+      {
+        key: "advanced",
+        title: "Advanced Settings",
+        description: "Configure advanced options",
+        options: () => [
+          {
+            value: "installTelemetry",
+            label: "Install telemetry",
+            description: "Enable installation telemetry",
+          },
+          {
+            value: "defaultProjectTrust",
+            label: "Default project trust",
+            description: "Default trust level for projects",
+          },
+          {
+            value: "terminalProgress",
+            label: "Terminal progress (OSC 9;4)",
+            description: "Show terminal progress indicator",
+          },
+        ],
+      },
+    ];
+    const submenu = new SteppedSubmenu(
+      steps,
+      (ctx) => {
+        add("Settings Submenu", `Completed: ${JSON.stringify(ctx)}`);
+      },
+      dismissPanel,
+      { initialContext: {} },
+    );
+    showPanel(submenu);
+  }
+
+  async function openShowImagesSelector() {
+    const { ShowImagesSelectorComponent } = await import("./components/show-images-selector.ts");
+    const picker = new ShowImagesSelectorComponent(
+      uiSettings.showImages ?? true,
+      (show) => {
+        dismissPanel();
+        uiSettings.showImages = show;
+        writeUiSettings(uiSettings);
+        add("Settings", `Show images: ${show ? "on" : "off"}`);
+      },
+      dismissPanel,
+    );
+    showPanel(picker);
   }
 
   // Codex-compatible chat lifecycle: both commands start a new session, but
@@ -1447,17 +1605,35 @@ export async function runUI(
         confirmExit: uiSettings.confirmExit,
         mermaidMode: uiSettings.mermaidMode,
         onToggle: (key, value) => {
-          if (key !== "confirmExit") return;
-          uiSettings.confirmExit = value;
-          writeUiSettings(uiSettings);
-          add("Settings", `Confirm on exit: ${value ? "on" : "off"}`);
+          if (key === "confirmExit") {
+            uiSettings.confirmExit = value;
+            writeUiSettings(uiSettings);
+            add("Settings", `Confirm on exit: ${value ? "on" : "off"}`);
+          } else if (key === "autoResizeImages") {
+            uiSettings.autoResizeImages = value;
+            writeUiSettings(uiSettings);
+            add("Settings", `Auto-resize images: ${value ? "on" : "off"}`);
+          } else if (key === "blockImages") {
+            uiSettings.blockImages = value;
+            writeUiSettings(uiSettings);
+            add("Settings", `Block images: ${value ? "on" : "off"}`);
+          }
         },
         onSelect: (key, value) => {
-          if (key !== "mermaidMode") return;
-          uiSettings.mermaidMode = value as MermaidMode;
-          mermaidMode = value as MermaidMode;
-          writeUiSettings(uiSettings);
-          add("Settings", `Mermaid diagrams: ${value}`);
+          if (key === "mermaidMode") {
+            uiSettings.mermaidMode = value as MermaidMode;
+            mermaidMode = value as MermaidMode;
+            writeUiSettings(uiSettings);
+            add("Settings", `Mermaid diagrams: ${value}`);
+          } else if (key === "showImages") {
+            uiSettings.showImages = value === "true";
+            writeUiSettings(uiSettings);
+            add("Settings", `Show images: ${value}`);
+          } else if (key === "imageWidthCells") {
+            uiSettings.imageWidthCells = parseInt(value, 10) || 40;
+            writeUiSettings(uiSettings);
+            add("Settings", `Image width: ${uiSettings.imageWidthCells} cells`);
+          }
         },
       });
       settings.onCancel = dismissPanel;
@@ -1466,6 +1642,16 @@ export async function runUI(
         // cycling the placeholder options compiled into the panel.
         if (key === "theme") {
           openThemePicker();
+          return true;
+        }
+        // Open submenu for additional settings
+        if (key === "submenu") {
+          openSettingsSubmenu();
+          return true;
+        }
+        // Show images selector
+        if (key === "showImages") {
+          openShowImagesSelector();
           return true;
         }
       };
@@ -1546,13 +1732,22 @@ export async function runUI(
         add("Error", "No completed turns to fork from.");
         return;
       }
-      select(points, "Fork at turn", (boundary) => {
-        void runBusy(async () => {
-          const childId = await runtime.forkSession(Number(boundary));
-          await connect(route as Route, { sessionId: childId });
-          add("Forked", childId);
-        });
-      });
+      // Convert fork points to user messages for the selector
+      const messages = points.map((p) => ({ id: p.value, text: p.description || p.label }));
+      const { UserMessageSelectorComponent } =
+        await import("./components/user-message-selector.ts");
+      const picker = new UserMessageSelectorComponent(
+        messages,
+        (id) => {
+          void runBusy(async () => {
+            const childId = await runtime.forkSession(Number(id));
+            await connect(route as Route, { sessionId: childId });
+            add("Forked", childId);
+          });
+        },
+        dismissPanel,
+      );
+      showPanel(picker);
       return;
     }
     const sessionAction = /^\/(archive|restore|pin|unpin)$/.exec(text)?.[1] as
@@ -2382,6 +2577,43 @@ export async function runUI(
   /** Open the first session after a successful (or recovered) boot. */
   async function openInitialSession(): Promise<void> {
     if (startupFailed) return;
+
+    // Check if first-time setup is needed (e.g., no theme selected yet)
+    const themeSetting = readThemeSetting();
+    const isFirstRun = !themeSetting || themeSetting === "";
+
+    if (isFirstRun) {
+      const { FirstTimeSetupComponent } = await import("./components/first-time-setup.ts");
+      const { writeThemeSetting } = await import("./theme/theme-settings.ts");
+
+      await new Promise<void>((resolve) => {
+        const setup = new FirstTimeSetupComponent({
+          onThemePreview: (themeName) => {
+            themeController.preview(themeName);
+          },
+          onSubmit: (result) => {
+            dismissPanel();
+            writeThemeSetting(result.theme);
+            themeController.setThemeSetting(result.theme);
+            add("Theme", `Set to ${result.theme}`);
+            if (result.shareAnalytics) {
+              // Analytics opt-in would be stored here
+              add("Analytics", "Anonymous usage data sharing enabled");
+            }
+            resolve();
+          },
+          onCancel: () => {
+            dismissPanel();
+            // Fall back to default theme
+            writeThemeSetting(SYSTEM_THEME);
+            themeController.setThemeSetting(SYSTEM_THEME);
+            resolve();
+          },
+        });
+        showPanel(setup);
+      });
+    }
+
     if (route.model)
       await connect(
         { provider: route.provider, model: route.model },

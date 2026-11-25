@@ -3,72 +3,62 @@
   "phases": [
     {
       "id": "phase-1",
-      "name": "Next Actions from TODO.md",
+      "name": "Wire Orphan Components & Next Actions",
       "tasks": [
         {
           "id": "task-1",
-          "content": "BashExecutionComponent for tool calls (P2#1)",
+          "content": "Wire trust-selector to /trust command",
           "status": "completed"
         },
         {
           "id": "task-2",
-          "content": "Model selector test connection (P2#2)",
-          "status": "in_progress"
+          "content": "Wire user-message-selector to /fork command",
+          "status": "completed"
         },
         {
           "id": "task-3",
-          "content": "Wire user-message-selector to /fork command",
-          "status": "pending"
+          "content": "Wire first-time-setup for startup onboarding",
+          "status": "completed"
         },
         {
           "id": "task-4",
-          "content": "Wire trust-selector properly to /trust command",
-          "status": "pending"
+          "content": "Wire settings-submenu and show-images-selector to settings",
+          "status": "in_progress"
         },
         {
           "id": "task-5",
-          "content": "Wire settings-submenu and show-images-selector to settings",
-          "status": "pending"
-        },
-        {
-          "id": "task-6",
-          "content": "Wire first-time-setup for startup onboarding",
-          "status": "pending"
-        },
-        {
-          "id": "task-7",
           "content": "Wire bordered-loader and countdown-timer utilities",
           "status": "pending"
         },
         {
-          "id": "task-8",
+          "id": "task-6",
           "content": "History search/filter (P3#3)",
           "status": "pending"
         },
         {
-          "id": "task-9",
+          "id": "task-7",
           "content": "Footer cost breakdown (P3#4)",
           "status": "pending"
         },
         {
-          "id": "task-10",
+          "id": "task-8",
           "content": "Session selector multi-delete (P3#5)",
           "status": "pending"
         },
         {
-          "id": "task-11",
+          "id": "task-9",
           "content": "Theme creator UI (P3#6)",
           "status": "pending"
         },
         {
-          "id": "task-12",
+          "id": "task-10",
           "content": "ui.ts decomposition continued",
           "status": "pending"
         }
       ]
     }
   ],
-  "nextTaskId": 13,
+  "nextTaskId": 11,
   "nextPhaseId": 2,
-  "updatedAt": "2026-11-25T10:50:05.434Z"
+  "updatedAt": "2026-11-25T11:04:35.880Z"
 }
