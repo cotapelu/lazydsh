@@ -3,42 +3,72 @@
   "phases": [
     {
       "id": "phase-1",
-      "name": "Remaining Bug Fixes & Wire Orphan Files",
+      "name": "Next Actions from TODO.md",
       "tasks": [
         {
           "id": "task-1",
-          "content": "Fix global fetch monkey-patch in runtime.ts",
+          "content": "BashExecutionComponent for tool calls (P2#1)",
           "status": "completed"
         },
         {
           "id": "task-2",
-          "content": "Fix authorization.cancel not awaited in logout",
-          "status": "completed"
+          "content": "Model selector test connection (P2#2)",
+          "status": "in_progress"
         },
         {
           "id": "task-3",
-          "content": "Fix user-message-selector untracked setTimeout",
-          "status": "completed"
+          "content": "Wire user-message-selector to /fork command",
+          "status": "pending"
         },
         {
           "id": "task-4",
-          "content": "Add guard for keybindings dispose unwatchFile",
-          "status": "completed"
+          "content": "Wire trust-selector properly to /trust command",
+          "status": "pending"
         },
         {
           "id": "task-5",
-          "content": "Wire orphan files: trust-selector, branch-summary-message, first-time-setup, settings-submenu, show-images-selector, bordered-loader, countdown-timer",
-          "status": "completed"
+          "content": "Wire settings-submenu and show-images-selector to settings",
+          "status": "pending"
         },
         {
           "id": "task-6",
-          "content": "Add missing commands: /import, /reload, /trust, /skill:*",
-          "status": "completed"
+          "content": "Wire first-time-setup for startup onboarding",
+          "status": "pending"
+        },
+        {
+          "id": "task-7",
+          "content": "Wire bordered-loader and countdown-timer utilities",
+          "status": "pending"
+        },
+        {
+          "id": "task-8",
+          "content": "History search/filter (P3#3)",
+          "status": "pending"
+        },
+        {
+          "id": "task-9",
+          "content": "Footer cost breakdown (P3#4)",
+          "status": "pending"
+        },
+        {
+          "id": "task-10",
+          "content": "Session selector multi-delete (P3#5)",
+          "status": "pending"
+        },
+        {
+          "id": "task-11",
+          "content": "Theme creator UI (P3#6)",
+          "status": "pending"
+        },
+        {
+          "id": "task-12",
+          "content": "ui.ts decomposition continued",
+          "status": "pending"
         }
       ]
     }
   ],
-  "nextTaskId": 7,
+  "nextTaskId": 13,
   "nextPhaseId": 2,
-  "updatedAt": "2026-11-25T10:26:48.441Z"
+  "updatedAt": "2026-11-25T10:50:05.434Z"
 }

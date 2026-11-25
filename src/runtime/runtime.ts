@@ -1040,6 +1040,52 @@ export class Runtime {
       if ((await this.ctx.credentials.describe(credentialRef(ref))).configured) remaining.push(ref);
     return remaining;
   }
+
+  /**
+   * Test a specific provider/model connection by sending a minimal request.
+   * This is used by the model selector to verify a route works before selecting it.
+   */
+  async testModelConnection(provider: string, model: string, signal?: AbortSignal): Promise<void> {
+    const activity = this.trackActivity(new AbortController());
+    const combinedSignal = signal ? AbortSignal.any([signal, activity.signal]) : activity.signal;
+    try {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        let firstToken: number | undefined;
+        let failure: { code: string; status?: number; message: string } | undefined;
+        let finished = false;
+        for await (const chunk of this.ctx.llm.stream({
+          provider,
+          model,
+          sessionId: this.agent?.session?.id ?? "test",
+          messages: [{ role: "user", content: [{ type: "text", text: "Reply with OK." }] }],
+          maxTokens: 1,
+          signal: AbortSignal.any([combinedSignal, AbortSignal.timeout(30_000)]),
+        })) {
+          if ((chunk.type === "text-delta" || chunk.type === "reasoning-delta") && chunk.text)
+            firstToken ??= performance.now();
+          if (chunk.type === "finish") {
+            finished = true;
+            if (chunk.reason.kind === "error" || chunk.reason.kind === "aborted")
+              failure = chunk.reason.failure;
+          }
+        }
+        if (failure) {
+          if (isAuthFailure(failure)) {
+            if (attempt === 0) {
+              await this.authenticate(combinedSignal, { provider, reauthenticate: true });
+              continue;
+            }
+          }
+          throw new Error(`[${failure.code}] ${failure.message}`);
+        }
+        if (!finished) throw new Error("Model connection check did not finish.");
+        return;
+      }
+    } finally {
+      this.activities.delete(activity);
+      if (this.activity === activity) this.activity = undefined;
+    }
+  }
   private async checkConnection() {
     const agent = this.agent;
     const current = agent.model.current()!;

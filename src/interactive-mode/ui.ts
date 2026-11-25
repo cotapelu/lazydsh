@@ -47,7 +47,7 @@ import {
 } from "@earendil-works/pi-tui";
 import { createInteractiveTui } from "./tui-renderer.ts";
 import type { TuiAltScreen } from "@earendil-works/pi-tui";
-import { isAuthFailure } from "../runtime-events.ts";
+import { isAuthFailure, eventText } from "../runtime-events.ts";
 import { signIn as signInFlow, signOut as signOutFlow, type AuthHost } from "./auth-flow.ts";
 import type { Runtime } from "../runtime/runtime.ts";
 import type { Route, Callbacks, CredentialSource, ApprovalOutcome } from "../interfaces.ts";
@@ -1793,14 +1793,26 @@ export async function runUI(
               const { toolCallId, partialResult } = notification.params;
               const row = toolLog.find(toolCallId);
               if (row && partialResult?.args) {
-                row.updateArgs(partialResult.args);
+                if (row instanceof ToolRow) {
+                  row.updateArgs(partialResult.args);
+                } else {
+                  // BashExecutionComponent doesn't have updateArgs
+                }
               } else if (row && partialResult?.content) {
                 // Streaming result content
-                row.updateResult(
-                  typeof partialResult.content === "string"
-                    ? partialResult.content
-                    : JSON.stringify(partialResult.content),
-                );
+                if (row instanceof ToolRow) {
+                  row.updateResult(
+                    typeof partialResult.content === "string"
+                      ? partialResult.content
+                      : JSON.stringify(partialResult.content),
+                  );
+                } else {
+                  (row as BashExecutionComponent).appendOutput(
+                    typeof partialResult.content === "string"
+                      ? partialResult.content
+                      : JSON.stringify(partialResult.content),
+                  );
+                }
               }
               tui.requestRender();
               return;
@@ -1876,6 +1888,24 @@ export async function runUI(
                   new BranchSummaryMessageComponent({ summary: String(data?.summary ?? "") }),
                 );
                 tui.requestRender();
+              } else if (eventType === "tool/call") {
+                const output = eventText(notification);
+                if (output && output.kind === "tool") {
+                  const row = toolLog.record(output, tui);
+                  if (row) transcript.addChild(row);
+                }
+              } else if (eventType === "tool/result") {
+                const output = eventText(notification);
+                if (output && (output.kind === "result" || output.kind === "error")) {
+                  const row = toolLog.record(output, tui);
+                  if (row) {
+                    if (row instanceof ToolRow) {
+                      transcript.addChild(row);
+                    } else {
+                      // BashExecutionComponent already added at tool/call
+                    }
+                  }
+                }
               }
             }
           },

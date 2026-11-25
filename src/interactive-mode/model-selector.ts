@@ -49,6 +49,7 @@ export class ModelSelectorComponent extends Container {
   private onSelectCallback: (model: CatalogModel) => void;
   private onSelectAsDefaultCallback: ((model: CatalogModel) => void) | undefined;
   private onCancelCallback: () => void;
+  private onTestConnectionCallback?: (model: CatalogModel) => Promise<void>;
   private errorMessage: string | undefined;
   private refreshStatusMessage = "Refreshing model catalogs…";
   private refreshStatusSuccess = false;
@@ -72,6 +73,7 @@ export class ModelSelectorComponent extends Container {
     initialSearchInput = "",
     onSelectAsDefault?: (model: CatalogModel) => void,
     defaultModel?: CatalogModel,
+    onTestConnection?: (model: CatalogModel) => Promise<void>,
   ) {
     super();
     this.tui = tui;
@@ -83,6 +85,7 @@ export class ModelSelectorComponent extends Container {
     this.onSelectCallback = onSelect;
     this.onSelectAsDefaultCallback = onSelectAsDefault;
     this.onCancelCallback = onCancel;
+    this.onTestConnectionCallback = onTestConnection;
 
     // Add top border
     this.addChild(new DynamicBorder());
@@ -122,18 +125,17 @@ export class ModelSelectorComponent extends Container {
     this.addChild(new Spacer(1));
 
     // Hint
+    const hintParts = [
+      `${keyDisplayText("tui.select.confirm")} to select`,
+      `${keyDisplayText("tui.select.cancel")} to cancel`,
+    ];
     if (this.onSelectAsDefaultCallback) {
-      this.addChild(
-        new Text(
-          theme.fg(
-            "dim",
-            `  ${keyDisplayText("tui.select.confirm")} to select · ${keyDisplayText("app.models.save")} to set as default · ${keyDisplayText("tui.select.cancel")} to cancel`,
-          ),
-          0,
-          0,
-        ),
-      );
+      hintParts.push(`${keyDisplayText("app.models.save")} to set as default`);
     }
+    if (this.onTestConnectionCallback) {
+      hintParts.push(`${keyDisplayText("app.models.testConnection")} to test connection`);
+    }
+    this.addChild(new Text(theme.fg("dim", `  ${hintParts.join(" · ")}`), 0, 0));
 
     // Add bottom border
     this.addChild(new DynamicBorder());
@@ -450,6 +452,16 @@ export class ModelSelectorComponent extends Container {
       if (selectedModel) {
         this.dispose();
         this.onSelectAsDefaultCallback(selectedModel);
+      }
+    }
+    // Test connection
+    else if (kb.matches(keyData, "app.models.testConnection") && this.onTestConnectionCallback) {
+      const selectedModel = this.filteredModels[this.selectedIndex];
+      if (selectedModel) {
+        this.onTestConnectionCallback(selectedModel).catch((error) => {
+          this.errorMessage = error instanceof Error ? error.message : String(error);
+          this.updateList();
+        });
       }
     }
     // Pass everything else to search input

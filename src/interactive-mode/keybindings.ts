@@ -78,6 +78,7 @@ export const APP_KEYBINDINGS = {
     description: "Delete session when query is empty",
   },
   "app.models.save": { defaultKeys: "ctrl+s", description: "Save model selection" },
+  "app.models.testConnection": { defaultKeys: "ctrl+t", description: "Test model connection" },
   "app.models.enableAll": { defaultKeys: "ctrl+a", description: "Enable all models" },
   "app.models.clearAll": { defaultKeys: "ctrl+x", description: "Clear all models" },
   "app.models.toggleProvider": {
@@ -220,6 +221,7 @@ const KEYBINDING_NAME_MIGRATIONS: Record<string, string> = {
   toggleProviderModels: "app.models.toggleProvider",
   reorderModelUp: "app.models.reorderUp",
   reorderModelDown: "app.models.reorderDown",
+  testModelConnection: "app.models.testConnection",
   treeFoldOrUp: "app.tree.foldOrUp",
   treeUnfoldOrDown: "app.tree.unfoldOrDown",
   treeEditLabel: "app.tree.editLabel",

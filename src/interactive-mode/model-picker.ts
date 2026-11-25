@@ -107,6 +107,18 @@ export async function pickModel(
       void saveModelDefault(host, model);
     },
     defaultModel,
+    async (model) => {
+      try {
+        host.add("Test Connection", `Testing ${model.provider}/${model.id}...`);
+        await host.runtime.testModelConnection(model.provider, model.id);
+        host.add("Test Connection", `✓ ${model.provider}/${model.id} connected successfully`);
+      } catch (error) {
+        host.add(
+          "Test Connection",
+          `✗ ${model.provider}/${model.id} failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    },
   );
   host.showPanel(picker);
 }
