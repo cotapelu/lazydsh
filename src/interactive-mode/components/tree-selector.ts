@@ -15,6 +15,7 @@ import {
   truncateToWidth,
   visibleWidth,
   wrapTextWithAnsi,
+  type Keybindings,
 } from "@earendil-works/pi-tui";
 import { theme } from "../theme/theme.ts";
 import { DynamicBorder as DynamicBorderComponent } from "./dynamic-border.ts";
@@ -182,7 +183,7 @@ class TreeList {
     // Build a map of visible entry IDs to their indices in filteredNodes
     const visibleIdToIndex = new Map(this.filteredNodes.map((node, i) => [node.node.entry.id, i]));
     // Walk from entryId up to root, looking for a visible entry
-    let currentId = entryId ?? null;
+    let currentId: string | null = entryId ?? null;
     while (currentId !== null) {
       const index = visibleIdToIndex.get(currentId);
       if (index !== undefined) return index;
@@ -204,7 +205,7 @@ class TreeList {
       entryMap.set(flatNode.node.entry.id, flatNode);
     }
     // Walk from leaf to root
-    let currentId = this.currentLeafId;
+    let currentId: string | null = this.currentLeafId;
     while (currentId) {
       this.activePathIds.add(currentId);
       const node = entryMap.get(currentId);
@@ -807,13 +808,14 @@ class TreeList {
         break;
       }
       case "custom_message": {
-        const content =
-          typeof entry.content === "string"
+        const content = entry.content
+          ? typeof entry.content === "string"
             ? entry.content
             : entry.content
                 .filter((c) => c.type === "text")
                 .map((c) => c.text)
-                .join("");
+                .join("")
+          : "";
         result = theme.fg("customMessageLabel", `[${entry.customType}]: `) + normalize(content);
         break;
       }
@@ -1236,7 +1238,7 @@ function formatHelpKeys(keybindings: string[]): string {
   const keys: string[] = [];
   const kb = getKeybindings();
   for (const keybinding of keybindings) {
-    const key = kb.getKeys(keybinding)[0];
+    const key = kb.getKeys(keybinding as keyof Keybindings)[0];
     if (key !== undefined) keys.push(key);
   }
   if (keys.length === 0) return "";

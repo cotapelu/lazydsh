@@ -47,7 +47,7 @@ import {
 } from "@earendil-works/pi-tui";
 import { createInteractiveTui } from "./tui-renderer.ts";
 import type { TuiAltScreen } from "@earendil-works/pi-tui";
-import { eventText, isAuthFailure } from "../runtime-events.ts";
+import { isAuthFailure } from "../runtime-events.ts";
 import { signIn as signInFlow, signOut as signOutFlow, type AuthHost } from "./auth-flow.ts";
 import type { Runtime } from "../runtime/runtime.ts";
 import type { Route, Callbacks, CredentialSource, ApprovalOutcome } from "../interfaces.ts";
@@ -1096,7 +1096,7 @@ export async function runUI(
   }
 
   async function openTrustSelector() {
-    const { TrustSelectorComponent } = await import("./components/trust-selector.ts");
+    // DSH does not have a trust system like pi-coding-agent, so we show a placeholder
     // DSH doesn't have a trust system like pi-coding-agent, so we show a placeholder
     add("Trust", "Trust management not yet wired - requires DSH trust integration");
   }
@@ -1910,6 +1910,7 @@ export async function runUI(
                 ? "error"
                 : undefined;
           renderLive(false, stop);
+          lastAssistant = liveText;
           liveAssistant = undefined;
         }
       } catch (error) {

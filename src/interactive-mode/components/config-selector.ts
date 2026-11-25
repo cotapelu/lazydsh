@@ -7,7 +7,6 @@
 
 import {
   Container,
-  DynamicBorder,
   Input,
   Spacer,
   getKeybindings,
@@ -15,8 +14,9 @@ import {
   truncateToWidth,
   visibleWidth,
 } from "@earendil-works/pi-tui";
+import { DynamicBorder } from "./dynamic-border.ts";
 import { theme } from "../theme/theme.ts";
-import { keyDisplayText, keyHint, rawKeyHint } from "../keybinding-hints.ts";
+import { keyHint, rawKeyHint } from "../keybinding-hints.ts";
 
 const RESOURCE_TYPES = ["extensions", "skills", "prompts", "themes"] as const;
 type ResourceType = (typeof RESOURCE_TYPES)[number];
@@ -574,7 +574,7 @@ class ResourceList {
   }
 
   toggleTopLevelResource(item: GroupItem, enabled: boolean): void {
-    const scope = item.metadata.scope;
+    const scope = item.metadata.scope === "user" ? "global" : "project";
     const settings =
       scope === "project"
         ? this.settingsManager.getProjectSettings()
@@ -607,7 +607,7 @@ class ResourceList {
   }
 
   togglePackageResource(item: GroupItem, enabled: boolean): void {
-    const scope = item.metadata.scope;
+    const scope = item.metadata.scope === "user" ? "global" : "project";
     const settings =
       scope === "project"
         ? this.settingsManager.getProjectSettings()
@@ -777,12 +777,13 @@ class ResourceList {
     }
     const pkg = this.findMatchingPackageSource(item, "project");
     if (typeof pkg !== "object" || pkg === null) return "inherit";
-    const entries = (pkg as Record<string, unknown>)[item.resourceType] as string[] | undefined;
+    const pkgObj = pkg as Record<string, unknown>;
+    const entries = pkgObj[item.resourceType] as string[] | undefined;
     if (entries === undefined) return "inherit";
     return this.getOverrideStateFromEntries(
       entries,
       new Set([this.getPackageResourcePattern(item)]),
-      pkg.autoload !== false,
+      pkgObj.autoload !== false,
     );
   }
 
@@ -835,7 +836,8 @@ class ResourceList {
 
   createPackageOverrideSource(item: GroupItem): { source: string; autoload: boolean } {
     const source = item.metadata.source;
-    const sourcePath = this.resolvePath(source, this.getTopLevelBaseDir(this.getItemScope(item)), {
+    const scope = this.getItemScope(item) === "user" ? "global" : "project";
+    const sourcePath = this.resolvePath(source, this.getTopLevelBaseDir(scope), {
       trim: true,
     });
     return {
@@ -846,14 +848,16 @@ class ResourceList {
 
   packageSourceStringMatches(
     leftSource: string,
-    leftScope: string,
+    leftScope: "user" | "project",
     rightSource: string,
-    rightScope: string,
+    rightScope: "user" | "project",
   ): boolean {
     if (leftSource === rightSource) return true;
     if (!this.isLocalPath(leftSource) || !this.isLocalPath(rightSource)) return false;
-    const left = this.resolvePath(leftSource, this.getTopLevelBaseDir(leftScope), { trim: true });
-    const right = this.resolvePath(rightSource, this.getTopLevelBaseDir(rightScope), {
+    const leftBase = leftScope === "user" ? "global" : "project";
+    const rightBase = rightScope === "user" ? "global" : "project";
+    const left = this.resolvePath(leftSource, this.getTopLevelBaseDir(leftBase), { trim: true });
+    const right = this.resolvePath(rightSource, this.getTopLevelBaseDir(rightBase), {
       trim: true,
     });
     return left === right;
@@ -864,12 +868,13 @@ class ResourceList {
       targetScope === "project"
         ? this.settingsManager.getProjectSettings()
         : this.settingsManager.getGlobalSettings();
+    const scope = targetScope === "global" ? "user" : "project";
     return ((settings.packages as unknown[]) ?? []).find((pkg) =>
       this.packageSourceStringMatches(
         item.metadata.source,
         this.getItemScope(item),
         typeof pkg === "string" ? pkg : (pkg as { source: string }).source,
-        targetScope,
+        scope,
       ),
     );
   }
@@ -905,7 +910,7 @@ class ResourceList {
 
   getResourcePattern(item: GroupItem): string {
     if (item.metadata.source === "builtin") return item.path;
-    const scope = item.metadata.scope;
+    const scope = item.metadata.scope === "user" ? "global" : "project";
     const baseDir = item.metadata.baseDir ?? this.getTopLevelBaseDir(scope);
     return relative(baseDir, item.path);
   }

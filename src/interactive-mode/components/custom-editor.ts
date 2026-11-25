@@ -5,8 +5,9 @@
  * Ported from pi-coding-agent's CustomEditor.
  */
 
-import { Editor, visibleWidth } from "@earendil-works/pi-tui";
+import { Editor, visibleWidth, type EditorOptions } from "@earendil-works/pi-tui";
 import { getAppKeybindings } from "../keybindings.ts";
+import type { Keybindings } from "@earendil-works/pi-tui";
 
 /**
  * Custom editor that handles app-level keybindings for coding-agent.
@@ -26,7 +27,11 @@ export class CustomEditor extends Editor {
   /** Handler for extension-registered shortcuts. Returns true if handled. */
   onExtensionShortcut?: (data: string) => boolean;
 
-  constructor(tui: any, theme: any, options: { embedWorkingStatus?: boolean } = {}) {
+  constructor(
+    tui: any,
+    theme: any,
+    options: EditorOptions & { embedWorkingStatus?: boolean } = {},
+  ) {
     super(tui, theme, options);
     this.embedWorkingStatus = options?.embedWorkingStatus ?? false;
   }
@@ -148,7 +153,7 @@ export class CustomEditor extends Editor {
       if (
         action !== "app.interrupt" &&
         action !== "app.exit" &&
-        this.keybindings.matches(data, action)
+        this.keybindings.matches(data, action as keyof Keybindings)
       ) {
         handler();
         return;
