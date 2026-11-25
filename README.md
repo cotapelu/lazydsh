@@ -254,3 +254,14 @@ Full comparison: `GOAL.md` "Comparison with pi-coding-agent interactive mode".
 ## License
 
 [MIT](LICENSE)
+
+## Acknowledgments
+
+This project builds upon and incorporates code from the following open-source projects (all licensed under MIT):
+
+- [pi-mono](https://github.com) by Mario Zechner
+- [oh-my-pi](https://github.com) by Can Bölük & Stencil Labs, Inc.
+- [deepseek-harness (dsh)](https://github.com) by DeepSeek
+- [lazydsh](https://github.com) by Yusuke Nakada
+- [senpi](https://github.com) by Yeongyu Kim
+- [dsh-our-free-model](https://github.com) by Ebony-Vinyl
