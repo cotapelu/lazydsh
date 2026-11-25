@@ -2262,11 +2262,23 @@ export async function runUI(
     const selector = new SessionSelector({
       currentSessionId: runtime.session?.id,
       currentDirectory: options.cwd,
+      canMultiDelete: true,
       onSelect: (id) => {
         dismissPanel();
         void runBusy(() => applyResume(id));
       },
       onCancel: () => dismissPanel(),
+      onDeleteMultiple: async (ids) => {
+        for (const id of ids) {
+          await runtime.manageSession(id, "archive");
+        }
+        add("Sessions", `Archived ${ids.length} session${ids.length > 1 ? "s" : ""}`);
+        // Refresh session list
+        void runtime.sessions().then((records) => {
+          selector.setSessions(toSessionRecords(records, options.cwd));
+          tui.requestRender();
+        });
+      },
       requestRender: () => tui.requestRender(),
     });
     showPanel(selector);

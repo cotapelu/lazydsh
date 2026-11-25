@@ -77,6 +77,10 @@ export const APP_KEYBINDINGS = {
     defaultKeys: "ctrl+backspace",
     description: "Delete session when query is empty",
   },
+  "app.session.deleteMultiple": {
+    defaultKeys: "shift+ctrl+d",
+    description: "Delete multiple sessions",
+  },
   "app.models.save": { defaultKeys: "ctrl+s", description: "Save model selection" },
   "app.models.testConnection": { defaultKeys: "ctrl+t", description: "Test model connection" },
   "app.models.enableAll": { defaultKeys: "ctrl+a", description: "Enable all models" },
@@ -216,6 +220,7 @@ const KEYBINDING_NAME_MIGRATIONS: Record<string, string> = {
   renameSession: "app.session.rename",
   deleteSession: "app.session.delete",
   deleteSessionNoninvasive: "app.session.deleteNoninvasive",
+  deleteSessionMultiple: "app.session.deleteMultiple",
   enableAllModels: "app.models.enableAll",
   clearAllModels: "app.models.clearAll",
   toggleProviderModels: "app.models.toggleProvider",

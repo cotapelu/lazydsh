@@ -40,6 +40,7 @@ export interface SessionSelectorCallbacks {
   onToggleNamedFilter?(filter: SessionNameFilter): void;
   onTogglePath?(show: boolean): void;
   onDelete?(sessionId: string): void | Promise<void>;
+  onDeleteMultiple?(sessionIds: string[]): void | Promise<void>;
   onRename?(sessionId: string): void;
   requestRender(): void;
 }
@@ -50,6 +51,7 @@ export interface SessionSelectorOptions extends SessionSelectorCallbacks {
   currentDirectory?: string;
   canDelete?: boolean;
   canRename?: boolean;
+  canMultiDelete?: boolean;
 }
 
 /** Current terminal width, minus the dock padding, used for label fitting. */
@@ -239,8 +241,10 @@ export class SessionSelector extends Container {
   private readonly currentDirectory: string | undefined;
   private readonly canDelete: boolean;
   private readonly canRename: boolean;
+  private readonly canMultiDelete: boolean;
 
   private sessions: SessionRecord[] = [];
+  private selectedSet = new Set<string>();
   private filtered: SessionRecord[] = [];
   private selectedIndex = 0;
   private scope: SessionScope = "all";
@@ -265,6 +269,7 @@ export class SessionSelector extends Container {
     this.currentDirectory = options.currentDirectory;
     this.canDelete = options.canDelete ?? true;
     this.canRename = options.canRename ?? true;
+    this.canMultiDelete = options.canMultiDelete ?? true;
     this.header = new SessionSelectorHeader(
       this.scope,
       this.sortMode,
@@ -359,18 +364,22 @@ export class SessionSelector extends Container {
       const isSelected = index === this.selectedIndex;
       const isCurrent = session.id === this.currentSessionId;
       const pinned = session.pinned;
+      const isMultiSelected = this.selectedSet.has(session.id);
 
       const cursor = isSelected ? theme.fg("accent", "› ") : "  ";
       const marker = isCurrent
         ? theme.fg("accent", "✓ ")
         : pinned
           ? theme.fg("warning", "★ ")
-          : "  ";
+          : isMultiSelected
+            ? theme.fg("accent", "✓ ")
+            : "  ";
       const label = session.title.trim() === "" ? session.id : session.title;
 
       const rightParts: string[] = [];
       if (isCurrent) rightParts.push(theme.fg("accent", "current"));
       if (pinned) rightParts.push(theme.fg("warning", "pinned"));
+      if (isMultiSelected) rightParts.push(theme.fg("accent", "selected"));
       if (this.showPath) rightParts.push(shortenHome(session.directory));
       rightParts.push(`${session.messageCount} msg`);
       rightParts.push(formatAge(session.modified));
@@ -445,6 +454,31 @@ export class SessionSelector extends Container {
         void this.callbacks.onDelete?.(selected.id);
       else if (selected !== undefined)
         this.setStatus({ type: "error", message: "Cannot archive the current session" }, 3000);
+      return;
+    }
+    if (data === " " && this.canMultiDelete) {
+      const selected = this.filtered[this.selectedIndex];
+      if (selected !== undefined && selected.id !== this.currentSessionId) {
+        if (this.selectedSet.has(selected.id)) {
+          this.selectedSet.delete(selected.id);
+        } else {
+          this.selectedSet.add(selected.id);
+        }
+        this.renderList();
+      }
+      return;
+    }
+    if (this.canMultiDelete && kb.matches(data, "app.session.deleteMultiple")) {
+      if (this.selectedSet.size === 0) {
+        this.setStatus(
+          { type: "error", message: "No sessions selected. Use Space to select multiple." },
+          3000,
+        );
+      } else {
+        const ids = Array.from(this.selectedSet);
+        void this.callbacks.onDeleteMultiple?.(ids);
+        this.selectedSet.clear();
+      }
       return;
     }
     if (this.canRename && kb.matches(data, "app.session.rename")) {

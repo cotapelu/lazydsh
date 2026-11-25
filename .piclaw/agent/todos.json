@@ -23,27 +23,27 @@
         {
           "id": "task-4",
           "content": "Wire settings-submenu and show-images-selector to settings",
-          "status": "in_progress"
+          "status": "completed"
         },
         {
           "id": "task-5",
           "content": "Wire bordered-loader and countdown-timer utilities",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "id": "task-6",
           "content": "History search/filter (P3#3)",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "id": "task-7",
           "content": "Footer cost breakdown (P3#4)",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "id": "task-8",
           "content": "Session selector multi-delete (P3#5)",
-          "status": "pending"
+          "status": "in_progress"
         },
         {
           "id": "task-9",
@@ -60,5 +60,5 @@
   ],
   "nextTaskId": 11,
   "nextPhaseId": 2,
-  "updatedAt": "2026-11-25T11:04:35.880Z"
+  "updatedAt": "2026-11-25T11:12:07.692Z"
 }
