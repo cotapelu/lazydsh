@@ -26,6 +26,7 @@ import { AssistantMessageComponent } from "./components/assistant-message.ts";
 import { createMermaidMarkdownTransformer } from "./components/mermaid.ts";
 import { UserMessageComponent } from "./components/user-message.ts";
 import { CompactionSummaryMessageComponent } from "./components/compaction-summary-message.ts";
+import { BranchSummaryMessageComponent } from "./components/branch-summary-message.ts";
 import { editInExternalEditor, editorCommand } from "./external-editor.ts";
 import { reportBug } from "./bug-report.ts";
 import { showChangelog } from "./show-changelog.ts";
@@ -783,7 +784,16 @@ export async function runUI(
       clearQueue();
       if (!keepTranscript) transcript.clear();
       if (sessionId) {
-        const rows = historyRows(await runtime.history(), id);
+        let events: Awaited<ReturnType<Runtime["history"]>> = [];
+        try {
+          events = await runtime.history();
+        } catch (error) {
+          add(
+            "Error",
+            `Could not read session history: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+        const rows = historyRows(events, id);
         // Virtualize very long histories: rendering every row up front can
         // freeze or exhaust memory on huge sessions, so keep a recent window
         // and leave a marker for the omitted older rows.
@@ -1048,6 +1058,55 @@ export async function runUI(
 
   function pickProviderModel(provider: string, sessionId?: string) {
     return pickProviderModelFlow(modelPickerHost, provider, sessionId);
+  }
+
+  async function openScopedModelsPicker() {
+    const { ScopedModelsSelectorComponent } =
+      await import("./components/scoped-models-selector.ts");
+    const { catalogModels } = await import("./model-catalog-runtime.ts");
+    const authenticated = new Set(runtime.authProviders().map((provider) => provider.value));
+    const models = catalogModels([...authenticated]);
+    const picker = new ScopedModelsSelectorComponent(
+      { allModels: models, enabledModelIds: null },
+      {
+        onChange: () => {},
+        onPersist: (enabledIds) =>
+          add(
+            "Scoped Models",
+            enabledIds === null
+              ? "All models enabled"
+              : `Enabled: ${enabledIds?.length ?? 0} models`,
+          ),
+        onCancel: dismissPanel,
+      },
+    );
+    showPanel(picker);
+  }
+
+  async function openConfigSelector() {
+    add("Config", "Config selector not yet wired - requires DSH settings integration");
+  }
+
+  async function openTreeSelector() {
+    if (!runtime.session) {
+      add("Error", "No active session. Run /resume or start a new conversation.");
+      return;
+    }
+    add("Tree", "Tree selector not yet wired - requires session tree data");
+  }
+
+  async function openTrustSelector() {
+    const { TrustSelectorComponent } = await import("./components/trust-selector.ts");
+    // DSH doesn't have a trust system like pi-coding-agent, so we show a placeholder
+    add("Trust", "Trust management not yet wired - requires DSH trust integration");
+  }
+
+  async function openImportSession() {
+    add("Import", "Session import not yet wired - requires JSONL file picker");
+  }
+
+  async function reloadResources() {
+    add("Reload", "Resource reload not yet wired - requires DSH extension system");
   }
 
   // Codex-compatible chat lifecycle: both commands start a new session, but
@@ -1411,6 +1470,30 @@ export async function runUI(
         }
       };
       showPanel(settings);
+      return;
+    }
+    if (text === "/scoped-models") {
+      void openScopedModelsPicker();
+      return;
+    }
+    if (text === "/config") {
+      void openConfigSelector();
+      return;
+    }
+    if (text === "/tree") {
+      void openTreeSelector();
+      return;
+    }
+    if (text === "/trust") {
+      void openTrustSelector();
+      return;
+    }
+    if (text === "/import") {
+      void openImportSession();
+      return;
+    }
+    if (text === "/reload") {
+      void reloadResources();
       return;
     }
     if (text === "/model") {
@@ -1788,26 +1871,13 @@ export async function runUI(
                   );
                   tui.requestRender();
                 }
+              } else if (eventType === "branch_summary") {
+                transcript.addChild(
+                  new BranchSummaryMessageComponent({ summary: String(data?.summary ?? "") }),
+                );
+                tui.requestRender();
               }
             }
-            const output = eventText(notification);
-            if (!output) return;
-            if (output.kind !== "assistant") {
-              const row = toolLog.record(output);
-              if (row) transcript.addChild(row);
-              tui.requestRender();
-              return;
-            }
-            if (!output.text) return;
-            lastAssistant = output.text;
-            if (
-              liveAssistant &&
-              "sessionId" in notification.params &&
-              notification.params.sessionId === runtime.session?.id
-            ) {
-              renderLive(false);
-              tui.requestRender();
-            } else add("assistant", output.text);
           },
           pendingFiles,
         );

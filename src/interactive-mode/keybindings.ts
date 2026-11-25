@@ -67,7 +67,10 @@ export const APP_KEYBINDINGS = {
   "app.session.new": { defaultKeys: keys(), description: "Start a new session" },
   "app.session.resume": { defaultKeys: keys(), description: "Resume a session" },
   "app.session.togglePath": { defaultKeys: keys(), description: "Toggle session path display" },
-  "app.session.toggleSort": { defaultKeys: "ctrl+s", description: "Toggle session sort mode" },
+  "app.session.toggleSort": {
+    defaultKeys: "ctrl+shift+s",
+    description: "Toggle session sort mode",
+  },
   "app.session.rename": { defaultKeys: "ctrl+r", description: "Rename session" },
   "app.session.delete": { defaultKeys: "ctrl+d", description: "Delete session" },
   "app.session.deleteNoninvasive": {
@@ -75,6 +78,54 @@ export const APP_KEYBINDINGS = {
     description: "Delete session when query is empty",
   },
   "app.models.save": { defaultKeys: "ctrl+s", description: "Save model selection" },
+  "app.models.enableAll": { defaultKeys: "ctrl+a", description: "Enable all models" },
+  "app.models.clearAll": { defaultKeys: "ctrl+x", description: "Clear all models" },
+  "app.models.toggleProvider": {
+    defaultKeys: "ctrl+p",
+    description: "Toggle all models for provider",
+  },
+  "app.models.reorderUp": { defaultKeys: "alt+up", description: "Move model up in order" },
+  "app.models.reorderDown": { defaultKeys: "alt+down", description: "Move model down in order" },
+  "app.tree.foldOrUp": {
+    defaultKeys:
+      process.platform === "darwin" ? keys("alt+left", "ctrl+left") : keys("ctrl+left", "alt+left"),
+    description: "Fold tree branch or move up",
+  },
+  "app.tree.unfoldOrDown": {
+    defaultKeys:
+      process.platform === "darwin"
+        ? keys("alt+right", "ctrl+right")
+        : keys("ctrl+right", "alt+right"),
+    description: "Unfold tree branch or move down",
+  },
+  "app.tree.editLabel": { defaultKeys: "shift+l", description: "Edit tree label" },
+  "app.tree.toggleLabelTimestamp": {
+    defaultKeys: "shift+t",
+    description: "Toggle tree label timestamps",
+  },
+  "app.tree.filter.default": { defaultKeys: "ctrl+d", description: "Tree filter: default view" },
+  "app.tree.filter.noTools": {
+    defaultKeys: "ctrl+t",
+    description: "Tree filter: hide tool results",
+  },
+  "app.tree.filter.userOnly": {
+    defaultKeys: "ctrl+u",
+    description: "Tree filter: user messages only",
+  },
+  "app.tree.filter.labeledOnly": {
+    defaultKeys: "ctrl+l",
+    description: "Tree filter: labeled entries only",
+  },
+  "app.tree.filter.all": { defaultKeys: "ctrl+a", description: "Tree filter: show all entries" },
+  "app.tree.filter.cycleForward": {
+    defaultKeys: "ctrl+o",
+    description: "Tree filter: cycle forward",
+  },
+  "app.tree.filter.cycleBackward": {
+    defaultKeys: "shift+ctrl+o",
+    description: "Tree filter: cycle backward",
+  },
+  "app.session.tree": { defaultKeys: keys(), description: "Open session tree" },
 } as const;
 
 export type AppKeybinding = keyof typeof APP_KEYBINDINGS;
@@ -164,6 +215,16 @@ const KEYBINDING_NAME_MIGRATIONS: Record<string, string> = {
   renameSession: "app.session.rename",
   deleteSession: "app.session.delete",
   deleteSessionNoninvasive: "app.session.deleteNoninvasive",
+  enableAllModels: "app.models.enableAll",
+  clearAllModels: "app.models.clearAll",
+  toggleProviderModels: "app.models.toggleProvider",
+  reorderModelUp: "app.models.reorderUp",
+  reorderModelDown: "app.models.reorderDown",
+  treeFoldOrUp: "app.tree.foldOrUp",
+  treeUnfoldOrDown: "app.tree.unfoldOrDown",
+  treeEditLabel: "app.tree.editLabel",
+  treeToggleLabelTimestamp: "app.tree.toggleLabelTimestamp",
+  tree: "app.session.tree",
 };
 
 function isKeybindingValue(value: unknown): value is KeyId | KeyId[] {

@@ -7,7 +7,7 @@
  * - CWD formatting
  * - Available provider count
  */
-import { execFile } from "node:child_process";
+import { spawn } from "node:child_process";
 import { existsSync, watch, type FSWatcher } from "node:fs";
 import { resolve, relative, isAbsolute, sep, join } from "node:path";
 
@@ -70,22 +70,26 @@ export function createFooterDataProvider(initialCwd: string): FooterDataProvider
 
   /** Update git branch and notify listeners */
   function updateGitBranch(): void {
-    execFile(
-      "git",
-      ["branch", "--show-current"],
-      { cwd, encoding: "utf-8", timeout: 1000 },
-      (error, stdout) => {
-        if (error) return;
-        const newBranch = stdout?.trim();
-        if (newBranch && newBranch !== gitBranch) {
-          gitBranch = newBranch;
-          branchChangeCallbacks.forEach((cb) => cb());
-        } else if (!newBranch && gitBranch) {
-          gitBranch = undefined;
-          branchChangeCallbacks.forEach((cb) => cb());
-        }
-      },
-    );
+    const child = spawn("git", ["branch", "--show-current"], {
+      cwd,
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    let output = "";
+    child.stdout.setEncoding("utf-8");
+    child.stdout.on("data", (chunk) => {
+      output += chunk;
+    });
+    child.on("close", (code) => {
+      if (code !== 0) return;
+      const newBranch = output?.trim();
+      if (newBranch && newBranch !== gitBranch) {
+        gitBranch = newBranch;
+        branchChangeCallbacks.forEach((cb) => cb());
+      } else if (!newBranch && gitBranch) {
+        gitBranch = undefined;
+        branchChangeCallbacks.forEach((cb) => cb());
+      }
+    });
   }
 
   /** Start watching for git branch changes */

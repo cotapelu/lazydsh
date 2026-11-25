@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Version 0.2.18** · Suite **182/182 passing** (49 test files) · `npm run check` clean · `npm run build` clean · dist boots.
+**Version 0.2.219** · Suite **182/182 passing** (49 test files) · `npm run check` clean · `npm run build` clean · dist boots.
 
 **Core complete.** The pi-coding-agent interactive-mode port is **functionally complete** — every advertised keybinding fires, every advertised panel opens, theme/settings persist, retry + compaction states are live, and the DSH bridge loads the full `@deepseek-ai/dsh-base` profile (101 plugin rows) with only the 14 services the TUI actually needs mounted eagerly. P0 login unification done (§8.26); 4 UX gaps remain (see §D) plus orphan files awaiting wiring (see §C).
 
@@ -81,6 +81,140 @@ Session tree view, scoped models, skill invocation UI, config selector, extensio
 
 ---
 
+## G. PORTING CHECKLIST: pi-coding-agent → lazydsh
+
+> Mục tiêu: Port full mọi feature từ `pi-coding-agent/dist/modes/interactive/` sang `lazydsh/src/interactive-mode/`.
+> Nguồn: Đọc full 18,456 dòng code của pi-coding-agent interactive mode (63 files).
+> Trạng thái: lazydsh đã port ~90% pi-coding-agent interactive mode.
+
+### G.1. Component cần port (P2 — quan trọng)
+
+| #   | Component (pi-coding-agent)   | Dòng | Mô tả                                                                                                                                | Lazydsh chưa có | Priority |
+| --- | ----------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------ | --------------- | -------- |
+| 1   | `config-selector.js`          | 757  | Quản lý resources (extensions/skills/prompts/themes) enable/disable, scope toggle (global/project), project override với inherit/+/- | ❌ Chưa port    | P2       |
+| 2   | `scoped-models-selector.js`   | 336  | Chọn subset models cho Ctrl+P cycling, reorder, enable all/clear all, toggle provider, persist                                       | ❌ Chưa port    | P2       |
+| 3   | `skill-invocation-message.js` | 64   | Render skill blocks trong transcript với collapsed/expanded state, background color, markdown transform                              | ❌ Chưa port    | P2       |
+| 4   | `tree-selector.js`            | 1254 | Tree view sessions với navigation, folding, filtering (5 modes), labeling, horizontal scroll, anchor-based viewport                  | ❌ Chưa port    | P2       |
+| 5   | `custom-editor.js`            | 121  | Editor tích hợp app keybindings (`onEscape`, `onCtrlD`, `onPasteImage`, `onExtensionShortcut`, embed working status indicator)       | ❌ Chưa port    | P2       |
+
+### G.2. Component cần port (P3 — niche/cosmetic, optional)
+
+| #   | Component (pi-coding-agent) | Dòng | Mô tả                                              | Lazydsh cần?                             |
+| --- | --------------------------- | ---- | -------------------------------------------------- | ---------------------------------------- |
+| 6   | `armin.js`                  | 334  | Easter egg mascot (armin) với 7 hiệu ứng animation | ❌ Cosmetic — không cần                  |
+| 7   | `earendil-announcement.js`  | 39   | Earendil announcement banner                       | ❌ Cosmetic — không cần                  |
+| 8   | `easter-egg-3d.js`          | 1138 | 3D easter egg animation (pi logo, armin)           | ❌ Cosmetic — không cần                  |
+| 9   | `pi-logo.js`                | 36   | Pi logo (half-block)                               | ❌ Cosmetic — lazydsh dùng whale logo    |
+| 10  | `radius-login-selector.js`  | 53   | Radius MCP login selector                          | ❌ Niche — lazydsh không dùng Radius MCP |
+
+### G.3. Commands cần thêm (P2)
+
+| Command          | pi-coding-agent          | lazydsh | Mô tả                                          |
+| ---------------- | ------------------------ | ------- | ---------------------------------------------- |
+| `/import`        | ✅ `handleImportCommand` | ❌      | Import session từ file JSONL                   |
+| `/reload`        | ✅ `handleReloadCommand` | ❌      | Reload extensions/resources                    |
+| `/tree`          | ✅ `showTreeSelector`    | ❌      | Tree view sessions                             |
+| `/scoped-models` | ✅ `showModelsSelector`  | ❌      | Scoped models toggle                           |
+| `/trust`         | ✅ `showTrustSelector`   | ❌      | Trust management                               |
+| `/skill:*`       | ✅ (via autocomplete)    | ❌      | Skill invocation (registered as `/skill:name`) |
+
+### G.4. Keybindings cần thêm (P2)
+
+| Keybinding         | pi-coding-agent | lazydsh | Mô tả              |
+| ------------------ | --------------- | ------- | ------------------ |
+| `app.session.tree` | ✅              | ❌      | Tree view sessions |
+
+### G.5. Orphan files cần wire (product decision)
+
+| File                        | pi-coding-agent tương ứng   | Wire vào                            |
+| --------------------------- | --------------------------- | ----------------------------------- |
+| `branch-summary-message.ts` | `branch-summary-message.js` | DSH `branch_summary` session events |
+| `trust-selector.ts`         | `trust-selector.js`         | `/trust` command hoặc settings      |
+| `user-message-selector.ts`  | `user-message-selector.js`  | `/fork` command                     |
+| `custom-entry.ts`           | `custom-entry.js`           | Extension system                    |
+| `custom-message.ts`         | `custom-message.js`         | Extension system                    |
+| `extension-editor.ts`       | `extension-editor.js`       | Extension system                    |
+| `extension-input.ts`        | `extension-input.js`        | Extension system                    |
+| `extension-selector.ts`     | `extension-selector.js`     | Extension system                    |
+| `first-time-setup.ts`       | `first-time-setup.js`       | Startup onboarding                  |
+| `settings-submenu.ts`       | `settings-submenu.js`       | Settings selector                   |
+| `show-images-selector.ts`   | `show-images-selector.js`   | Settings selector                   |
+| `bordered-loader.ts`        | `bordered-loader.js`        | Utility cho dialogs                 |
+| `countdown-timer.ts`        | `countdown-timer.js`        | Utility cho dialogs                 |
+
+### G.6. Settings cần port (P3 — lazydsh simplified, pi-coding-agent full)
+
+Pi-coding-agent settings-selector có ~40 items. Lazydsh chỉ có 10 items (DSH-delegated). Cần port thêm:
+
+| Setting                          | pi-coding-agent | lazydsh            | Priority |
+| -------------------------------- | --------------- | ------------------ | -------- |
+| Auto-compact                     | ✅              | ⚠️ (info only)     | P3       |
+| Steering mode                    | ✅              | ❌                 | P3       |
+| Follow-up mode                   | ✅              | ❌                 | P3       |
+| Transport preference             | ✅              | ❌                 | P3       |
+| Session share destination        | ✅              | ❌                 | P3       |
+| HTTP idle timeout                | ✅              | ❌                 | P3       |
+| Cache warming mode               | ✅              | ❌                 | P3       |
+| Hide thinking                    | ✅              | ⚠️ (Ctrl+T toggle) | P3       |
+| Mermaid rendering                | ✅              | ✅                 | Done     |
+| Cache miss notices               | ✅              | ❌                 | P3       |
+| Collapse changelog               | ✅              | ❌                 | P3       |
+| Quiet startup                    | ✅              | ❌                 | P3       |
+| Install telemetry                | ✅              | ❌                 | P3       |
+| Default project trust            | ✅              | ❌                 | P3       |
+| Double-escape action             | ✅              | ❌                 | P3       |
+| Tree filter mode                 | ✅              | ❌                 | P3       |
+| Warnings (anthropic extra usage) | ✅              | ❌                 | P3       |
+| Model thinking level per model   | ✅              | ❌                 | P3       |
+| TUI mode (regular/fullscreen)    | ✅              | ❌                 | P3       |
+| Fullscreen exit output           | ✅              | ❌                 | P3       |
+| Fullscreen scrollbar             | ✅              | ❌                 | P3       |
+| Fullscreen copy on select        | ✅              | ❌                 | P3       |
+| Fullscreen wheel scroll lines    | ✅              | ❌                 | P3       |
+| Show images                      | ✅              | ❌                 | P3       |
+| Image width cells                | ✅              | ❌                 | P3       |
+| Auto-resize images               | ✅              | ❌                 | P3       |
+| Block images                     | ✅              | ❌                 | P3       |
+| Skill commands toggle            | ✅              | ❌                 | P3       |
+| Show hardware cursor             | ✅              | ❌                 | P3       |
+| Editor padding                   | ✅              | ❌                 | P3       |
+| Output padding                   | ✅              | ❌                 | P3       |
+| Autocomplete max visible         | ✅              | ❌                 | P3       |
+| Clear on shrink                  | ✅              | ❌                 | P3       |
+| Terminal progress (OSC 9;4)      | ✅              | ❌                 | P3       |
+
+### G.7. Slash commands cần thêm (P2)
+
+| Command          | pi-coding-agent          | lazydsh | Mô tả                            |
+| ---------------- | ------------------------ | ------- | -------------------------------- |
+| `/import`        | ✅ `handleImportCommand` | ❌      | Import session từ file JSONL     |
+| `/reload`        | ✅ `handleReloadCommand` | ❌      | Reload extensions/resources      |
+| `/tree`          | ✅ `showTreeSelector`    | ❌      | Tree view sessions               |
+| `/scoped-models` | ✅ `showModelsSelector`  | ❌      | Scoped models toggle             |
+| `/trust`         | ✅ `showTrustSelector`   | ❌      | Trust management                 |
+| `/skill:*`       | ✅ (via autocomplete)    | ❌      | Skill invocation (`/skill:name`) |
+
+### G.8. Keybindings cần thêm (P2)
+
+| Keybinding         | pi-coding-agent | lazydsh | Mô tả              |
+| ------------------ | --------------- | ------- | ------------------ |
+| `app.session.tree` | ✅              | ❌      | Tree view sessions |
+
+### G.9. Ưu tiên port (theo thứ tự)
+
+1. **Port `custom-editor`** (121 dòng) — Editor tích hợp app keybindings, ảnh hưởng trực tiếp UX.
+2. **Port `skill-invocation-message`** (64 dòng) — Render skill blocks, nhỏ và dễ.
+3. **Port `scoped-models-selector`** (336 dòng) — Scoped models cho Ctrl+P cycling.
+4. **Port `tree-selector`** (1254 dòng) — Tree view sessions, lớn nhất.
+5. **Port `config-selector`** (757 dòng) — Resource management UI.
+6. **Thêm commands** `/import`, `/reload`, `/tree`, `/scoped-models`, `/trust`, `/skill:*`.
+7. **Thêm keybinding** `app.session.tree`.
+8. **Wire orphan files** (13 component đã port, chưa wire).
+9. **Port settings items** (33 settings mới, P3).
+10. **Cosmetic components** (armin, easter-egg-3d, pi-logo, earendil-announcement) — optional.
+
+---
+
 ## Verification Checklist
 
 - [x] Ctrl+C interrupts mid-turn; second press force-exits; idle exits; draft clears
@@ -126,7 +260,7 @@ Then orphan file wiring (C items), then missing features (defer to v0.3.0).
 
 ---
 
-## Bug-Fix Backlog (corrected, 2026-11-24)
+## Bug-Fix Backlog (corrected, 2026-11-25)
 
 See `AUDIT.md` §6 for full details.
 

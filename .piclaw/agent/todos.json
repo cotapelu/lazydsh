@@ -3,42 +3,42 @@
   "phases": [
     {
       "id": "phase-1",
-      "name": "Audit toàn bộ codebase lazydsh",
+      "name": "Remaining Bug Fixes & Wire Orphan Files",
       "tasks": [
         {
           "id": "task-1",
-          "content": "Chạy quality gate, lint, typecheck, test, security scan",
-          "status": "in_progress"
+          "content": "Fix global fetch monkey-patch in runtime.ts",
+          "status": "completed"
         },
         {
           "id": "task-2",
-          "content": "Audit src/runtime (boot, runtime.ts, deferred, plugin-patch)",
-          "status": "pending"
+          "content": "Fix authorization.cancel not awaited in logout",
+          "status": "completed"
         },
         {
           "id": "task-3",
-          "content": "Audit src/interactive-mode (ui.ts, components, theme)",
-          "status": "pending"
+          "content": "Fix user-message-selector untracked setTimeout",
+          "status": "completed"
         },
         {
           "id": "task-4",
-          "content": "Audit src/providers + ofm-provider (transport, fingerprint, token-saver)",
-          "status": "pending"
+          "content": "Add guard for keybindings dispose unwatchFile",
+          "status": "completed"
         },
         {
           "id": "task-5",
-          "content": "Audit contracts, utils, cli, plugin, scripts",
-          "status": "pending"
+          "content": "Wire orphan files: trust-selector, branch-summary-message, first-time-setup, settings-submenu, show-images-selector, bordered-loader, countdown-timer",
+          "status": "completed"
         },
         {
           "id": "task-6",
-          "content": "Tổng hợp báo cáo: lỗi thật, rủi ro, dead code, đề xuất sửa",
-          "status": "pending"
+          "content": "Add missing commands: /import, /reload, /trust, /skill:*",
+          "status": "completed"
         }
       ]
     }
   ],
   "nextTaskId": 7,
   "nextPhaseId": 2,
-  "updatedAt": "2026-11-24T00:03:07.733Z"
+  "updatedAt": "2026-11-25T10:26:48.441Z"
 }

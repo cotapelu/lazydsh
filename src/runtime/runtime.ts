@@ -60,6 +60,41 @@ import { ApprovalGrants, resolveApprovalOutcome } from "./approvals.ts";
 import { ActivitySet } from "./activities.ts";
 import { contentText, isAuthFailure, type RuntimeEvent } from "../runtime-events.ts";
 
+/** Module-level fetch wrapper for OFM Kilo - applied once at import. */
+function wrapFetchForOfmKilo(): void {
+  if ((globalThis as any).__ofmFetchWrapped) return;
+  (globalThis as any).__ofmFetchWrapped = true;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input: any, init?: any) => {
+    try {
+      const url = typeof input === "string" ? input : input?.url;
+      if (typeof url === "string" && url.includes("api.kilo.ai/api/gateway")) {
+        if (init?.headers) {
+          if (init.headers instanceof Headers) init.headers.delete("authorization");
+          else if (Array.isArray(init.headers)) {
+            init.headers = init.headers.filter(
+              (entry: any) =>
+                !String(entry?.[0] ?? entry?.name ?? "")
+                  .toLowerCase()
+                  .startsWith("authorization"),
+            );
+          } else if (typeof init.headers === "object") {
+            for (const key of Object.keys(init.headers)) {
+              if (key.toLowerCase() === "authorization") delete init.headers[key];
+            }
+          }
+        }
+      }
+    } catch {
+      // best-effort
+    }
+    return originalFetch(input, init);
+  };
+}
+
+// Apply once at module load
+wrapFetchForOfmKilo();
+
 export { eventText, isAuthFailure } from "../runtime-events.ts";
 export type { RuntimeEvent } from "../runtime-events.ts";
 // The boundary contract lives in interfaces.ts so the TUI never imports this
@@ -137,38 +172,6 @@ export class Runtime {
   constructor(ctx: Context, options: RuntimeOptions = {}) {
     this.ctx = ctx;
     this.options = options;
-    // OFM Kilo free lane must reach the gateway with no Authorization header
-    // at all; pi-ai always attaches one when an apiKey is configured, so
-    // strip it on the wire for that endpoint.
-    const originalFetch = globalThis.fetch;
-    if (!(globalThis as any).__ofmFetchWrapped) {
-      (globalThis as any).__ofmFetchWrapped = true;
-      globalThis.fetch = async (input: any, init?: any) => {
-        try {
-          const url = typeof input === "string" ? input : input?.url;
-          if (typeof url === "string" && url.includes("api.kilo.ai/api/gateway")) {
-            if (init?.headers) {
-              if (init.headers instanceof Headers) init.headers.delete("authorization");
-              else if (Array.isArray(init.headers)) {
-                init.headers = init.headers.filter(
-                  (entry: any) =>
-                    !String(entry?.[0] ?? entry?.name ?? "")
-                      .toLowerCase()
-                      .startsWith("authorization"),
-                );
-              } else if (typeof init.headers === "object") {
-                for (const key of Object.keys(init.headers)) {
-                  if (key.toLowerCase() === "authorization") delete init.headers[key];
-                }
-              }
-            }
-          }
-        } catch {
-          // best-effort
-        }
-        return originalFetch(input, init);
-      };
-    }
     registerCommands(ctx);
     ctx.on("approval/request", async (request, next) => {
       if (!this.owns(request.agent)) return next();
@@ -1022,7 +1025,7 @@ export class Runtime {
       const key = credentialKey("llm-pi-ai", provider);
       if (!this.ctx.authorization.list().some((flow) => flow.key === key))
         throw new Error(`Unknown provider: ${provider}.`);
-      this.ctx.authorization.cancel(key);
+      await this.ctx.authorization.cancel(key);
       await this.ctx.credentials.deleteRecord(key);
     }
     const refs =
