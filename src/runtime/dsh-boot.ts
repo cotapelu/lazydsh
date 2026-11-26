@@ -115,7 +115,10 @@ function createAppReady() {
 async function composeProfile(name: string, patchFiles: readonly string[]) {
   const profile = loadProfile(NAME, name, INSTALL_ANCHOR, undefined, { userLayer: true });
   reportSkippedBundles(NAME, profile);
-  writeFileSync(join(profile.dir, PROFILE_ROOT_FILENAME), "[]\n");
+  const profileRootPath = join(profile.dir, PROFILE_ROOT_FILENAME);
+  if (!existsSync(profileRootPath)) {
+    writeFileSync(profileRootPath, "[]\n");
+  }
   return {
     profile,
     overlays: patchFiles.flatMap((file) => loadOverlayPatches(NAME, resolve(file))),

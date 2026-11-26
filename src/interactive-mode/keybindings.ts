@@ -81,7 +81,7 @@ export const APP_KEYBINDINGS = {
     defaultKeys: "shift+ctrl+d",
     description: "Delete multiple sessions",
   },
-  "app.models.save": { defaultKeys: "ctrl+s", description: "Save model selection" },
+  "app.models.save": { defaultKeys: "ctrl+enter", description: "Save model selection" },
   "app.models.testConnection": { defaultKeys: "ctrl+t", description: "Test model connection" },
   "app.models.enableAll": { defaultKeys: "ctrl+a", description: "Enable all models" },
   "app.models.clearAll": { defaultKeys: "ctrl+x", description: "Clear all models" },

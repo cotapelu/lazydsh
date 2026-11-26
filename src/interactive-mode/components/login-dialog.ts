@@ -215,7 +215,7 @@ export class LoginDialog extends Container {
   }
 
   get focused(): boolean {
-    return (this.input?.focused ?? false) || this.authUrl !== undefined || true;
+    return (this.input?.focused ?? false) || this.authUrl !== undefined;
   }
 
   set focused(value: boolean) {

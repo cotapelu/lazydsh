@@ -7,11 +7,9 @@
 
 import {
   backgroundAnsi,
-  colorToRgb,
   foregroundAnsi,
   getTerminalColorMode,
   parseColor,
-  rgbColor,
   styleTextWithAnsi,
   type Color,
 } from "@earendil-works/pi-tui";
@@ -256,12 +254,20 @@ export function safeText(v: unknown): string {
   if (v === null || v === undefined) return "";
   const s = typeof v === "string" ? v : JSON.stringify(v);
   // Remove ANSI escape sequences and C0/C1 control chars
-  return s
-    .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "") // CSI sequences like ESC[2J
-    .replace(/\x1b\][^\x07\x1b]*[\x07\x1b\\]/g, "") // OSC sequences like ESC]...BEL or ESC]...ST
-    .replace(/\x1b[PX^_][^\x1b\x07]*[\x07\x1b\\]/g, "") // DCS, PM, APC sequences
-    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "") // C0 control chars (except \n=0x0a, \t=0x09)
-    .replace(/\r/g, ""); // CR (0x0d)
+  // eslint-disable-next-line no-control-regex
+  return (
+    s
+      // eslint-disable-next-line no-control-regex
+      .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "") // CSI sequences like ESC[2J
+      // eslint-disable-next-line no-control-regex
+      .replace(/\x1b\][^\x07\x1b]*[\x07\x1b\\]/g, "") // OSC sequences like ESC]...BEL or ESC]...ST
+      // eslint-disable-next-line no-control-regex
+      .replace(/\x1b[PX^_][^\x1b\x07]*[\x07\x1b\\]/g, "") // DCS, PM, APC sequences
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "") // C0 control chars (except \n=0x0a, \t=0x09)
+      // eslint-disable-next-line no-control-regex
+      .replace(/\r/g, "")
+  ); // CR (0x0d)
 }
 
 export function formatNotification(label: string, text: string, color?: boolean): string {
@@ -356,8 +362,8 @@ export function writeThemeSetting(name: string): void {
   } catch {}
 }
 
-export function initTheme(name = "default"): void {
-  // name reserved for future custom themes; hiện tại chỉ dùng builtin
+export function initTheme(_name = "default"): void {
+  // _name reserved for future custom themes; hiện tại chỉ dùng builtin
   _theme = new Theme();
 }
 

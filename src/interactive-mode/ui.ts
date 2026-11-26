@@ -12,7 +12,7 @@ import {
   pickProviderModel as pickProviderModelFlow,
   type ModelPickerHost,
 } from "./model-picker.ts";
-import { highlightCode } from "./highlight.ts";
+
 import type { SessionStats } from "../utils/stats.ts";
 import { Autocomplete } from "./autocomplete.ts";
 import { commandMenu } from "./commands.ts";
@@ -80,7 +80,7 @@ import {
   type MermaidMode,
   type UiSettings,
 } from "./settings-store.ts";
-import { safeText, accent, dim } from "./theme.ts";
+import { safeText, dim } from "./theme.ts";
 import { theme as themeProxy, SYSTEM_THEME, currentThemeName_ } from "./theme.ts";
 import { getMarkdownTheme } from "./theme/theme.ts";
 

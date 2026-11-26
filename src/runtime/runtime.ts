@@ -762,6 +762,13 @@ export class Runtime {
     ];
   }
   /**
+   * List all authorization flows for LLM providers.
+   * Exposed for UI layer to avoid direct ctx access.
+   */
+  getAuthorizationFlows() {
+    return this.ctx.authorization.list().filter((flow) => flow.key.startsWith("llm-pi-ai/"));
+  }
+  /**
    * Describe where a route's credentials come from.
    *
    * A stored login, a provider environment variable, and an ambient provider
@@ -1449,6 +1456,7 @@ export class Runtime {
     } finally {
       if (this.handle === handle) this.handle = undefined;
       this.closing = undefined;
+      this.ofmOpencodeSessionIds.clear();
     }
   }
 }

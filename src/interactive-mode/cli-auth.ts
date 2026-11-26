@@ -160,14 +160,19 @@ async function cliOnAuth(
 
 /** The terminal stand-in for the TUI's `AuthHost`. */
 export function createCliAuthHost(runtime: Runtime, signal: AbortSignal): AuthHost {
-  const add = (label: string, text?: unknown) =>
-    console.log(
-      formatNotification(
-        label,
-        text === undefined ? "" : String(text),
-        terminalColor(process.stdout),
-      ),
-    );
+  const add = (label: string, text?: unknown) => {
+    let formatted: string;
+    if (text === undefined) {
+      formatted = "";
+    } else if (typeof text === "object" && text !== null) {
+      formatted = JSON.stringify(text);
+    } else {
+      // text is now a primitive (string, number, boolean, symbol, bigint) or null
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string
+      formatted = String(text);
+    }
+    console.log(formatNotification(label, formatted, terminalColor(process.stdout)));
+  };
   return {
     runtime,
     callbacks: { onAuth: cliOnAuth } satisfies Callbacks,

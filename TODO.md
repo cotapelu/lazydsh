@@ -39,13 +39,16 @@ None currently open (all 182 tests pass, `npm run check` clean). Remaining code-
 
 1. **`ui.ts` decomposition** — in progress: auth cluster extracted to `auth-flow.ts`; next clusters: `pickModel`/`pickProviderModel`, streaming loop, session management, keybinding input handler. `ui.ts` ~2336 lines.
 2. ~~**`runtime.ts` `globalThis.fetch` monkey-patch** — `__ofmFetchWrapped` mutates global fetch for OFM Kilo; should be module-level or per-provider.~~ **FIXED** (moved to module-level function)
-3. ~~**`ctrl+s` duplicate bindings** — bound to `app.thinking.save`, `app.session.toggleSort`, `app.models.save`.~~ **FIXED** (toggleSort → `ctrl+shift+s`)
+3. ~~**`ctrl+s` duplicate bindings** — bound to `app.thinking.save`, `app.session.toggleSort`, `app.models.save`.~~ **FIXED** (toggleSort → `ctrl+shift+s`, models.save → `ctrl+enter`)
 4. ~~**`spawnSync("git", ...)` in footer-data-provider** — blocks event loop on every 5s poll; replace with async spawn.~~ **FIXED** (replaced with async spawn)
 5. ~~**External editor command** — split on spaces without shell quoting (`external-editor.ts`).~~ **FIXED** (added `parseEditorCommand()`)
 6. ~~**Timer leak** — `setTimeout` in `user-message-selector.ts` not cleared on unmount.~~ **FIXED** (added `dispose()` with `clearTimeout`)
 7. ~~**Resource leaks** — `keybindings.dispose()` and `themeController.dispose()` not called in `finally`; `FooterDataProvider` has no `dispose()`.~~ **FIXED** (all dispose() called in finally block)
 8. ~~**`runtime.history().catch(() => [])`** swallows errors silently.~~ **FIXED** (proper error handling with user notification)
 9. ~~**`ui.ts` `connect()` many parameters** — refactored to `ConnectOptions` object (done).~~ **DONE**
+10. **Lint/type warnings** — **FIXED** (theme.ts unused imports/params/regex, ui.ts unused imports, cli-auth.ts TS warning, test/theme-settings.test.ts unused import, added .eslintignore for temp OFM files)
+11. **Medium fixes (2026-11-26)** — composeProfile no longer overwrites cordis.yml (3.1), ofmOpencodeSessionIds cleared on close (3.3), login-dialog focused getter fixed (3.8), auth-flow encapsulation fixed (3.9)
+12. **Low fixes (2026-11-26)** — removed dead code streaming.ts (4.1), deduplicated sanitizeStatusText (4.2), system-theme.ts already removed (4.3)
 
 ### C. Orphan files (ported, typechecked, no call site — need product decision)
 

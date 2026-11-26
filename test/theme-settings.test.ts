@@ -1,6 +1,6 @@
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readThemeSetting, writeThemeSetting } from "../src/interactive-mode/theme/theme.ts";

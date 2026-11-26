@@ -10,6 +10,7 @@ import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { homedir } from "node:os";
 import { theme } from "./theme.ts";
 import { formatTokens, formatCwdForFooter, FooterDataProvider } from "./footer-data-provider.ts";
+import { sanitizeStatusText } from "./shared-utils.ts";
 import type { AccountLimits } from "../utils/limits.ts";
 
 interface FooterOptions {
@@ -312,11 +313,4 @@ export class FooterComponent {
 
     return lines;
   }
-}
-
-function sanitizeStatusText(text: string): string {
-  return text
-    .replace(/[\r\n\t]/g, " ")
-    .replace(/ +/g, " ")
-    .trim();
 }

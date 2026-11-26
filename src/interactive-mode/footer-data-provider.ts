@@ -10,14 +10,7 @@
 import { spawn } from "node:child_process";
 import { existsSync, watch, type FSWatcher } from "node:fs";
 import { resolve, relative, isAbsolute, sep, join } from "node:path";
-
-/** Sanitize text for single-line status display */
-function sanitizeStatusText(text: string): string {
-  return text
-    .replace(/[\r\n\t]/g, " ")
-    .replace(/ +/g, " ")
-    .trim();
-}
+import { sanitizeStatusText } from "./shared-utils.ts";
 
 /** Format token counts for compact display */
 export function formatTokens(count: number): string {

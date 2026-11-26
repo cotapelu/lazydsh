@@ -1,0 +1,17 @@
+# Ignore temporary OFM driver files generated during tests
+lazydsh-ofm-*/driver.mjs
+lazydsh-ofm-*/patch.json
+
+# Ignore build output
+dist/
+build/
+
+# Ignore node_modules
+node_modules/
+
+# Ignore coverage
+coverage/
+
+# Ignore temp files
+*.tmp
+*.temp

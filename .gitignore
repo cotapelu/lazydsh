@@ -6,3 +6,5 @@ node_modules/
 dist/
 .vite/
 *.cpuprofile
+# Temp OFM test profiles
+lazydsh-ofm-*/

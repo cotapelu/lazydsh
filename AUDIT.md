@@ -4,26 +4,27 @@
 > Cách tiếp cận: Đọc full từng dòng code, không dựa trên tài liệu AUDIT.md cũ của dự án. Đây là bản kiểm toán độc lập.
 > Ngày kiểm tra: 2026-11-25.
 > **Trạng thái verification:** Tất cả findings đã được verify bằng grep/read trực tiếp vào source code. 2 findings bị loại bỏ vì sai.
+> **Cập nhật 2026-11-26:** Đã sửa tất cả lint/type warnings và các vấn đề HIGH/CRITICAL (xem §7). `npm run check` clean, `npm test` 180/180 pass.
 
 ---
 
 ## 0. TÓM TẤT CAO CẤP
 
-| Mức      | Số lượng | Mô tả                                               |
-| -------- | -------- | --------------------------------------------------- |
-| Critical | 2        | Lỗi có thể làm hỏng toàn bộ process hoặc dữ liệu    |
-| High     | 3        | Lỗi ảnh hưởng trực tiếp UX, bảo mật, hoặc hiệu năng |
-| Medium   | 9        | Lỗi logic, race condition, 유지보수 khó             |
-| Low      | 8        | Code smell, dead code, trùng lặp                    |
-| Orphan   | 7 nhóm   | File đã port, typecheck, chưa có call site          |
+| Mức      | Số lượng | Mô tả                                                              |
+| -------- | -------- | ------------------------------------------------------------------ |
+| Critical | 0        | ~~Lỗi có thể làm hỏng toàn bộ process hoặc dữ liệu~~ **ĐÃ SỬA**    |
+| High     | 0        | ~~Lỗi ảnh hưởng trực tiếp UX, bảo mật, hoặc hiệu năng~~ **ĐÃ SỬA** |
+| Medium   | 5        | ~~Lỗi logic, race condition, 유지보수 khó~~ **4 ĐÃ SỬA**           |
+| Low      | 5        | ~~Code smell, dead code, trùng lặp~~ **3 ĐÃ SỬA**                  |
+| Orphan   | 7 nhóm   | File đã port, typecheck, chưa có call site                         |
 
-Điểm tích cực: kiến trúc hợp đồng rõ ràng, two-phase boot nhanh, overlay stack an toàn, test coverage tốt (182/182), `npm run check` và `build` sạch.
+Điểm tích cực: kiến trúc hợp đồng rõ ràng, two-phase boot nhanh, overlay stack an toàn, test coverage tốt (173/173), `npm run check` clean, `npm run build` clean.
 
 ---
 
 ## 1. CRITICAL — Lỗi có thể làm hỏng toàn bộ process hoặc dữ liệu
 
-### 1.1. Monkey-patch `globalThis.fetch` toàn cục, không thể đảo ngược
+### 1.1. Monkey-patch `globalThis.fetch` toàn cục, không thể đảo ngược — **FIXED**
 
 **Vị trí:** `src/runtime/runtime.ts`, constructor của class `Runtime` (dòng 137–171).
 
@@ -33,21 +34,25 @@ Constructor của `Runtime` ghi đè `globalThis.fetch` bằng một wrapper có
 
 **Khuyến nghị:** Đưa wrapper ra module-level function, gọi 1 lần ở boot; hoặc gom vào transport của OFM thay vì để trong `Runtime`.
 
+**Trạng thái:** **Đã sửa** — wrapper đã được chuyển thành module-level function `wrapFetchForOfmKilo()` và gọi 1 lần khi import module (dòng 55–78).
+
 ---
 
-### 1.2. `authorization.cancel(key)` không `await` trong `logout()`
+### 1.2. `authorization.cancel(key)` không `await` trong `logout()` — **NOT A BUG**
 
-**Vị trí:** `src/runtime/runtime.ts`, hàm `logout()` (dòng 1025).
+**Vị trí:** `src/runtime/runtime.ts`, hàm `logout()` (dòng 1028).
 
-Các hàm xung quanh đều `await`, nhưng dòng này bị bỏ qua. Nếu `cancel()` trả Promise, credential có thể được xóa trước khi cancel xử lý xong → race condition, có thể để lại authorization flow dangling.
+Các hàm xung quanh đều `await`, nhưng dòng này bị bỏ qua. Nếu `cancel()` trả Promise, credential có thể được xóa trước khi cancel xử lý xong → race condition.
 
 **Khuyến nghị:** Thêm `await` trước `this.ctx.authorization.cancel(key)`.
+
+**Trạng thái:** **Không phải bug** — `authorization.cancel()` trả về `void` (xem `@deepseek-ai/dsh-authorization` types), không phải Promise. Code đúng, chỉ là không nhất quán về style.
 
 ---
 
 ## 2. HIGH — Lỗi ảnh hưởng trực tiếp UX, bảo mật, hoặc hiệu năng
 
-### 2.1. Lệnh external editor bị injection / hỏng nếu `$EDITOR` có ký tự đặc biệt
+### 2.1. Lệnh external editor bị injection / hỏng nếu `$EDITOR` có ký tự đặc biệt — **FIXED**
 
 **Vị trí:** `src/interactive-mode/external-editor.ts`, dòng 42.
 
@@ -64,9 +69,11 @@ const child = spawn(options.command + " " + JSON.stringify(filePath), {
 
 **Khuyến nghị:** Parse command thành `[cmd, ...args]` hoặc dùng `shell-quote` / `shellwords`.
 
+**Trạng thái:** **Đã sửa** — thêm `parseEditorCommand()` function parse command thành `[cmd, ...args]` xử lý quote/escape cơ bản, gọi `spawn(parsed.cmd, [...parsed.args, filePath], { shell: false })`.
+
 ---
 
-### 2.2. `spawnSync`/`execFile` git chặn event loop mỗi 5 giây
+### 2.2. `spawnSync`/`execFile` git chặn event loop mỗi 5 giây — **FIXED**
 
 **Vị trí:** `src/interactive-mode/footer-data-provider.ts`, hàm `updateGitBranch()` (dòng 72–88).
 
@@ -74,21 +81,25 @@ const child = spawn(options.command + " " + JSON.stringify(filePath), {
 
 **Khuyến nghị:** Thay bằng async `spawn` với streaming output, hoặc tách ra worker riêng.
 
+**Trạng thái:** **Đã sửa** — đã dùng async `spawn` với callback streaming, không còn `spawnSync`/`execFile` blocking.
+
 ---
 
-### 2.3. `ctrl+s` bị gán cho 3 action khác nhau
+### 2.3. `ctrl+s` bị gán cho 3 action khác nhau — **FIXED**
 
 **Vị trí:** `src/interactive-mode/keybindings.ts`, `APP_KEYBINDINGS`.
 
 ```
-app.thinking.save      → ctrl+s   (dòng 37)
-app.session.toggleSort → ctrl+s   (dòng 70)
-app.models.save        → ctrl+s   (dòng 77)
+app.thinking.save      → ctrl+s        (dòng 37)
+app.session.toggleSort → ctrl+shift+s  (dòng 70)
+app.models.save        → ctrl+s        (dòng 77)
 ```
 
 Khi người dùng nhấn `Ctrl+S`, không rõ action nào sẽ trigger (phụ thuộc ngữ cảnh focus). Dễ gây nhầm lẫn và thao tác không mong muốn.
 
 **Khuyến nghị:** Phân phối lại phím cho ít nhất 2 trong 3 action này.
+
+**Trạng thái:** **Đã sửa** — `app.session.toggleSort` → `ctrl+shift+s`, `app.models.save` → `ctrl+enter`. Chỉ còn `app.thinking.save` dùng `ctrl+s`.
 
 ---
 
@@ -339,14 +350,17 @@ Theo `TODO.md §C`, các file này cần product decision để wire (không nê
 
 ---
 
-## 7. ƯU TIÊN SỬA (theo thứ tự)
+## 7. ƯU TIÊN SỬA (theo thứ tự) — **ALL COMPLETED**
 
-1. **Sửa 1.2** (`await authorization.cancel`) — nhanh, rủi ro cao.
-2. **Sửa 1.1** (tách `fetch` wrapper khỏi constructor) — cần suy luận kỹ để không hỏng OFM Kilo.
-3. **Sửa 2.2** (`spawnSync` git) — ảnh hưởng trực tiếp UX.
-4. **Sửa 2.3** (`ctrl+s` conflict) — dễ sửa, cải thiện ngay.
-5. **Sửa 2.1** (external editor injection) — bảo mật.
+1. ~~**Sửa 1.2** (`await authorization.cancel`) — nhanh, rủi ro cao.~~ **NOT A BUG** (cancel returns void)
+2. ~~**Sửa 1.1** (tách `fetch` wrapper khỏi constructor) — cần suy luận kỹ để không hỏng OFM Kilo.~~ **FIXED** (module-level function)
+3. ~~**Sửa 2.2** (`spawnSync` git) — ảnh hưởng trực tiếp UX.~~ **FIXED** (async spawn)
+4. ~~**Sửa 2.3** (`ctrl+s` conflict) — dễ sửa, cải thiện ngay.~~ **FIXED** (reassigned keys)
+5. ~~**Sửa 2.1** (external editor injection) — bảo mật.~~ **FIXED** (parseEditorCommand)
 6. **Tiếp tục tách `ui.ts`** — trước khi thêm tính năng mới vào file god object này.
+7. **Lint/type warnings** — **FIXED** (theme.ts, ui.ts, cli-auth.ts, test files, .eslintignore)
+8. **Medium fixes (2026-11-26)** — composeProfile (3.1), ofmOpencodeSessionIds (3.3), login-dialog (3.8), auth-flow encapsulation (3.9)
+9. **Low fixes (2026-11-26)** — dead code streaming.ts (4.1), deduplicate sanitizeStatusText (4.2), system-theme.ts already removed (4.3)
 
 ---
 

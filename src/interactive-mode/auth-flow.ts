@@ -47,7 +47,7 @@ export interface AuthHost {
 /** Build the two rows (OAuth + API key) the login selector shows per provider. */
 export async function buildLoginProviderOptions(host: AuthHost): Promise<ProviderOption[]> {
   const options: ProviderOption[] = [];
-  const flows = host.runtime.ctx.authorization.list();
+  const flows = host.runtime.getAuthorizationFlows();
   for (const provider of host.runtime.authProviders()) {
     const providerId = provider.value;
     const authStatus: CredentialSource = await host.runtime.credentialSource(providerId);
