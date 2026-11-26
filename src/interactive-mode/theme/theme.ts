@@ -11,7 +11,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { stripVTControlCharacters } from "node:util";
 import {
   backgroundAnsi,
@@ -23,6 +22,7 @@ import {
 } from "@earendil-works/pi-tui";
 import { THEME_TOKENS, type ThemeTokenName } from "./theme-tokens.ts";
 import { validateTheme } from "./theme-schema.ts";
+import { BUILTIN_THEMES } from "./builtins.ts";
 import {
   terminalColors,
   _terminalColorsPending,
@@ -280,16 +280,6 @@ function createSystemTheme(mode: ReturnType<typeof getTerminalColorMode>): Theme
 
 // ── loading ──
 
-function themesDir(): string {
-  // `new URL(".", import.meta.url)` is already this module's directory — the
-  // one holding the built-in theme JSONs (and, in the bundle, `dist/`, where
-  // postbuild copies them). `fileURLToPath` decodes percent-escapes, which
-  // `new URL(...).pathname` does not, so an install path containing a space or
-  // a non-ASCII character used to resolve to a path that does not exist on
-  // Windows and made the built-in themes unloadable there.
-  return fileURLToPath(new URL(".", import.meta.url));
-}
-
 /**
  * Where user-authored themes live.
  *
@@ -302,8 +292,9 @@ export function customThemesDir(): string {
 }
 
 function loadThemeJson(name: string): unknown {
-  const builtIn = path.join(themesDir(), `${name}.json`);
-  if (fs.existsSync(builtIn)) return JSON.parse(fs.readFileSync(builtIn, "utf-8"));
+  if (Object.prototype.hasOwnProperty.call(BUILTIN_THEMES, name)) {
+    return BUILTIN_THEMES[name];
+  }
   const custom = path.join(customThemesDir(), `${name}.json`);
   if (fs.existsSync(custom)) {
     // Built-ins ship with the app and stay unvalidated for startup cost;
@@ -353,15 +344,11 @@ function getAvailableThemeInfos(): ThemeInfo[] {
     seen.add(themeInfo.name);
     result.push(themeInfo);
   };
-  // Built-in themes
+  // Built-in themes (inlined from TypeScript modules)
   addTheme({ name: SYSTEM_THEME, path: undefined });
-  try {
-    for (const file of fs.readdirSync(themesDir())) {
-      if (!file.endsWith(".json")) continue;
-      const name = file.slice(0, -5);
-      addTheme({ name, path: path.join(themesDir(), file) });
-    }
-  } catch {}
+  for (const name of Object.keys(BUILTIN_THEMES)) {
+    addTheme({ name, path: undefined });
+  }
   // Custom themes
   try {
     for (const file of fs.readdirSync(customThemesDir())) {
