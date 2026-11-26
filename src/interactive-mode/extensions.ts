@@ -1,5 +1,5 @@
 import { Container, Text } from "@earendil-works/pi-tui";
-import { dim } from "./theme/theme.ts";
+import { dim } from "./theme.ts";
 
 /** Extension widget interface. */
 export interface ExtensionWidget {

@@ -8,7 +8,7 @@
 
 import { getAppKeybindings } from "./keybindings.ts";
 import type { Keybinding } from "@earendil-works/pi-tui";
-import { theme } from "./theme/theme.ts";
+import { theme } from "./theme.ts";
 
 function formatKeyPart(part: string, options: { capitalize?: boolean } = {}): string {
   const displayPart =

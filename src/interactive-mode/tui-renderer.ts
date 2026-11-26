@@ -11,7 +11,7 @@
 import { ProcessTerminal, TuiAltScreen, TuiMainScreen, type TUI } from "@earendil-works/pi-tui";
 import { keyDisplayText } from "./keybinding-hints.ts";
 import type { TuiHost } from "../interfaces.ts";
-import { theme } from "./theme/theme.ts";
+import { theme } from "./theme.ts";
 
 /**
  * Narrow a {@link TuiHost} for pi-tui components typed against the full `TUI`.

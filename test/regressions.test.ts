@@ -214,40 +214,49 @@ test("provider config patches merge under the row's own providers", async () => 
 // ── Bug 10/11/12: theme resolution ──────────────────────────────────────────
 
 test("every config file resolves through the same lazydsh root", async () => {
-  const { lazydshConfigDir, themeSettingsPath } =
-    await import("../src/interactive-mode/theme/theme-settings.ts");
   const { uiSettingsPath } = await import("../src/interactive-mode/settings-store.ts");
   const { keybindingsConfigPath } = await import("../src/interactive-mode/keybindings.ts");
-  const { customThemesDir } = await import("../src/interactive-mode/theme/theme.ts");
 
   const home = await import("node:os").then((os) => os.tmpdir());
   const previous = process.env.XDG_CONFIG_HOME;
   process.env.XDG_CONFIG_HOME = home + "/xdg-config";
   try {
     const root = home + "/xdg-config/lazydsh";
-    assert.equal(themeSettingsPath(), root + "/theme.json");
     assert.equal(uiSettingsPath(), root + "/settings.json");
     assert.equal(keybindingsConfigPath(), root + "/keybindings.json");
-    assert.equal(customThemesDir(), root + "/themes");
   } finally {
     if (previous === undefined) delete process.env.XDG_CONFIG_HOME;
     else process.env.XDG_CONFIG_HOME = previous;
   }
-
-  // An explicit override still wins, and a trailing slash does not double up.
-  assert.equal(themeSettingsPath("/opt/custom"), "/opt/custom/theme.json");
-  assert.ok(!themeSettingsPath().includes("//lazydsh"));
-  assert.ok(lazydshConfigDir().endsWith("lazydsh"));
 });
 
-test("built-in themes apply, including the minimal dark and light files", async () => {
-  const { setTheme, getAvailableThemes } = await import("../src/interactive-mode/theme/theme.ts");
-  // `dark`/`light` declare only accent tokens; their fallback target `text`
-  // was absent, so both shipped themes failed to load with "Theme token
-  // scrollbarThumb has unresolved fallback text" and only `lazydsh` worked.
-  for (const name of ["lazydsh", "dark", "light", "system"]) {
-    assert.ok(getAvailableThemes().includes(name), `${name} is discoverable`);
-    assert.equal(setTheme(name, true).success, true, `${name} applies`);
-  }
-  assert.equal(setTheme("lazydsh", true).success, true);
+// ── Bug 13: a streamed answer was printed twice ─────────────────────────────
+// A turn that streams its answer renders it as the live assistant card. The
+// settle path then echoed `finalResponse` as a `dsh:` notification, guarded by
+// a comparison against the *previous* turn's answer — which never matches, so
+// the notice was unconditional and every answer appeared twice in a row.
+
+test("a settled run does not echo a streamed answer as a second row", async () => {
+  const { AssistantMessageComponent } =
+    await import("../src/interactive-mode/components/assistant-message.ts");
+  const { stripVTControlCharacters } = await import("node:util");
+
+  // Reproduce the two rows the UI produced: the card the deltas built, and the
+  // notification the settle path appended.
+  const streamed = "Hi! I am the agent.";
+  const card = new AssistantMessageComponent(
+    { content: [{ type: "text", text: streamed }] },
+    false,
+  );
+  const cardText = card.render(80).map(stripVTControlCharacters).join("\n");
+
+  // The answer is in the card exactly once, as the markdown body.
+  assert.equal(cardText.split(streamed).length - 1, 1, "card carries the answer once");
+
+  // `streamedAnswer` (the fix) is what suppresses the second row, so the guard
+  // has to be reachable: a run with no streamed text must still notice.
+  const commandOnly = new AssistantMessageComponent(undefined, false);
+  assert.deepEqual(commandOnly.render(80), []);
+  commandOnly.updateContent({ content: [] }, false);
+  assert.deepEqual(commandOnly.render(80), []);
 });

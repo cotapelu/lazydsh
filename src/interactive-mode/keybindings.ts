@@ -15,7 +15,7 @@ import {
 } from "@earendil-works/pi-tui";
 import { existsSync, readFileSync, unwatchFile, watchFile } from "node:fs";
 import { join } from "node:path";
-import { lazydshConfigDir } from "./theme/theme-settings.ts";
+import { lazydshConfigDir } from "./theme.ts";
 
 const windowsKeybindings =
   process.platform === "win32" ||

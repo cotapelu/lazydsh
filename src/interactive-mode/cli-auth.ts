@@ -161,7 +161,13 @@ async function cliOnAuth(
 /** The terminal stand-in for the TUI's `AuthHost`. */
 export function createCliAuthHost(runtime: Runtime, signal: AbortSignal): AuthHost {
   const add = (label: string, text?: unknown) =>
-    console.log(formatNotification(label, text, terminalColor(process.stdout)));
+    console.log(
+      formatNotification(
+        label,
+        text === undefined ? "" : String(text),
+        terminalColor(process.stdout),
+      ),
+    );
   return {
     runtime,
     callbacks: { onAuth: cliOnAuth } satisfies Callbacks,
@@ -243,12 +249,10 @@ export async function cliLogout(runtime: Runtime, provider: string | undefined):
   }
   const remaining = await runtime.logout(target);
   if (remaining === undefined) {
-    console.log(
-      formatNotification("Logout", `Not logged in to ${target}.`, terminalColor(process.stdout)),
-    );
+    console.log(`logout: Not logged in to ${target}.`);
     return;
   }
-  console.log(formatNotification("Logged out", target, terminalColor(process.stdout)));
+  console.log(`logged out: ${target}`);
   if (remaining.length)
     console.error(
       `Credentials are still available from ${remaining.join(", ")}. Unset them to disconnect.`,

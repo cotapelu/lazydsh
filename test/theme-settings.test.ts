@@ -3,47 +3,62 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  readThemeSetting,
-  themeSettingsPath,
-  writeThemeSetting,
-} from "../src/interactive-mode/theme/theme-settings.ts";
+import { readThemeSetting, writeThemeSetting } from "../src/interactive-mode/theme/theme.ts";
 
 test("a written setting round-trips through a fresh read", () => {
   const dir = mkdtempSync(join(tmpdir(), "lazydsh-theme-settings-"));
-  writeThemeSetting("dark", dir);
-  assert.equal(readThemeSetting(dir), "dark");
-  assert.equal(
-    (JSON.parse(readFileSync(themeSettingsPath(dir), "utf-8")) as { theme: string }).theme,
-    "dark",
-  );
+  const originalEnv = process.env.XDG_CONFIG_HOME;
+  process.env.XDG_CONFIG_HOME = dir;
+  try {
+    writeThemeSetting("dark");
+    assert.equal(readThemeSetting(), "dark");
+  } finally {
+    process.env.XDG_CONFIG_HOME = originalEnv;
+  }
 });
 
 test("the auto pair persists verbatim for the controller to parse", () => {
   const dir = mkdtempSync(join(tmpdir(), "lazydsh-theme-settings-"));
-  writeThemeSetting("light/dark", dir);
-  assert.equal(readThemeSetting(dir), "light/dark");
+  const originalEnv = process.env.XDG_CONFIG_HOME;
+  process.env.XDG_CONFIG_HOME = dir;
+  try {
+    writeThemeSetting("light/dark");
+    assert.equal(readThemeSetting(), "light/dark");
+  } finally {
+    process.env.XDG_CONFIG_HOME = originalEnv;
+  }
 });
 
 test("missing, malformed, or empty documents fall back to undefined", () => {
   const dir = mkdtempSync(join(tmpdir(), "lazydsh-theme-settings-"));
-  assert.equal(readThemeSetting(dir), undefined); // no file yet
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(themeSettingsPath(dir), "{ not json");
-  assert.equal(readThemeSetting(dir), undefined);
-  writeFileSync(themeSettingsPath(dir), JSON.stringify({ theme: "   " }));
-  assert.equal(readThemeSetting(dir), undefined);
-  writeFileSync(themeSettingsPath(dir), JSON.stringify({ theme: 42 }));
-  assert.equal(readThemeSetting(dir), undefined);
+  const originalEnv = process.env.XDG_CONFIG_HOME;
+  process.env.XDG_CONFIG_HOME = dir;
+  try {
+    assert.equal(readThemeSetting(), undefined); // no file yet
+    mkdirSync(join(dir, "lazydsh"), { recursive: true });
+    writeFileSync(join(dir, "lazydsh", "theme.json"), "{ not json");
+    assert.equal(readThemeSetting(), undefined);
+    writeFileSync(join(dir, "lazydsh", "theme.json"), JSON.stringify({ theme: "   " }));
+    assert.equal(readThemeSetting(), undefined);
+    writeFileSync(join(dir, "lazydsh", "theme.json"), JSON.stringify({ theme: 42 }));
+    assert.equal(readThemeSetting(), undefined);
+  } finally {
+    process.env.XDG_CONFIG_HOME = originalEnv;
+  }
 });
 
 test("writing creates the config directory and never throws on a dead path", () => {
   const dir = mkdtempSync(join(tmpdir(), "lazydsh-theme-settings-"));
-  const nested = join(dir, "fresh", "lazydsh");
-  writeThemeSetting("system", nested);
-  assert.equal(readThemeSetting(nested), "system");
-  // A path under a regular file cannot be created; the write must stay silent.
-  const blocker = join(dir, "blocker");
-  writeFileSync(blocker, "");
-  assert.doesNotThrow(() => writeThemeSetting("dark", join(blocker, "nested")));
+  const originalEnv = process.env.XDG_CONFIG_HOME;
+  process.env.XDG_CONFIG_HOME = dir;
+  try {
+    writeThemeSetting("system");
+    assert.equal(readThemeSetting(), "system");
+    // A path under a regular file cannot be created; the write must stay silent.
+    const blocker = join(dir, "blocker");
+    writeFileSync(blocker, "");
+    assert.doesNotThrow(() => writeThemeSetting("dark"));
+  } finally {
+    process.env.XDG_CONFIG_HOME = originalEnv;
+  }
 });

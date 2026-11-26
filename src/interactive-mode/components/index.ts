@@ -65,5 +65,9 @@ export { ConfigSelectorComponent } from "./config-selector.ts";
 export { SkillInvocationMessageComponent } from "./skill-invocation-message.ts";
 export { TreeSelectorComponent } from "./tree-selector.ts";
 export { CustomEditor } from "./custom-editor.ts";
-export { ThemeController } from "../theme/theme-controller.ts";
-export { getMarkdownTheme, getSelectListTheme, getEditorTheme } from "../theme/theme.ts";
+export {
+  ThemeController,
+  getMarkdownTheme,
+  getSelectListTheme,
+  getEditorTheme,
+} from "../theme/theme.ts";

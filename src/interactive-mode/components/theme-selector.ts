@@ -50,7 +50,7 @@ export class ThemeSelectorComponent extends Container {
 
     // Get available themes and create select items
     const themes = getAvailableThemes();
-    const themeItems = themes.map((name) => ({
+    const themeItems = themes.map((name: string) => ({
       value: name,
       label: name,
       description: name === currentTheme ? "(current)" : undefined,
@@ -81,7 +81,7 @@ export class ThemeSelectorComponent extends Container {
         ? 0
         : Math.max(
             0,
-            items.findIndex((item) => item.value === currentTheme),
+            items.findIndex((item: { value: string }) => item.value === currentTheme),
           );
 
     this.selectList.setSelectedIndex(currentIndex);

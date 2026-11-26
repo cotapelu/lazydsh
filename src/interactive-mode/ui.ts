@@ -72,8 +72,7 @@ import {
   editorBorder,
 } from "./presentation.ts";
 import { HeaderComponent } from "./components/header.ts";
-import { ThemeController } from "./theme/theme-controller.ts";
-import { readThemeSetting, writeThemeSetting } from "./theme/theme-settings.ts";
+import { ThemeController, readThemeSetting, writeThemeSetting } from "./theme.ts";
 import {
   DEFAULT_UI_SETTINGS,
   readUiSettings,
@@ -82,8 +81,7 @@ import {
   type UiSettings,
 } from "./settings-store.ts";
 import { safeText, accent, dim } from "./theme.ts";
-import { theme as themeProxy, SYSTEM_THEME } from "./theme/theme.ts";
-import { currentThemeName_ } from "./theme/theme.ts";
+import { theme as themeProxy, SYSTEM_THEME, currentThemeName_ } from "./theme.ts";
 
 const identity = (text: string) => text;
 const bold = (text: string) => themeProxy.bold(text);
@@ -127,6 +125,28 @@ export function canRunDuringTurn(text: string) {
 
 export function shouldQueueDuringTurn(text: string) {
   return Boolean(text.trim()) && !/^\s*\//.test(text) && !canRunDuringTurn(text);
+}
+
+/**
+ * Whether a finished run's answer still needs its own transcript row.
+ *
+ * A run that streamed answer text already shows it, because the deltas build
+ * the live assistant card as they arrive. Echoing `finalResponse` below that
+ * card prints every streamed answer twice — the bug this exists to prevent.
+ * The guard it replaces compared `finalResponse` against the *previous* turn's
+ * answer, which never matches on the normal path, so the notice was
+ * unconditional and streamless runs (a command result) were the only case the
+ * notice ever correctly served.
+ */
+export function answerNeedsNotice(options: {
+  streamed: boolean;
+  finalResponse: string;
+  /** The answer already announced for this same text, if any. */
+  lastAssistant?: string;
+}): boolean {
+  const { streamed, finalResponse, lastAssistant } = options;
+  if (streamed || finalResponse.trim() === "") return false;
+  return finalResponse !== lastAssistant;
 }
 
 /**
@@ -283,7 +303,7 @@ export async function runUI(
   mermaidMode = uiSettings.mermaidMode;
   const themeController = new ThemeController(tui, {
     getSettingsManager: () => ({ getThemeSetting: () => themeSetting }),
-    showError: (msg) => add("Error", msg),
+    showError: (msg: string) => add("Error", msg),
     onChanged: () => tui.requestRender(),
     initialThemeSetting: themeSetting,
   });
@@ -1005,7 +1025,7 @@ export async function runUI(
             add("Theme", `auto: ${selection.split("/").join(" / ")} (follows terminal)`);
             return;
           }
-          const applied = themeController.setThemeName(selection);
+          const applied = themeController.setThemeSetting(selection);
           if (!applied.success) {
             add("Theme", `Cannot apply ${selection}: ${applied.error ?? "unknown error"}`);
             return;
@@ -1958,6 +1978,9 @@ export async function runUI(
       // True until the first answer delta: it tells the status row when the
       // turn moves from "Thinking" to "Working".
       let thinkingOnly = true;
+      // True once the answer has streamed, so the settled run does not also
+      // print it as a notification below the card.
+      let streamedAnswer = false;
       let currentAttemptId: string | undefined;
       // Lazily mount the answer block. The accumulated reasoning/text is built
       // by the caller before this runs, so the constructor must not reset it;
@@ -2008,6 +2031,7 @@ export async function runUI(
                 liveAssistant = undefined;
                 liveText = "";
                 liveReasoning = "";
+                streamedAnswer = false;
                 currentAttemptId = notification.params.attemptId;
               }
               liveReasoning += notification.params.text;
@@ -2028,12 +2052,14 @@ export async function runUI(
                 liveAssistant = undefined;
                 liveText = "";
                 liveReasoning = "";
+                streamedAnswer = false;
                 currentAttemptId = notification.params.attemptId;
               }
               liveText += notification.params.text;
               // Answer text has arrived, so the turn is no longer only thinking.
               if (ownsTurn && thinkingOnly) statusContainer.show("working", { message: "Working" });
               thinkingOnly = false;
+              streamedAnswer = true;
               renderLive(true);
               tui.requestRender();
               return;
@@ -2074,11 +2100,12 @@ export async function runUI(
             // owner of tool rows; `tool_execution_update` still streams partial
             // arguments into the row it already found.
             if (notification.method === "tool_execution_start") {
-              // Finalize the current assistant segment so any later text starts a
-              // new block after the tool row, preserving chronological order.
-              liveAssistant = undefined;
+              // Keep the live assistant card so the turn doesn't flicker when a
+              // tool runs mid-stream; only reset the accumulated text so the next
+              // delta starts a fresh segment after the tool row.
               liveText = "";
               liveReasoning = "";
+              streamedAnswer = false;
               tui.requestRender();
               return;
             }
@@ -2098,6 +2125,7 @@ export async function runUI(
                 liveAssistant = undefined;
                 liveText = "";
                 liveReasoning = "";
+                streamedAnswer = false;
                 currentAttemptId = undefined;
               }
               // DSH surfaces backoff and compaction as session events; mirror
@@ -2172,7 +2200,16 @@ export async function runUI(
           pendingFiles = [];
           if (/^\/effort\s+\S/.test(text.trim())) await persistSelection();
         }
-        if (result.finalResponse && result.finalResponse !== lastAssistant)
+        // A turn that streamed its answer already shows it as the live assistant
+        // card, so echoing `finalResponse` again as a notification prints the
+        // answer a second time.
+        if (
+          answerNeedsNotice({
+            streamed: streamedAnswer,
+            finalResponse: result.finalResponse,
+            lastAssistant,
+          })
+        )
           add(result.finishReason === "error" ? "Error" : "dsh", result.finalResponse);
         else if (result.finishReason === "error") add("Error", "dsh reported an error.");
         // Settle the streaming block with everything the turn streamed. The
@@ -2660,7 +2697,7 @@ export async function runUI(
 
     if (isFirstRun) {
       const { FirstTimeSetupComponent } = await import("./components/first-time-setup.ts");
-      const { writeThemeSetting } = await import("./theme/theme-settings.ts");
+      const { writeThemeSetting } = await import("./theme/theme.ts");
 
       await new Promise<void>((resolve) => {
         const setup = new FirstTimeSetupComponent({

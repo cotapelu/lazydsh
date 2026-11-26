@@ -8,7 +8,7 @@
 
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { homedir } from "node:os";
-import { theme } from "./theme/theme.ts";
+import { theme } from "./theme.ts";
 import { formatTokens, formatCwdForFooter, FooterDataProvider } from "./footer-data-provider.ts";
 import type { AccountLimits } from "../utils/limits.ts";
 
@@ -53,6 +53,7 @@ export class FooterComponent {
       cacheRead: number;
       cacheWrite: number;
       cost: number;
+      reasoning: number;
     };
     latestCacheHitRate: number | undefined;
     contextUsage: { percent: number | null; contextWindow?: number } | undefined;
@@ -100,7 +101,7 @@ export class FooterComponent {
     }
 
     // Calculate cumulative usage from ALL session entries
-    const usageTotals = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0 };
+    const usageTotals = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, reasoning: 0 };
     let latestCacheHitRate: number | undefined;
 
     for (const entry of sessionManager.getEntries()) {
@@ -110,6 +111,7 @@ export class FooterComponent {
         usageTotals.cacheRead += entry.usage.cacheRead ?? 0;
         usageTotals.cacheWrite += entry.usage.cacheWrite ?? 0;
         usageTotals.cost += entry.usage.cost ?? 0;
+        usageTotals.reasoning += entry.usage.reasoningTokens ?? 0;
         const latestPromptTokens =
           (entry.usage.input ?? 0) + (entry.usage.cacheRead ?? 0) + (entry.usage.cacheWrite ?? 0);
         if (latestPromptTokens > 0) {
@@ -121,6 +123,7 @@ export class FooterComponent {
         usageTotals.cacheRead += entry.message.usage?.cacheRead ?? 0;
         usageTotals.cacheWrite += entry.message.usage?.cacheWrite ?? 0;
         usageTotals.cost += entry.message.usage?.cost ?? 0;
+        usageTotals.reasoning += entry.message.usage?.reasoningTokens ?? 0;
         const latestPromptTokens =
           (entry.message.usage?.input ?? 0) +
           (entry.message.usage?.cacheRead ?? 0) +
@@ -138,12 +141,14 @@ export class FooterComponent {
         usageTotals.cacheRead += entry.message.usage.cacheRead ?? 0;
         usageTotals.cacheWrite += entry.message.usage.cacheWrite ?? 0;
         usageTotals.cost += entry.message.usage.cost ?? 0;
+        usageTotals.reasoning += entry.message.usage.reasoningTokens ?? 0;
       } else if ((entry.type === "branch_summary" || entry.type === "compaction") && entry.usage) {
         usageTotals.input += entry.usage.input ?? 0;
         usageTotals.output += entry.usage.output ?? 0;
         usageTotals.cacheRead += entry.usage.cacheRead ?? 0;
         usageTotals.cacheWrite += entry.usage.cacheWrite ?? 0;
         usageTotals.cost += entry.usage.cost ?? 0;
+        usageTotals.reasoning += entry.usage.reasoningTokens ?? 0;
       }
     }
 
@@ -187,6 +192,7 @@ export class FooterComponent {
 
     if (usageTotals.input > 0) statsParts.push(`↑${formatTokens(usageTotals.input)}`);
     if (usageTotals.output > 0) statsParts.push(`↓${formatTokens(usageTotals.output)}`);
+    if (usageTotals.reasoning > 0) statsParts.push(`T${formatTokens(usageTotals.reasoning)}`);
     if (usageTotals.cacheRead > 0) statsParts.push(`R${formatTokens(usageTotals.cacheRead)}`);
     if (usageTotals.cacheWrite > 0) statsParts.push(`W${formatTokens(usageTotals.cacheWrite)}`);
     if (

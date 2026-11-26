@@ -1,34 +1,29 @@
 /**
- * Theme entry point.
- *
- * The theme system lives in `./theme/` (tokens, JSON, and the controller). This
- * module re-exports it so components can import from a single place, and keeps
- * the named helpers the older call sites use.
+ * Theme entry point — re-export từ theme/theme.ts
  */
 
 export {
   DEFAULT_THEME,
   SYSTEM_THEME,
-  customThemesDir,
   fg,
   formatNotification,
   getEditorTheme,
   getMarkdownTheme,
   getSelectListTheme,
   initTheme,
-  onThemeChange,
+  readThemeSetting,
+  writeThemeSetting,
   safeText,
-  setTerminalColorScheme,
-  setTerminalColors,
-  setTheme,
-  setThemeInstance,
   terminalColor,
-  terminalTheme,
   theme,
   Theme,
+  ThemeController,
+  type ThemeTokenName,
+  THEME_TOKENS,
+  currentThemeName_,
+  setTheme,
+  lazydshConfigDir,
 } from "./theme/theme.ts";
-export { THEME_TOKENS, type ThemeTokenName } from "./theme/theme-tokens.ts";
-export { ThemeController, type ThemeControllerOptions } from "./theme/theme-controller.ts";
 
 import { fg as fgColors, theme as activeTheme } from "./theme/theme.ts";
 

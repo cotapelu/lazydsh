@@ -15,7 +15,7 @@ import {
   Text,
 } from "@earendil-works/pi-tui";
 import type { CatalogModel, ModelRuntime, TuiHost } from "../interfaces.ts";
-import { theme } from "./theme/theme.ts";
+import { theme } from "./theme.ts";
 import { getAppKeybindings } from "./keybindings.ts";
 import { DynamicBorder } from "./components/dynamic-border.ts";
 import { keyDisplayText, keyHint } from "./keybinding-hints.ts";

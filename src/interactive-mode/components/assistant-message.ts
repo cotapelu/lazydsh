@@ -19,8 +19,9 @@ import {
   Spacer,
   Text,
 } from "@earendil-works/pi-tui";
-import { getMarkdownTheme, theme } from "../theme/theme.ts";
+import { getMarkdownTheme, theme, dim } from "../theme/theme.ts";
 import { createMarkdownTransform, type MarkdownTransformers } from "./markdown-transform.ts";
+import { createIncrementalHighlightCode } from "../stream-highlight.ts";
 
 const OSC133_ZONE_START = "\x1b]133;A\x07";
 const OSC133_ZONE_END = "\x1b]133;B\x07";
@@ -30,12 +31,6 @@ const OSC133_ZONE_FINAL = "\x1b]133;C\x07";
 const MESSAGE_PADDING_X = 2;
 /** `Box` adds this many rows above and below the content. */
 const MESSAGE_PADDING_Y = 1;
-
-/**
- * The run marker on the thinking label. A ligature-safe glyph rather than a
- * word so the row keeps its quiet, one-line character while the model works.
- */
-const thinkingIndicator = "✻";
 
 interface MessageContent {
   type: "text" | "thinking" | "toolCall";
@@ -88,6 +83,8 @@ export class AssistantMessageComponent extends Box {
   private timestamp: number | undefined;
   private thinkingVisibilityOverrides = new Map<number, boolean>();
   private markdownSlots: MarkdownSlot[] = [];
+  /** One incremental highlighter per message so streaming code blocks don't re-tokenize from scratch. */
+  private readonly incrementalHighlightCode = createIncrementalHighlightCode();
 
   constructor(
     message: AssistantMessage | undefined,
@@ -132,6 +129,17 @@ export class AssistantMessageComponent extends Box {
     this.outputPad = padding;
     this.markdownSlots = [];
     if (this.lastMessage !== undefined) this.updateContent(this.lastMessage);
+  }
+
+  /** Theme variant whose `highlightCode` reuses the incremental highlighter, so streaming code blocks only re-tokenize their unstable tail. */
+  private markdownThemeWithIncrementalHighlight(): ReturnType<typeof getMarkdownTheme> & {
+    highlightCode?: (code: string, lang?: string) => string[];
+  } {
+    return {
+      ...this.markdownTheme,
+      highlightCode: (code: string, language?: string) =>
+        this.incrementalHighlightCode.highlight(code, language),
+    };
   }
 
   render(width: number): string[] {
@@ -185,15 +193,22 @@ export class AssistantMessageComponent extends Box {
             "text",
             text,
             () =>
-              new Markdown(text, this.outputPad, 0, this.markdownTheme, undefined, {
-                transform: createMarkdownTransform(
-                  "assistant",
-                  () => this.isStreaming,
-                  this.markdownTransformers,
-                  this.messageId,
-                  this.timestamp,
-                ),
-              }),
+              new Markdown(
+                text,
+                this.outputPad,
+                0,
+                this.markdownThemeWithIncrementalHighlight(),
+                undefined,
+                {
+                  transform: createMarkdownTransform(
+                    "assistant",
+                    () => this.isStreaming,
+                    this.markdownTransformers,
+                    this.messageId,
+                    this.timestamp,
+                  ),
+                },
+              ),
           ),
         );
       } else if (content.type === "thinking") {
@@ -217,14 +232,11 @@ export class AssistantMessageComponent extends Box {
         // tell "working through it" from "here is what it worked out". The
         // marker leads the row so the region has a fixed left edge even
         // without a background of its own.
-        const labelText = this.isStreaming
-          ? `${thinkingIndicator} Thinking…`
-          : `${thinkingIndicator} ${this.hiddenThinkingLabel.replace(/^✻\s*/, "")}`;
-        const label = new Text(
-          theme.italic(theme.fg("thinkingText", labelText)),
-          this.outputPad,
-          0,
-        );
+        // When collapsed, show a single recessed label so the user can still
+        // click to expand; when expanded the reasoning itself is the indicator.
+        const label = hidden
+          ? new Text(theme.italic(dim(this.hiddenThinkingLabel)), this.outputPad, 0)
+          : null;
         const body = hidden
           ? []
           : [
@@ -236,9 +248,9 @@ export class AssistantMessageComponent extends Box {
                     thinking,
                     this.outputPad,
                     0,
-                    this.markdownTheme,
+                    this.markdownThemeWithIncrementalHighlight(),
                     {
-                      color: (text: string) => theme.italic(theme.fg("thinkingText", text)),
+                      color: (text: string) => theme.italic(dim(text)),
                       italic: true,
                     },
                     {
@@ -253,7 +265,7 @@ export class AssistantMessageComponent extends Box {
                   ),
               ),
             ];
-        const zone = new ThinkingBoundary([label, ...body]);
+        const zone = new ThinkingBoundary([...(label ? [label] : []), ...body]);
         addVisibleChild(
           new MouseRegion(zone, (event) => {
             if (event.type !== "click" || event.button !== "left") return undefined;

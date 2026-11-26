@@ -8,7 +8,7 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { lazydshConfigDir } from "./theme/theme-settings.ts";
+import { lazydshConfigDir } from "./theme.ts";
 
 /** When Mermaid code blocks render as Unicode diagrams. */
 export type MermaidMode = "off" | "final" | "streaming";

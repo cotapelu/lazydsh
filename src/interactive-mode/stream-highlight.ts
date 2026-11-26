@@ -2,6 +2,8 @@
  * Incremental syntax highlighting for code that is still streaming in.
  */
 
+import { highlightCode } from "./highlight.ts";
+
 /** One-shot highlighter: returns one ANSI-styled string per input line. */
 export type HighlightFn = (code: string, language?: string) => string[];
 
@@ -345,6 +347,27 @@ export interface IncrementalHighlighterStats {
   linesHighlighted: number;
   /** `highlight()` calls served from the memo without touching the lexer. */
   cacheHits: number;
+}
+
+/**
+ * Factory: a `highlightCode`-compatible function backed by `IncrementalHighlighter`.
+ *
+ * The returned function keeps one `IncrementalHighlighter` per code block, so
+ * streaming code only re-tokenizes its unstable tail instead of re-highlighting
+ * the whole block on every delta. Call `reset()` when the block changes.
+ */
+export function createIncrementalHighlightCode(options: IncrementalHighlighterOptions = {}): {
+  highlight: HighlightFn;
+  reset: () => void;
+} {
+  const highlighter = new IncrementalHighlighter(
+    (code, language) => highlightCode(code, language),
+    options,
+  );
+  return {
+    highlight: (code: string, language?: string): string[] => highlighter.highlight(code, language),
+    reset: () => highlighter.reset(),
+  };
 }
 
 interface RefreshCache {

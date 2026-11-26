@@ -1,6 +1,5 @@
 import { Container, Text, Spacer, matchesKey } from "@earendil-works/pi-tui";
-import { theme } from "./theme/theme.ts";
-import { accent, dim } from "./theme/theme.ts";
+import { theme, accent, dim } from "./theme.ts";
 import { keyHint } from "./keybinding-hints.ts";
 import { DynamicBorder } from "./components/dynamic-border.ts";
 

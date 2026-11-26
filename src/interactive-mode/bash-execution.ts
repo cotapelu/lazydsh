@@ -6,7 +6,7 @@
 import { Container, Spacer, Text } from "@earendil-works/pi-tui";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateTail } from "../utils/truncate.ts";
 import { stripAnsi } from "../utils/ansi.ts";
-import { theme } from "./theme/theme.ts";
+import { theme } from "./theme.ts";
 import { keyHint } from "./keybinding-hints.ts";
 import type { TuiHost } from "../interfaces.ts";
 import { truncateToVisualLines } from "./components/visual-truncate.ts";

@@ -9,7 +9,7 @@ const plain = (component: ThemeSelectorComponent, width = 70) =>
 test("the selector lists themes and offers the follow-terminal row", () => {
   const previews: string[] = [];
   const component = new ThemeSelectorComponent(
-    "lazydsh",
+    "default",
     () => {},
     () => {},
     (value) => previews.push(value),
@@ -18,7 +18,7 @@ test("the selector lists themes and offers the follow-terminal row", () => {
   const shown = plain(component);
   assert.match(shown, /auto \(follow terminal\)/);
   assert.match(shown, /light → light · dark → dark/);
-  assert.match(shown, /lazydsh/);
+  assert.match(shown, /default/);
   // Walking up to the auto row previews the pair setting, which the
   // controller resolves to the theme matching the terminal's appearance.
   const list = component.getSelectList();
@@ -29,7 +29,7 @@ test("the selector lists themes and offers the follow-terminal row", () => {
 test("selecting the auto row yields the persisted pair setting", () => {
   const selected: string[] = [];
   const component = new ThemeSelectorComponent(
-    "dark",
+    "default",
     (value) => selected.push(value),
     () => {},
     () => {},
@@ -44,12 +44,12 @@ test("selecting the auto row yields the persisted pair setting", () => {
 test("without the auto option the selector behaves as a plain theme list", () => {
   const selected: string[] = [];
   const component = new ThemeSelectorComponent(
-    "lazydsh",
+    "default",
     (value) => selected.push(value),
     () => {},
     () => {},
   );
   assert.doesNotMatch(plain(component), /follow terminal/);
   component.getSelectList().handleInput("\r");
-  assert.deepEqual(selected, ["lazydsh"]);
+  assert.deepEqual(selected, ["default"]);
 });
