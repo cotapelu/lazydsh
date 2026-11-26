@@ -98,12 +98,21 @@ export class ToolRow implements Component {
     this.argumentsText = JSON.stringify(args, null, 2);
     this.touch();
   }
-  finish(status: "ok" | "error", text: string, reason?: string, meta?: unknown) {
+  private durationMs?: number;
+  finish(
+    status: "ok" | "error",
+    text: string,
+    reason?: string,
+    meta?: unknown,
+    durationMs?: number,
+  ) {
     this.resultText = text;
     this.resultMeta = meta;
+    this.durationMs = durationMs;
     const detail = reason || text || "Tool failed";
     const suffix = status === "error" ? ` — ${safeText(detail).split("\n")[0]}` : "";
-    this.setSummary(`${status === "error" ? "✗" : "✓"} ${this.label}${suffix}`);
+    const timing = durationMs !== undefined ? ` · ${durationMs.toLocaleString("en-US")} ms` : "";
+    this.setSummary(`${status === "error" ? "✗" : "✓"} ${this.label}${suffix}${timing}`);
     this.touch();
   }
   /** Apply a partial/streaming result update without finalizing the row. */
@@ -187,7 +196,8 @@ export class ToolLog {
       if (isBash && tui) {
         // Create BashExecutionComponent for bash tool calls
         const excludeFromContext = false; // Could be detected from arguments if needed
-        const bashComponent = new BashExecutionComponent(output.text, tui, excludeFromContext);
+        const command = target(output.text); // extract command from JSON args
+        const bashComponent = new BashExecutionComponent(command, tui, excludeFromContext);
         entry = {
           row: bashComponent,
           callId: output.callId,
@@ -220,6 +230,7 @@ export class ToolLog {
           output.text,
           output.reason,
           output.meta,
+          output.durationMs,
         );
         this.entries.delete(key);
       }

@@ -89,12 +89,10 @@ export class ThemeController {
 
   /** Apply the setting now and query the terminal's colors. */
   applyFromSettings(): void {
-    const themeSetting = this.getThemeSetting();
-    const themeName = this.resolveThemeName();
-    this.setAutoSync(
-      this.parseAutoThemeSetting(themeSetting) !== undefined || themeName === SYSTEM_THEME,
-    );
-    this.applyThemeName(themeName, themeSetting !== undefined);
+    // Hardcoded: always use DEFAULT_THEME, ignore JSON config
+    const themeName = DEFAULT_THEME;
+    this.setAutoSync(false);
+    this.applyThemeName(themeName, false);
     this.queryTerminalColors();
   }
 
@@ -107,31 +105,21 @@ export class ThemeController {
   }
 
   getThemeSetting(): string | undefined {
-    return this.currentThemeSetting ?? this.getSettingsManager().getThemeSetting();
+    return undefined; // Hardcoded: ignore JSON config
   }
 
   setThemeName(themeName: string, showError = false): { success: boolean; error?: string } {
-    this.setAutoSync(
-      themeName === SYSTEM_THEME || this.parseAutoThemeSetting(themeName) !== undefined,
-    );
-    const result = this.applyThemeName(themeName, showError);
-    if (result.success) this.currentThemeSetting = themeName;
-    return result;
+    // Hardcoded: ignore theme changes
+    return { success: false, error: "Theme is hardcoded to 'lazydsh'" };
   }
 
   setThemeSetting(themeSetting: string): void {
-    this.currentThemeSetting = themeSetting;
-    this.applyFromSettings();
+    // Hardcoded: ignore theme changes
   }
 
   /** Preview a theme without persisting it. */
   preview(themeSettingOrName: string): void {
-    const themeName = this.resolveThemeSetting(themeSettingOrName) ?? this.activeThemeName;
-    if (!themeName) return;
-    if (this.applyThemeName(themeName, true).success) {
-      this.ui.invalidate();
-      this.ui.requestRender();
-    }
+    // Hardcoded: ignore preview
   }
 
   disableAutoSync(): void {

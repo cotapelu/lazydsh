@@ -54,6 +54,11 @@ const localCommands: SlashCommand[] = [
 const nativeCommands = [
   { name: "compact", description: "Summarize history to free context" },
   {
+    name: "effort",
+    argumentHint: "[level | default]",
+    description: "Set reasoning effort for the current model",
+  },
+  {
     name: "plan",
     argumentHint: "[off | message]",
     description: "Enter or leave plan mode",

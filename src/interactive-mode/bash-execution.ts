@@ -3,13 +3,12 @@
  * Ported from pi-coding-agent's BashExecutionComponent.
  */
 
-import { Container, Loader, Spacer, Text } from "@earendil-works/pi-tui";
+import { Container, Spacer, Text } from "@earendil-works/pi-tui";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateTail } from "../utils/truncate.ts";
 import { stripAnsi } from "../utils/ansi.ts";
 import { theme } from "./theme/theme.ts";
 import { DynamicBorder } from "./components/dynamic-border.ts";
-import { keyHint, keyText } from "./keybinding-hints.ts";
-import { narrowedUi } from "./tui-renderer.ts";
+import { keyHint } from "./keybinding-hints.ts";
 import type { TuiHost } from "../interfaces.ts";
 import { truncateToVisualLines } from "./components/visual-truncate.ts";
 
@@ -21,7 +20,6 @@ export class BashExecutionComponent extends Container {
   public outputLines: string[] = [];
   public status: "running" | "complete" | "error" | "cancelled" = "running";
   public exitCode: number | undefined;
-  public loader: Loader;
   public truncationResult: { truncated: boolean; path?: string } | undefined;
   public fullOutputPath: string | undefined;
   public expanded = false;
@@ -39,19 +37,9 @@ export class BashExecutionComponent extends Container {
 
     // Add spacer
     this.addChild(new Spacer(1));
-    // Top border
-    this.addChild(new DynamicBorder(borderColor));
-    // Content container (holds dynamic content between borders)
+    // Content container (holds dynamic content)
     this.contentContainer = new Container();
     this.addChild(this.contentContainer);
-    this.loader = new Loader(
-      narrowedUi(ui),
-      (spinner) => theme.fg(this.colorKey, spinner),
-      (text) => theme.fg("muted", text),
-      `Running... (${keyText("tui.select.cancel")} to cancel)`,
-    );
-    // Bottom border
-    this.addChild(new DynamicBorder(borderColor));
     this.updateDisplay();
   }
 
@@ -102,8 +90,6 @@ export class BashExecutionComponent extends Container {
         : "complete";
     this.truncationResult = truncationResult;
     this.fullOutputPath = fullOutputPath;
-    // Stop loader
-    this.loader.stop();
     this.updateDisplay();
   }
 
@@ -121,9 +107,17 @@ export class BashExecutionComponent extends Container {
     const hiddenLineCount = availableLines.length - previewLogicalLines.length;
     // Rebuild content container
     this.contentContainer.clear();
-    // Command header
+    // Command header - color changes based on state
+    const headerColor =
+      this.status === "running"
+        ? this.colorKey
+        : this.status === "error"
+          ? "error"
+          : this.status === "cancelled"
+            ? "warning"
+            : "success";
     const header = new Text(
-      theme.fg(this.colorKey, theme.bold(`$ ${this.command}`)),
+      theme.fg(headerColor, theme.bold(`$ ${this.command}`)),
       this.outputPad,
       0,
     );
@@ -161,10 +155,8 @@ export class BashExecutionComponent extends Container {
         });
       }
     }
-    // Loader or status
-    if (this.status === "running") {
-      this.contentContainer.addChild(this.loader);
-    } else {
+    // Status (only when not running)
+    if (this.status !== "running") {
       const statusParts: string[] = [];
       // Show how many lines are hidden (collapsed preview)
       if (hiddenLineCount > 0) {

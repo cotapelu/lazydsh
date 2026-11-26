@@ -32,6 +32,7 @@ export type ToolOutput =
       text: string;
       reason?: string;
       meta?: unknown;
+      durationMs?: number;
     };
 
 export function isAuthFailure(failure: unknown) {
@@ -108,8 +109,15 @@ export function eventText(
 
 export function contentText(content: readonly ContentBlock[]) {
   return content
-    .filter((block) => block.type === "text")
-    .map((block) => block.text)
+    .map((block) => {
+      if (block.type === "text") return block.text;
+      if (block.type === "image")
+        return `[image ${block.attachment.width}x${block.attachment.height}, ${block.attachment.bytes} bytes]`;
+      if (block.type === "file")
+        return `[file ${block.attachment.name ?? block.attachment.attachmentId}]`;
+      return "";
+    })
+    .filter((text) => text !== "")
     .join("\n");
 }
 
