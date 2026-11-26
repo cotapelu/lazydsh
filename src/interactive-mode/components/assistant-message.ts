@@ -173,13 +173,13 @@ export class AssistantMessageComponent extends Box {
       return markdown;
     };
 
-    // Spacers are added lazily, right before the next visible content block.
-    let needsSpacer = true;
+    // Spacers are added between visible content blocks, not before the first.
+    let firstVisibleChild = true;
     const addVisibleChild = (child: Component): void => {
-      if (needsSpacer) {
+      if (!firstVisibleChild) {
         this.contentContainer.addChild(new Spacer(1));
-        needsSpacer = false;
       }
+      firstVisibleChild = false;
       this.contentContainer.addChild(child);
     };
 
@@ -274,7 +274,6 @@ export class AssistantMessageComponent extends Box {
             return { handled: true };
           }),
         );
-        needsSpacer = true;
       }
     }
 

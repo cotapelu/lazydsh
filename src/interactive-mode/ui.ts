@@ -82,26 +82,9 @@ import {
 } from "./settings-store.ts";
 import { safeText, accent, dim } from "./theme.ts";
 import { theme as themeProxy, SYSTEM_THEME, currentThemeName_ } from "./theme.ts";
+import { getMarkdownTheme } from "./theme/theme.ts";
 
-const identity = (text: string) => text;
-const bold = (text: string) => themeProxy.bold(text);
-export const markdownTheme = {
-  highlightCode,
-  heading: bold,
-  link: accent,
-  linkUrl: dim,
-  code: accent,
-  codeBlock: identity,
-  codeBlockBorder: dim,
-  quote: dim,
-  quoteBorder: dim,
-  hr: dim,
-  listBullet: accent,
-  bold,
-  italic: identity,
-  strikethrough: identity,
-  underline: identity,
-};
+export const markdownTheme = getMarkdownTheme();
 
 /**
  * Live Mermaid rendering mode. Read by the transformer on every render, so a
