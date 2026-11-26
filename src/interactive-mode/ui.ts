@@ -59,6 +59,7 @@ import {
 import { captureConsole } from "./tui-console.ts";
 import { ctrlCAction } from "./interrupt.ts";
 import { bashContextBlock, parseBashMode, type BashIntent } from "./bash-mode.ts";
+import type { BashExecutionComponent } from "./bash-execution.ts";
 import { dshCachePath } from "@deepseek-ai/dsh-home-paths";
 
 import {
@@ -185,7 +186,10 @@ export async function runUI(
 ) {
   // The launcher always runs fullscreen; the alt-screen surface (search,
   // selection, URL support) is what the cast below exposes.
-  const tui = createInteractiveTui({ tuiMode: "fullscreen", mouse: true }) as TuiAltScreen;
+  const tui = createInteractiveTui({
+    tuiMode: "fullscreen",
+    mouse: true,
+  }) as TuiAltScreen;
   const header = new HeaderComponent();
   const transcript = new Transcript();
   // Prompts typed during a running turn wait below the transcript; drainQueue sends
@@ -257,7 +261,10 @@ export async function runUI(
   });
   function ensureFooter(): FooterComponent {
     if (footer === undefined) {
-      footer = new FooterComponent({ session: footerSession(), footerData: footerDataProvider });
+      footer = new FooterComponent({
+        session: footerSession(),
+        footerData: footerDataProvider,
+      });
       footerContainer.addChild(footer);
     }
     return footer;
@@ -342,7 +349,11 @@ export async function runUI(
   history.addChild(header);
   history.addChild(transcript);
   history.addChild(queueView);
-  const scroll = new ScrollView(history, { primary: true, follow: "end", scrollbar: "auto" });
+  const scroll = new ScrollView(history, {
+    primary: true,
+    follow: "end",
+    scrollbar: "auto",
+  });
   const widgetsAbove = createExtensionWidgetContainer(extensionWidgets, "above");
   const widgetsBelow = createExtensionWidgetContainer(extensionWidgets, "below");
   tui.setLayoutRoot(
@@ -391,7 +402,9 @@ export async function runUI(
     const queued = queue.length ? ` · ${queue.length} queued` : "";
     // The route/context line lives in the footer; the queue count rides the status area.
     if (queued) {
-      statusContainer.show("idle", { message: `Ready · ${queue.length} queued` });
+      statusContainer.show("idle", {
+        message: `Ready · ${queue.length} queued`,
+      });
       programStatus.idle(
         `${route.provider}/${route.model ?? "no model"} · ${displayDirectory}${queued}`,
       );
@@ -500,7 +513,9 @@ export async function runUI(
     busy = true;
     update();
     try {
-      const result = await runtime.shell(intent.command, { signal: options.signal });
+      const result = await runtime.shell(intent.command, {
+        signal: options.signal,
+      });
       const stdout = result.stdout?.text ?? "";
       const stderr = result.stderr?.text ?? "";
       const combined = [stdout, stderr].filter((part) => part !== "").join("\n");
@@ -511,7 +526,10 @@ export async function runUI(
         result.exitCode ?? undefined,
         result.aborted,
         truncated
-          ? { truncated: true, ...(spillPath === undefined ? {} : { path: spillPath }) }
+          ? {
+              truncated: true,
+              ...(spillPath === undefined ? {} : { path: spillPath }),
+            }
           : undefined,
         spillPath,
       );
@@ -623,7 +641,9 @@ export async function runUI(
           },
           tui,
         );
-        signal?.addEventListener("abort", () => dialog.cancel(), { once: true });
+        signal?.addEventListener("abort", () => dialog.cancel(), {
+          once: true,
+        });
         showPanel(dialog);
         try {
           return await dialog.whenDone();
@@ -636,7 +656,11 @@ export async function runUI(
       if (params.kind === "secret" || params.kind === "select") {
         const options =
           params.kind === "select" && Array.isArray(params.options)
-            ? (params.options as { id: string; label: string; description?: string }[])
+            ? (params.options as {
+                id: string;
+                label: string;
+                description?: string;
+              }[])
             : undefined;
         if (params.kind === "select" && (options?.length ?? 0) === 0) return null;
         const dialog: LoginDialog = new LoginDialog(
@@ -647,7 +671,9 @@ export async function runUI(
           },
           tui,
         );
-        signal?.addEventListener("abort", () => dialog.cancel(), { once: true });
+        signal?.addEventListener("abort", () => dialog.cancel(), {
+          once: true,
+        });
         showPanel(dialog);
         try {
           return await dialog.whenDone();
@@ -751,7 +777,10 @@ export async function runUI(
     busy = true;
     update();
     try {
-      const id = await runtime.open(nextRoute, { ...callbacks, resume: sessionId });
+      const id = await runtime.open(nextRoute, {
+        ...callbacks,
+        resume: sessionId,
+      });
       if (closing) return;
       const requestedDirectory =
         directory ??
@@ -1106,7 +1135,10 @@ export async function runUI(
 
     // Try to read from DSH workspace settings
     try {
-      const workspace = runtime.workspaceRegistry?.get(cwd);
+      const workspaceRegistry = runtime.ctx.get("workspaceRegistry") as
+        | { get: (cwd: string) => { trusted?: boolean } | undefined }
+        | undefined;
+      const workspace = workspaceRegistry?.get(cwd);
       if (workspace?.trusted !== undefined) {
         projectTrusted = workspace.trusted;
         savedDecision = { decision: workspace.trusted, path: cwd };
@@ -1120,7 +1152,12 @@ export async function runUI(
         updates: true,
         savedPath: cwd,
       },
-      { label: "Do not trust this project", trusted: false, updates: true, savedPath: cwd },
+      {
+        label: "Do not trust this project",
+        trusted: false,
+        updates: true,
+        savedPath: cwd,
+      },
     ];
 
     const picker = new TrustSelectorComponent({
@@ -1132,7 +1169,10 @@ export async function runUI(
         dismissPanel();
         // Save trust decision to DSH workspace registry
         try {
-          runtime.workspaceRegistry?.set(cwd, { trusted: result.trusted });
+          const workspaceRegistry = runtime.ctx.get("workspaceRegistry") as
+            | { set: (cwd: string, val: { trusted: boolean }) => void }
+            | undefined;
+          workspaceRegistry?.set(cwd, { trusted: result.trusted });
           add(
             "Trust",
             `Project ${result.trusted ? "trusted" : "untrusted"} (${result.updates ? "persisted" : "session-only"})`,
@@ -1646,12 +1686,12 @@ export async function runUI(
         }
         // Open submenu for additional settings
         if (key === "submenu") {
-          openSettingsSubmenu();
+          void openSettingsSubmenu();
           return true;
         }
         // Show images selector
         if (key === "showImages") {
-          openShowImagesSelector();
+          void openShowImagesSelector();
           return true;
         }
       };
@@ -1733,7 +1773,10 @@ export async function runUI(
         return;
       }
       // Convert fork points to user messages for the selector
-      const messages = points.map((p) => ({ id: p.value, text: p.description || p.label }));
+      const messages = points.map((p) => ({
+        id: p.value,
+        text: p.description || p.label,
+      }));
       const { UserMessageSelectorComponent } =
         await import("./components/user-message-selector.ts");
       const picker = new UserMessageSelectorComponent(
@@ -2074,13 +2117,21 @@ export async function runUI(
                   typeof data?.shadowedTokenCount === "number" ? data.shadowedTokenCount : 0;
                 if (summaryText.trim()) {
                   transcript.addChild(
-                    new CompactionSummaryMessageComponent({ summary: summaryText, tokensBefore }),
+                    new CompactionSummaryMessageComponent({
+                      summary: summaryText,
+                      tokensBefore,
+                    }),
                   );
                   tui.requestRender();
                 }
               } else if (eventType === "branch_summary") {
                 transcript.addChild(
-                  new BranchSummaryMessageComponent({ summary: String(data?.summary ?? "") }),
+                  new BranchSummaryMessageComponent({
+                    summary:
+                      typeof data?.summary === "string"
+                        ? data.summary
+                        : JSON.stringify(data?.summary ?? ""),
+                  }),
                 );
                 tui.requestRender();
               } else if (eventType === "tool/call") {
@@ -2564,7 +2615,9 @@ export async function runUI(
     statusContainer.show("working", { message: "Loading plugins…" });
     update();
     const onBootProgress = (loaded: number, total: number, id: string) => {
-      statusContainer.show("working", { message: `Loading plugins ${loaded}/${total}: ${id}` });
+      statusContainer.show("working", {
+        message: `Loading plugins ${loaded}/${total}: ${id}`,
+      });
       tui.requestRender();
     };
     process.on("lazydsh:boot-progress", onBootProgress);

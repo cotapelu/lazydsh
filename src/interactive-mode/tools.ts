@@ -165,7 +165,8 @@ export class ToolLog {
    */
   find(callId: string | undefined): ToolRow | undefined {
     if (!callId) return undefined;
-    for (const entry of this.entries.values()) if (entry.callId === callId) return entry.row;
+    for (const entry of this.entries.values())
+      if (entry.callId === callId && entry.row instanceof ToolRow) return entry.row;
     return undefined;
   }
   update(callId: string, text: string): ToolRow | undefined {
@@ -187,29 +188,33 @@ export class ToolLog {
         // Create BashExecutionComponent for bash tool calls
         const excludeFromContext = false; // Could be detected from arguments if needed
         const bashComponent = new BashExecutionComponent(output.text, tui, excludeFromContext);
-        entry = { row: bashComponent, callId: output.callId, label, isBash: true, tui };
+        entry = {
+          row: bashComponent,
+          callId: output.callId,
+          label,
+          isBash: true,
+          tui,
+        };
       } else {
-        entry = { row: new ToolRow(`· ${label}`), callId: output.callId, label, isBash: false };
+        entry = {
+          row: new ToolRow(`· ${label}`),
+          callId: output.callId,
+          label,
+          isBash: false,
+        };
       }
       this.entries.set(key, entry);
     }
     if (output.kind === "tool") {
-      if (entry.isBash) {
-        // For bash tools, the command is already set in constructor
-      } else {
+      if (entry.row instanceof ToolRow) {
         entry.row.setCall(output.text);
       }
     } else {
-      if (entry.isBash) {
+      if (entry.row instanceof BashExecutionComponent) {
         const isError = output.kind === "error";
-        (entry.row as BashExecutionComponent).setComplete(
-          isError ? 1 : 0,
-          false,
-          undefined,
-          undefined,
-        );
+        entry.row.setComplete(isError ? 1 : 0, false, undefined, undefined);
         this.entries.delete(key);
-      } else {
+      } else if (entry.row instanceof ToolRow) {
         entry.row.finish(
           output.kind === "error" ? "error" : "ok",
           output.text,

@@ -85,7 +85,7 @@ export function historyRows(events: readonly SessionEvent[], sessionId: string):
       // One mutable ToolRow per call: the same instance the live transcript
       // would have shown, so history keeps the final status and details.
       const row = tools.record(item);
-      if (row) rows.push(row);
+      if (row instanceof ToolRow) rows.push(row);
     }
     if (event.type === "turn/end" && started !== undefined && rows.length > turnStartRow)
       rows.push({

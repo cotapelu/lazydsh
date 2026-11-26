@@ -19,9 +19,20 @@ export interface UiSettings {
   confirmExit: boolean;
   /** Mermaid diagram rendering mode. */
   mermaidMode: MermaidMode;
+  /** Whether to show images in the transcript. */
+  showImages?: boolean;
+  /** Whether to auto-resize images to fit the terminal width. */
+  autoResizeImages?: boolean;
+  /** Whether to block images entirely. */
+  blockImages?: boolean;
+  /** Image width in terminal cells when rendered. */
+  imageWidthCells?: number;
 }
 
-export const DEFAULT_UI_SETTINGS: UiSettings = { confirmExit: false, mermaidMode: "streaming" };
+export const DEFAULT_UI_SETTINGS: UiSettings = {
+  confirmExit: false,
+  mermaidMode: "streaming",
+};
 
 /** `$XDG_CONFIG_HOME/lazydsh/settings.json` (default `~/.config/lazydsh/settings.json`). */
 export function uiSettingsPath(configDir?: string): string {
@@ -34,9 +45,13 @@ export function readUiSettings(configDir?: string): UiSettings {
     const doc = JSON.parse(readFileSync(uiSettingsPath(configDir), "utf-8")) as {
       confirmExit?: unknown;
       mermaidMode?: unknown;
+      showImages?: unknown;
+      autoResizeImages?: unknown;
+      blockImages?: unknown;
+      imageWidthCells?: unknown;
     };
     const mode = doc.mermaidMode;
-    return {
+    const result: UiSettings = {
       confirmExit:
         typeof doc.confirmExit === "boolean" ? doc.confirmExit : DEFAULT_UI_SETTINGS.confirmExit,
       mermaidMode:
@@ -44,6 +59,11 @@ export function readUiSettings(configDir?: string): UiSettings {
           ? mode
           : DEFAULT_UI_SETTINGS.mermaidMode,
     };
+    if (typeof doc.showImages === "boolean") result.showImages = doc.showImages;
+    if (typeof doc.autoResizeImages === "boolean") result.autoResizeImages = doc.autoResizeImages;
+    if (typeof doc.blockImages === "boolean") result.blockImages = doc.blockImages;
+    if (typeof doc.imageWidthCells === "number") result.imageWidthCells = doc.imageWidthCells;
+    return result;
   } catch {
     return { ...DEFAULT_UI_SETTINGS };
   }

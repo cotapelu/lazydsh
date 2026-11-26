@@ -3,62 +3,52 @@
   "phases": [
     {
       "id": "phase-1",
-      "name": "Wire Orphan Components & Next Actions",
+      "name": "Fix npm run check errors",
       "tasks": [
         {
           "id": "task-1",
-          "content": "Wire trust-selector to /trust command",
-          "status": "completed"
-        },
-        {
-          "id": "task-2",
-          "content": "Wire user-message-selector to /fork command",
-          "status": "completed"
-        },
-        {
-          "id": "task-3",
-          "content": "Wire first-time-setup for startup onboarding",
-          "status": "completed"
-        },
-        {
-          "id": "task-4",
-          "content": "Wire settings-submenu and show-images-selector to settings",
-          "status": "completed"
-        },
-        {
-          "id": "task-5",
-          "content": "Wire bordered-loader and countdown-timer utilities",
-          "status": "completed"
-        },
-        {
-          "id": "task-6",
-          "content": "History search/filter (P3#3)",
-          "status": "completed"
-        },
-        {
-          "id": "task-7",
-          "content": "Footer cost breakdown (P3#4)",
-          "status": "completed"
-        },
-        {
-          "id": "task-8",
-          "content": "Session selector multi-delete (P3#5)",
+          "content": "Fix tree-selector.ts:806 - never type in template literal (role)",
           "status": "in_progress"
         },
         {
-          "id": "task-9",
-          "content": "Theme creator UI (P3#6)",
+          "id": "task-2",
+          "content": "Fix tree-selector.ts:1094 - no-misused-spread on string",
           "status": "pending"
         },
         {
-          "id": "task-10",
-          "content": "ui.ts decomposition continued",
+          "id": "task-3",
+          "content": "Fix tools.ts - type narrowing for ToolRow | BashExecutionComponent",
+          "status": "pending"
+        },
+        {
+          "id": "task-4",
+          "content": "Fix history.ts - ToolRow | BashExecutionComponent not assignable to HistoryRow",
+          "status": "pending"
+        },
+        {
+          "id": "task-5",
+          "content": "Fix ui.ts - workspaceRegistry, UiSettings properties, BashExecutionComponent import, floating promises, no-base-to-string",
+          "status": "pending"
+        },
+        {
+          "id": "task-6",
+          "content": "Fix runtime.ts - await-thenable on cancel",
+          "status": "pending"
+        },
+        {
+          "id": "task-7",
+          "content": "Fix test/tools.test.ts - summary property on union type",
+          "status": "pending"
+        },
+        {
+          "id": "task-8",
+          "content": "Run npm run check to verify all fixes",
           "status": "pending"
         }
       ]
     }
   ],
-  "nextTaskId": 11,
+  "nextTaskId": 9,
   "nextPhaseId": 2,
-  "updatedAt": "2026-11-25T11:12:07.692Z"
+  "updatedAt": "2026-11-26T00:05:49.183Z"
 }

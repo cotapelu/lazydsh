@@ -1025,7 +1025,7 @@ export class Runtime {
       const key = credentialKey("llm-pi-ai", provider);
       if (!this.ctx.authorization.list().some((flow) => flow.key === key))
         throw new Error(`Unknown provider: ${provider}.`);
-      await this.ctx.authorization.cancel(key);
+      this.ctx.authorization.cancel(key);
       await this.ctx.credentials.deleteRecord(key);
     }
     const refs =

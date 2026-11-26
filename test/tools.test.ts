@@ -1,7 +1,7 @@
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 import { visibleWidth } from "@earendil-works/pi-tui";
-import { ToolLog } from "../src/interactive-mode/tools.ts";
+import { ToolLog, ToolRow } from "../src/interactive-mode/tools.ts";
 import type { SessionEvent } from "@deepseek-ai/dsh-session";
 import { eventText } from "../src/runtime/runtime.ts";
 
@@ -25,7 +25,7 @@ const result = (id: string, text: string, isError = false) => ({
 test("large read output updates one collapsed row without dumping arguments or contents", () => {
   const log = new ToolLog();
   const row = emit(log, "tool/call", call("a", "src/main.ts"));
-  assert.ok(row);
+  assert.ok(row instanceof ToolRow);
   assert.equal(String(row.summary), "· read src/main.ts");
   const contents = "private file contents\n".repeat(10000);
   assert.equal(emit(log, "tool/result", result("a", contents)), undefined);
@@ -44,7 +44,9 @@ test("interleaved root and child calls stay paired; empty success and errors are
   const child = emit(log, "tool/call", call("a", "child.txt"), "child");
   emit(log, "tool/result", result("a", ""));
   emit(log, "tool/result", result("a", "permission denied\nlong details", true), "child");
-  assert.equal(root?.summary, "✓ read root.txt");
-  assert.equal(child?.summary, "✗ read child.txt — permission denied");
+  assert.ok(root instanceof ToolRow);
+  assert.ok(child instanceof ToolRow);
+  assert.equal(root.summary, "✓ read root.txt");
+  assert.equal(child.summary, "✗ read child.txt — permission denied");
   assert.equal(log.entries.size, 0);
 });

@@ -803,7 +803,7 @@ class TreeList {
         } else if (role === "bashExecution") {
           result = theme.fg("dim", `[bash]: ${normalize(msg.command ?? "")}`);
         } else {
-          result = theme.fg("dim", `[${role}]`);
+          result = theme.fg("dim", `[${String(role)}]`);
         }
         break;
       }
@@ -1091,10 +1091,14 @@ class TreeList {
     } else if (kb.matches(keyData, "app.tree.toggleLabelTimestamp")) {
       this.showLabelTimestamps = !this.showLabelTimestamps;
     } else {
-      const hasControlChars = [...keyData].some((ch) => {
-        const code = ch.charCodeAt(0);
-        return code < 32 || code === 0x7f || (code >= 0x80 && code <= 0x9f);
-      });
+      let hasControlChars = false;
+      for (let i = 0; i < keyData.length; i++) {
+        const code = keyData.charCodeAt(i);
+        if (code < 32 || code === 0x7f || (code >= 0x80 && code <= 0x9f)) {
+          hasControlChars = true;
+          break;
+        }
+      }
       if (!hasControlChars && keyData.length > 0) {
         this.searchQuery += keyData;
         this.foldedNodes.clear();
