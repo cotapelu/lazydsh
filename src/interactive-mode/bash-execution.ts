@@ -7,7 +7,6 @@ import { Container, Spacer, Text } from "@earendil-works/pi-tui";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, truncateTail } from "../utils/truncate.ts";
 import { stripAnsi } from "../utils/ansi.ts";
 import { theme } from "./theme/theme.ts";
-import { DynamicBorder } from "./components/dynamic-border.ts";
 import { keyHint } from "./keybinding-hints.ts";
 import type { TuiHost } from "../interfaces.ts";
 import { truncateToVisualLines } from "./components/visual-truncate.ts";
@@ -33,7 +32,6 @@ export class BashExecutionComponent extends Container {
     this.command = command;
     this.colorKey = excludeFromContext ? "dim" : "bashMode";
     this.outputPad = outputPad;
-    const borderColor = (str: string) => theme.fg(this.colorKey, str);
 
     // Add spacer
     this.addChild(new Spacer(1));

@@ -32,6 +32,8 @@ export class StatusIndicatorContainer extends Container {
     | IdleStatus
     | null = null;
   private currentKind: string | null = null;
+  /** Label of a live `working` indicator, so a repeat call is a no-op. */
+  private currentMessage: string | undefined;
 
   constructor(tui: TuiHost) {
     super();
@@ -39,6 +41,16 @@ export class StatusIndicatorContainer extends Container {
   }
 
   show(kind: "working" | "retry" | "compaction" | "idle", options: StatusOptions = {}): void {
+    // Re-asserting `working` is the one state that repeats on every streamed
+    // event: rebuilding the indicator restarts its spinner, so a turn that
+    // calls "working" per delta flickers. The label is the only thing that
+    // changes, and `setMessage` keeps the animation alive. Other kinds build
+    // fresh indicators, because their options (reason, attempts) mean the old
+    // component is not reusable by relabelling alone.
+    const message = options.message ?? "Working";
+    if (kind === "working" && this.currentKind === "working" && this.currentMessage === message)
+      return;
+    this.currentMessage = kind === "working" ? message : undefined;
     // Dispose of current indicator
     if (this.currentIndicator) {
       this.currentIndicator.dispose();

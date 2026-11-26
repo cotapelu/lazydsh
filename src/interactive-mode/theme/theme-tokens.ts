@@ -69,6 +69,11 @@ export const THEME_TOKENS = defineThemeTokens({
   },
   userMessageBg: { slot: "background", description: "User message background" },
   userMessageText: { slot: "foreground", description: "User message text color" },
+  assistantMessageBg: {
+    slot: "background",
+    description: "Assistant message card background (falls back to customMessageBg when omitted)",
+    fallback: "customMessageBg",
+  },
   customMessageBg: {
     slot: "background",
     description: "Custom message background (hook-injected messages)",

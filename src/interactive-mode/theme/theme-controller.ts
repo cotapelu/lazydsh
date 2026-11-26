@@ -21,6 +21,7 @@ import {
   setTheme,
   SYSTEM_THEME,
 } from "./theme.ts";
+import { writeThemeSetting } from "./theme-settings.ts";
 
 /** How long the terminal has to answer the DA1 color query. */
 const TERMINAL_QUERY_TIMEOUT_MS = 100;
@@ -89,9 +90,8 @@ export class ThemeController {
 
   /** Apply the setting now and query the terminal's colors. */
   applyFromSettings(): void {
-    // Hardcoded: always use DEFAULT_THEME, ignore JSON config
-    const themeName = DEFAULT_THEME;
-    this.setAutoSync(false);
+    const themeName = this.resolveThemeName();
+    this.setAutoSync(this.getThemeSetting()?.includes("/") === true);
     this.applyThemeName(themeName, false);
     this.queryTerminalColors();
   }
@@ -105,21 +105,38 @@ export class ThemeController {
   }
 
   getThemeSetting(): string | undefined {
-    return undefined; // Hardcoded: ignore JSON config
+    return this.getSettingsManager().getThemeSetting();
   }
 
   setThemeName(themeName: string, showError = false): { success: boolean; error?: string } {
-    // Hardcoded: ignore theme changes
-    return { success: false, error: "Theme is hardcoded to 'lazydsh'" };
+    const result = setTheme(themeName, true);
+    if (!result.success) {
+      if (showError) this.showError(`Failed to load theme "${themeName}": ${result.error}`);
+      return result;
+    }
+    writeThemeSetting(themeName);
+    this.activeThemeName = themeName;
+    this.startWatching(themeName);
+    this.setAutoSync(false);
+    this.notifyChanged();
+    return result;
   }
 
   setThemeSetting(themeSetting: string): void {
-    // Hardcoded: ignore theme changes
+    writeThemeSetting(themeSetting);
+    this.currentThemeSetting = themeSetting;
+    const themeName = this.resolveThemeSetting(themeSetting) ?? DEFAULT_THEME;
+    this.setAutoSync(themeSetting.includes("/"));
+    this.applyThemeName(themeName, false);
+    this.queryTerminalColors();
   }
 
   /** Preview a theme without persisting it. */
   preview(themeSettingOrName: string): void {
-    // Hardcoded: ignore preview
+    const themeName = this.resolveThemeSetting(themeSettingOrName) ?? themeSettingOrName;
+    const previous = this.activeThemeName;
+    const result = this.applyThemeName(themeName, false);
+    if (!result.success) this.applyThemeName(previous, false);
   }
 
   disableAutoSync(): void {

@@ -476,7 +476,7 @@ export async function runUI(
           },
           hideThinkingBlock,
           markdownTheme,
-          "Thinking…",
+          "✻ Thought",
           1,
           [mermaidTransformer],
         ),
@@ -1955,6 +1955,9 @@ export async function runUI(
       // component is cleared in the finally block below.
       let liveText = "";
       let liveReasoning = "";
+      // True until the first answer delta: it tells the status row when the
+      // turn moves from "Thinking" to "Working".
+      let thinkingOnly = true;
       let currentAttemptId: string | undefined;
       // Lazily mount the answer block. The accumulated reasoning/text is built
       // by the caller before this runs, so the constructor must not reset it;
@@ -1965,7 +1968,7 @@ export async function runUI(
             undefined,
             hideThinkingBlock,
             markdownTheme,
-            "Thinking…",
+            "✻ Thought",
             1,
             [mermaidTransformer],
           );
@@ -2008,6 +2011,11 @@ export async function runUI(
                 currentAttemptId = notification.params.attemptId;
               }
               liveReasoning += notification.params.text;
+              // The reasoning region recesses the text, but the status row also
+              // names what the turn is doing: a model that spends a minute
+              // reasoning shows "Thinking" rather than a generic "Working".
+              if (ownsTurn && thinkingOnly)
+                statusContainer.show("working", { message: "Thinking" });
               renderLive(true);
               tui.requestRender();
               return;
@@ -2023,6 +2031,9 @@ export async function runUI(
                 currentAttemptId = notification.params.attemptId;
               }
               liveText += notification.params.text;
+              // Answer text has arrived, so the turn is no longer only thinking.
+              if (ownsTurn && thinkingOnly) statusContainer.show("working", { message: "Working" });
+              thinkingOnly = false;
               renderLive(true);
               tui.requestRender();
               return;

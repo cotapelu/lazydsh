@@ -170,7 +170,8 @@ test("a finished assistant message keeps its reasoning label hidden by default",
     true,
   );
   const lines = message.render(80).map(stripVTControlCharacters);
-  assert.ok(lines.join("\n").includes("Thinking"));
+  // The default label is "✻ Thought": a settled run is named, not narrated.
+  assert.ok(lines.join("\n").includes("✻ Thought"));
   assert.ok(lines.join("\n").includes("final answer"));
   assert.doesNotMatch(lines.join("\n"), /private reasoning|\(|↑|↓/);
 });

@@ -3,52 +3,60 @@
   "phases": [
     {
       "id": "phase-1",
-      "name": "Fix npm run check errors",
+      "name": "Giai đoạn 3: Verification và Báo cáo",
       "tasks": [
         {
           "id": "task-1",
-          "content": "Fix tree-selector.ts:806 - never type in template literal (role)",
-          "status": "in_progress"
+          "content": "Kiểm tra cấu trúc repository và công cụ hiện có",
+          "status": "completed",
+          "notes": "vite-plus cho build/test/lint/format, TypeScript strict, 182 tests pass"
         },
         {
           "id": "task-2",
-          "content": "Fix tree-selector.ts:1094 - no-misused-spread on string",
-          "status": "pending"
+          "content": "Sửa 6 warnings lint (unused vars/imports)",
+          "status": "completed",
+          "notes": "bash-execution.ts: removed DynamicBorder import, borderColor var; theme-controller.ts: prefixed unused params with _"
         },
         {
           "id": "task-3",
-          "content": "Fix tools.ts - type narrowing for ToolRow | BashExecutionComponent",
-          "status": "pending"
+          "content": "Kiểm tra dead code và unused imports trong toàn bộ codebase",
+          "status": "completed",
+          "notes": "Lint pass with no warnings. components/index.ts barrel not imported anywhere."
         },
         {
           "id": "task-4",
-          "content": "Fix history.ts - ToolRow | BashExecutionComponent not assignable to HistoryRow",
-          "status": "pending"
+          "content": "Kiểm tra code trùng lặp và abstraction không giá trị",
+          "status": "completed",
+          "notes": "theme-controller.ts keeps hardcoded stubs (deliberate design per AGENTS.md)"
         },
         {
           "id": "task-5",
-          "content": "Fix ui.ts - workspaceRegistry, UiSettings properties, BashExecutionComponent import, floating promises, no-base-to-string",
-          "status": "pending"
+          "content": "Thiết lập quality gates và architecture rules",
+          "status": "completed",
+          "notes": "Tạo eslint.config.mjs với layering rules, no-explicit-any, no-unused-vars"
         },
         {
           "id": "task-6",
-          "content": "Fix runtime.ts - await-thenable on cancel",
-          "status": "pending"
+          "content": "Refactor theme-controller.ts (hardcoded stubs)",
+          "status": "completed",
+          "notes": "Kept stubs with clear comments; deliberate design per AGENTS.md"
         },
         {
           "id": "task-7",
-          "content": "Fix test/tools.test.ts - summary property on union type",
-          "status": "pending"
+          "content": "Chạy lại check, test, build để xác minh",
+          "status": "completed",
+          "notes": "check pass (210 files, no warnings/errors), test 182/182, build success"
         },
         {
           "id": "task-8",
-          "content": "Run npm run check to verify all fixes",
-          "status": "pending"
+          "content": "Tạo báo cáo cuối cùng",
+          "status": "in_progress",
+          "notes": ""
         }
       ]
     }
   ],
   "nextTaskId": 9,
   "nextPhaseId": 2,
-  "updatedAt": "2026-11-26T00:05:49.183Z"
+  "updatedAt": "2026-11-26T03:03:01.374Z"
 }

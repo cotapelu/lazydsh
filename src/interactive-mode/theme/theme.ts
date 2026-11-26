@@ -316,13 +316,18 @@ function createTheme(
     colors: Record<string, ColorValue>;
     vars?: Record<string, ColorValue>;
     appearance?: "light" | "dark";
+    dim?: ThemeTokenName[];
   };
   const resolved = withThemeTokenFallbacks(resolveThemeColors(doc.colors, doc.vars));
   const appearance = doc.appearance;
+  const dim = Array.isArray(doc.dim)
+    ? doc.dim.filter((token): token is ThemeTokenName => token in THEME_TOKENS)
+    : [];
   return new Theme(resolved, mode ?? getTerminalColorMode(), {
     name: doc.name,
     sourcePath,
     ...(appearance === undefined ? {} : { appearance }),
+    dim,
   });
 }
 

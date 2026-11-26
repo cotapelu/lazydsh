@@ -9,10 +9,17 @@ export interface BuiltinThemeDoc {
   colors: Record<string, string>;
   vars?: Record<string, string>;
   appearance?: "light" | "dark";
+  /**
+   * Tokens that render faint (`\x1b[2m`). A theme marks tokens that should
+   * recede — reasoning belongs to the model, not the answer — rather than
+   * only dimming them by colour, which still reads at full weight.
+   */
+  dim?: string[];
 }
 
 export const BUILTIN_THEMES: Record<string, BuiltinThemeDoc> = {
   dark: {
+    dim: ["thinkingText"],
     name: "dark",
     appearance: "dark",
     colors: {
@@ -38,6 +45,7 @@ export const BUILTIN_THEMES: Record<string, BuiltinThemeDoc> = {
     },
   },
   light: {
+    dim: ["thinkingText"],
     name: "light",
     appearance: "light",
     colors: {
@@ -62,8 +70,169 @@ export const BUILTIN_THEMES: Record<string, BuiltinThemeDoc> = {
       bashMode: "#fd7e14",
     },
   },
+  nature: {
+    name: "nature",
+    appearance: "dark",
+    dim: ["thinkingText"],
+    colors: {
+      // Core - earth tones
+      accent: "#8fa58f", // sage green
+      border: "",
+      borderAccent: "#a8c8a8", // light sage
+      borderMuted: "#3d4a3d", // dark moss
+      success: "#7fc97f", // soft leaf green
+      error: "#d47a6a", // terracotta
+      warning: "#e8b86d", // warm amber
+      muted: "#8b958b", // stone gray-green
+      dim: "#5d655d", // dark stone
+      text: "",
+
+      // Thinking - a recessed, quiet zone: darker than the card, barely tinted
+      thinkingText: "#7d9a7d", // muted sage, read only as texture
+      scrollbarTrack: "#2d382d", // dark forest floor
+      scrollbarThumb: "#5d755d", // moss
+
+      // Selection
+      selectedBg: "#3d5a3d", // forest shadow
+
+      // Messages - natural paper / earth cards
+      userMessageBg: "#2c382c", // dark forest
+      userMessageText: "#d4e8d4", // pale parchment
+      assistantMessageBg: "#352f28", // warm earth card
+      customMessageBg: "#352f28", // warm earth
+      customMessageText: "#e8dcc8", // warm sand
+      customMessageLabel: "#a8c8a8", // sage
+
+      // Tools - natural states
+      toolPendingBg: "#2d3528", // soil
+      toolSuccessBg: "#1e351e", // deep forest
+      toolErrorBg: "#3d2525", // clay
+      toolTitle: "#a8c8a8", // sage
+      toolOutput: "#d4d4c8", // parchment
+
+      // Markdown - natural reading
+      mdHeading: "#a8c8a8", // sage
+      mdLink: "#8fa58f", // accent sage
+      mdLinkUrl: "#8b958b", // muted stone
+      mdCode: "#b8d8b8", // light mint
+      mdCodeBlock: "#d4e4d4", // pale green paper
+      mdCodeBlockBorder: "#3d4a3d", // moss border
+      mdQuote: "#a8c8a8", // sage
+      mdQuoteBorder: "#3d4a3d", // moss
+      mdHr: "#3d4a3d", // moss line
+      mdListBullet: "#8fa58f", // sage
+
+      // Diffs - natural changes
+      toolDiffAdded: "#7fc97f", // leaf green
+      toolDiffRemoved: "#d47a6a", // terracotta
+      toolDiffContext: "#7d8a7d", // stone
+
+      // Syntax - earth palette
+      syntaxComment: "#6d7d6d", // weathered stone
+      syntaxKeyword: "#c8a888", // warm clay
+      syntaxFunction: "#7fc97f", // leaf
+      syntaxVariable: "#e8e0d0", // parchment
+      syntaxString: "#a8d8a8", // mint
+      syntaxNumber: "#d8b888", // sand
+      syntaxType: "#98c8d8", // sky water
+      syntaxOperator: "#c8a888", // clay
+      syntaxPunctuation: "#c8c0b0", // stone dust
+
+      // Thinking levels - forest depth
+      thinkingOff: "#8fa58f", // sage
+      thinkingMinimal: "#6d7d6d", // stone
+      thinkingLow: "#7fc97f", // young leaf
+      thinkingMedium: "#a8d8a8", // mint
+      thinkingHigh: "#e8c888", // amber
+      thinkingXhigh: "#c8a888", // clay
+
+      // Bash mode
+      bashMode: "#e8b86d", // amber
+    },
+  },
+  natureLight: {
+    name: "natureLight",
+    appearance: "light",
+    dim: ["thinkingText"],
+    colors: {
+      // Core - light earth tones
+      accent: "#5a7d5a", // forest sage
+      border: "",
+      borderAccent: "#7a9a7a", // light sage
+      borderMuted: "#c8d8c8", // pale moss
+      success: "#4a9c4a", // leaf green
+      error: "#c85a4a", // terracotta
+      warning: "#c8984a", // warm amber
+      muted: "#7a8a7a", // stone gray-green
+      dim: "#9a9a8a", // light stone
+      text: "",
+
+      // Thinking - a quiet, recessed zone: just off the warm sand card
+      thinkingText: "#6a8a6a", // muted forest, reads as texture
+      scrollbarTrack: "#e8f0e8", // pale forest floor
+      scrollbarThumb: "#b8d0b8", // light moss
+
+      // Selection
+      selectedBg: "#d0e8d0", // pale forest shadow
+
+      // Messages
+      userMessageBg: "#e8f4e8", // pale forest mist
+      userMessageText: "#3a5a3a", // dark forest text
+      assistantMessageBg: "#f5ebe0", // warm sand card
+      customMessageBg: "#f5ebe0", // warm sand
+      customMessageText: "#5a4a3a", // warm earth text
+      customMessageLabel: "#5a7d5a", // sage
+
+      // Tools
+      toolPendingBg: "#f0f5e8", // pale soil
+      toolSuccessBg: "#e8f4e8", // forest mist
+      toolErrorBg: "#fce8e8", // pale clay
+      toolTitle: "#5a7d5a", // sage
+      toolOutput: "#4a5a4a", // forest text
+
+      // Markdown
+      mdHeading: "#5a7d5a", // sage
+      mdLink: "#5a7d5a", // sage
+      mdLinkUrl: "#7a8a7a", // stone
+      mdCode: "#4a8a4a", // forest green
+      mdCodeBlock: "#f0f8f0", // pale paper
+      mdCodeBlockBorder: "#c8d8c8", // pale moss
+      mdQuote: "#6a8a6a", // forest
+      mdQuoteBorder: "#c8d8c8", // moss
+      mdHr: "#c8d8c8", // moss line
+      mdListBullet: "#5a7d5a", // sage
+
+      // Diffs
+      toolDiffAdded: "#4a9c4a", // leaf
+      toolDiffRemoved: "#c85a4a", // terracotta
+      toolDiffContext: "#8a9a8a", // stone
+
+      // Syntax
+      syntaxComment: "#8a9a8a", // weathered stone
+      syntaxKeyword: "#a87a5a", // warm clay
+      syntaxFunction: "#4a9c4a", // leaf
+      syntaxVariable: "#4a5a4a", // forest
+      syntaxString: "#5a9a5a", // mint
+      syntaxNumber: "#b88a5a", // sand
+      syntaxType: "#5a8ab8", // sky water
+      syntaxOperator: "#a87a5a", // clay
+      syntaxPunctuation: "#9a9a8a", // stone dust
+
+      // Thinking levels
+      thinkingOff: "#5a7d5a",
+      thinkingMinimal: "#8a9a8a",
+      thinkingLow: "#4a9c4a",
+      thinkingMedium: "#6aac6a",
+      thinkingHigh: "#c89a5a",
+      thinkingXhigh: "#a87a5a",
+
+      // Bash mode
+      bashMode: "#c8984a",
+    },
+  },
   lazydsh: {
     name: "lazydsh",
+    dim: ["thinkingText"],
     colors: {
       accent: "#4d6bfe",
       border: "",
@@ -75,12 +244,13 @@ export const BUILTIN_THEMES: Record<string, BuiltinThemeDoc> = {
       muted: "#a0a6ac",
       dim: "#6a6e73",
       text: "",
-      thinkingText: "#8be9fd",
+      thinkingText: "#6b8fa8",
       scrollbarTrack: "#3c3f44",
       scrollbarThumb: "#787878",
       selectedBg: "#4d6bfe",
       userMessageBg: "#2d3a4f",
       userMessageText: "#a8d0ff",
+      assistantMessageBg: "",
       customMessageBg: "#2d2d3d",
       customMessageText: "#c0c0d0",
       customMessageLabel: "#4d6bfe",

@@ -4,15 +4,38 @@
  * Renders a completed assistant message: markdown text, thinking blocks that
  * toggle on click, and the stop reason (length / aborted / error). Ported from
  * pi-coding-agent's AssistantMessageComponent.
+ *
+ * The message rides in a `Box` so padding and the card background are applied
+ * once around the whole message instead of being repeated by every markdown
+ * run inside it.
  */
 
-import { Container, Markdown, MouseRegion, Spacer, Text } from "@earendil-works/pi-tui";
+import {
+  Box,
+  Container,
+  Markdown,
+  MouseRegion,
+  type Component,
+  Spacer,
+  Text,
+} from "@earendil-works/pi-tui";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
 import { createMarkdownTransform, type MarkdownTransformers } from "./markdown-transform.ts";
 
 const OSC133_ZONE_START = "\x1b]133;A\x07";
 const OSC133_ZONE_END = "\x1b]133;B\x07";
 const OSC133_ZONE_FINAL = "\x1b]133;C\x07";
+
+/** Horizontal inset of the card, so a message reads as a block, not a wall of text. */
+const MESSAGE_PADDING_X = 2;
+/** `Box` adds this many rows above and below the content. */
+const MESSAGE_PADDING_Y = 1;
+
+/**
+ * The run marker on the thinking label. A ligature-safe glyph rather than a
+ * word so the row keeps its quiet, one-line character while the model works.
+ */
+const thinkingIndicator = "✻";
 
 interface MessageContent {
   type: "text" | "thinking" | "toolCall";
@@ -34,7 +57,24 @@ interface MarkdownSlot {
   markdown: Markdown;
 }
 
-export class AssistantMessageComponent extends Container {
+/**
+ * A reasoning region.
+ *
+ * The reasoning is the model's inner monologue, not the answer, so it is
+ * recessed: a label naming the run, faint italic text, and a colour a shade
+ * below the answer's. It deliberately has no background of its own — `Box`
+ * only pads to the width it is given, so a nested zone inside the message card
+ * would either wrap short of the card or overflow it, and neither reads as a
+ * clean region. The card background is the only plane.
+ */
+class ThinkingBoundary extends Container {
+  constructor(children: readonly Component[]) {
+    super();
+    for (const child of children) this.addChild(child);
+  }
+}
+
+export class AssistantMessageComponent extends Box {
   private contentContainer: Container;
   private hideThinkingBlock: boolean;
   private markdownTheme: ReturnType<typeof getMarkdownTheme>;
@@ -53,13 +93,13 @@ export class AssistantMessageComponent extends Container {
     message: AssistantMessage | undefined,
     hideThinkingBlock = false,
     markdownTheme = getMarkdownTheme(),
-    hiddenThinkingLabel = "Thinking...",
+    hiddenThinkingLabel = "✻ Thought",
     outputPad = 1,
     markdownTransformers: MarkdownTransformers = [],
     messageId?: string,
     timestamp?: number,
   ) {
-    super();
+    super(MESSAGE_PADDING_X, MESSAGE_PADDING_Y, (t) => theme.bg("assistantMessageBg", t));
     this.hideThinkingBlock = hideThinkingBlock;
     this.markdownTheme = markdownTheme;
     this.hiddenThinkingLabel = hiddenThinkingLabel;
@@ -97,8 +137,12 @@ export class AssistantMessageComponent extends Container {
   render(width: number): string[] {
     const lines = super.render(width);
     if (this.hasToolCalls || lines.length === 0) return lines;
-    lines[0] = OSC133_ZONE_START + lines[0];
-    lines[lines.length - 1] = OSC133_ZONE_END + OSC133_ZONE_FINAL + lines[lines.length - 1];
+    // The Box pads above and below the content: mark the first and last content
+    // row so a shell's semantic-zone parsing is not broken by an empty pad row.
+    const first = Math.min(MESSAGE_PADDING_Y, lines.length - 1);
+    const last = Math.max(lines.length - 1 - MESSAGE_PADDING_Y, first);
+    lines[first] = OSC133_ZONE_START + lines[first];
+    lines[last] = OSC133_ZONE_END + OSC133_ZONE_FINAL + lines[last];
     return lines;
   }
 
@@ -123,7 +167,7 @@ export class AssistantMessageComponent extends Container {
 
     // Spacers are added lazily, right before the next visible content block.
     let needsSpacer = true;
-    const addVisibleChild = (child: Markdown | Text | MouseRegion): void => {
+    const addVisibleChild = (child: Component): void => {
       if (needsSpacer) {
         this.contentContainer.addChild(new Spacer(1));
         needsSpacer = false;
@@ -169,38 +213,49 @@ export class AssistantMessageComponent extends Container {
         if (hidden && this.hiddenThinkingLabel.trim() === "") continue;
 
         const thinking = thinkingBlocks.join("\n\n");
-        const component = hidden
-          ? new Text(
-              theme.italic(theme.fg("thinkingText", this.hiddenThinkingLabel)),
-              this.outputPad,
-              0,
-            )
-          : markdownBlock(
-              "thinking",
-              thinking,
-              () =>
-                new Markdown(
-                  thinking,
-                  this.outputPad,
-                  0,
-                  this.markdownTheme,
-                  {
-                    color: (text: string) => theme.italic(theme.fg("thinkingText", text)),
-                    italic: true,
-                  },
-                  {
-                    transform: createMarkdownTransform(
-                      "assistant-thinking",
-                      () => this.isStreaming,
-                      this.markdownTransformers,
-                      this.messageId,
-                      this.timestamp,
-                    ),
-                  },
-                ),
-            );
+        // The label names the run, and changes with the stream so the user can
+        // tell "working through it" from "here is what it worked out". The
+        // marker leads the row so the region has a fixed left edge even
+        // without a background of its own.
+        const labelText = this.isStreaming
+          ? `${thinkingIndicator} Thinking…`
+          : `${thinkingIndicator} ${this.hiddenThinkingLabel.replace(/^✻\s*/, "")}`;
+        const label = new Text(
+          theme.italic(theme.fg("thinkingText", labelText)),
+          this.outputPad,
+          0,
+        );
+        const body = hidden
+          ? []
+          : [
+              markdownBlock(
+                "thinking",
+                thinking,
+                () =>
+                  new Markdown(
+                    thinking,
+                    this.outputPad,
+                    0,
+                    this.markdownTheme,
+                    {
+                      color: (text: string) => theme.italic(theme.fg("thinkingText", text)),
+                      italic: true,
+                    },
+                    {
+                      transform: createMarkdownTransform(
+                        "assistant-thinking",
+                        () => this.isStreaming,
+                        this.markdownTransformers,
+                        this.messageId,
+                        this.timestamp,
+                      ),
+                    },
+                  ),
+              ),
+            ];
+        const zone = new ThinkingBoundary([label, ...body]);
         addVisibleChild(
-          new MouseRegion(component, (event) => {
+          new MouseRegion(zone, (event) => {
             if (event.type !== "click" || event.button !== "left") return undefined;
             this.thinkingVisibilityOverrides.set(runIndex, !hidden);
             if (this.lastMessage !== undefined) this.updateContent(this.lastMessage);
