@@ -88,6 +88,12 @@ function withThemeTokenFallbacks(values: Record<string, ColorValue>): Record<str
     // that token is absent too, so fall back to it rather than throwing.
     resolved[name] = fallbackValue ?? "";
   }
+  // Ensure every registered token exists so themes that omit newer tokens
+  // (e.g. dark/light) never crash at render time; missing values resolve to
+  // the terminal's own default color.
+  for (const name of Object.keys(THEME_TOKENS)) {
+    if (resolved[name] === undefined) resolved[name] = "";
+  }
   return resolved;
 }
 

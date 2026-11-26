@@ -94,6 +94,12 @@ function withThemeTokenFallbacks(
     // instead of making the whole document unloadable.
     resolved[name] = fallbackValue ?? "";
   }
+  // Ensure every registered token exists so themes that omit newer tokens
+  // (e.g. dark/light) never crash at render time; missing values resolve to
+  // the terminal's own default color.
+  for (const name of Object.keys(THEME_TOKENS)) {
+    if (resolved[name] === undefined) resolved[name] = "";
+  }
   return resolved;
 }
 
