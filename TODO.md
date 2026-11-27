@@ -46,7 +46,7 @@ Key completed items: two-phase boot with deferred plugins, overlay stack, safe r
 8. ~~**`validateRoute`**~~ **FIXED** (comment clarified) — exact model validation thuộc dsh do --patch. (audit 4.4)
 9. **Approval grants UI** — "Always allow" lưu per-Runtime, không có UI xóa grant. (audit 4.5)
 10. **`runAfterFirstPaint` auto-retry** — hiện chỉ retry khi user gõ phím; thêm backoff/retry button. (audit 4.6)
-11. **`pendingStartupConnection` orphan** — thêm timeout hoặc clear khi user action khác. (audit 4.7)
+11. ~~**`pendingStartupConnection` orphan**~~ **FIXED** — auto-clear sau 5 phút. (audit 4.7)
 12. **`ofm-provider/index.ts` god function** (~514 dòng) — tách handler theo nhóm lệnh. (audit 4.8)
 13. **`FREE_LANE_TOOL_ALIASES` hardcode** — lấy alias từ registry/config DSH thay vì hardcode version. (audit 4.9)
 

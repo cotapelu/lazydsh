@@ -2,7 +2,8 @@
 
 **Goal:** Achieve 100% pi-tui capability utilization in lazydsh  
 **Current:** ~85% (core fully exploited, advanced features untapped)  
-**Generated:** 2026-11-27 from full codebase audit (149 TS files)
+**Generated:** 2026-11-27 from full codebase audit (149 TS files)  
+**Updated:** 2026-11-27 with pi-tui internals analysis (theme system, component patterns)
 
 ---
 
@@ -18,6 +19,38 @@
 | Rich Media (Images, LaTeX) | 10%     | 100%     | Medium-High       |
 | Extensibility & Themes     | 85%     | 100%     | Medium            |
 | **Overall**                | **85%** | **100%** | **~40 dev hours** |
+
+---
+
+## 🎨 PI-TUI THEME SYSTEM — CLARIFICATION (2026-11-27)
+
+**Critical finding:** pi-tui v1.5.2 **does NOT provide a global semantic theme/token system.**
+
+| What pi-tui provides | What pi-tui does NOT provide |
+|----------------------|------------------------------|
+| `Color` type (Indexed/RGB/OKLCH) | ❌ Global token registry |
+| `parseColor`, `mixColors`, `foregroundAnsi`, `backgroundAnsi` | ❌ Semantic token names (`"warning"`, `"dim"`, `"success"`, `"borderMuted"`...) |
+| `styleText`, `styleTextWithAnsi` | ❌ Slot system (fg vs bg per token) |
+| Component theme factories: `getMarkdownTheme()`, `getSelectListTheme()`, `getEditorTheme()` | ❌ Persistence (`theme.json`), hot-reload, `ThemeController` |
+| Color science: OKLCH/OKHSL mixing, gamut mapping | ❌ User custom themes (`~/.config/lazydsh/themes/*.json`) |
+
+**Pi-tui expects apps to provide their own theme system** and inject it into component factories:
+
+```typescript
+// Pi-tui intended pattern
+const myTheme = createMyThemeSystem();  // ← App writes this
+const markdown = new Markdown({
+  theme: getMarkdownTheme(myTheme),     // ← Inject semantic tokens
+});
+```
+
+**Lazydsh correctly implements** `src/interactive-mode/theme/theme.ts` as the app-level theme system:
+- `THEME_TOKENS` registry (70+ tokens with fg/bg slots)
+- Singleton `Theme` class + proxy `theme.fg("token", text)` / `theme.bg("token", text)`
+- `ThemeController` for load/save/preview/hot-reload
+- JSON persistence at `~/.config/lazydsh/theme.json`
+
+**This is NOT "reinventing" — it's filling a gap pi-tui intentionally leaves to apps.**
 
 ---
 

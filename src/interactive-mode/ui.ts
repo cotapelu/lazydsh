@@ -858,9 +858,16 @@ export async function runUI(
           `Failed to close runtime: ${closeError instanceof Error ? closeError.message : String(closeError)}`,
         );
       }
-      if (startup && isAuthFailure(error))
+      if (startup && isAuthFailure(error)) {
         pendingStartupConnection = { route: nextRoute, sessionId };
-      else if (!closing)
+        // Auto-clear after 5 minutes to avoid an orphaned pending connection.
+        setTimeout(
+          () => {
+            if (pendingStartupConnection?.route === nextRoute) pendingStartupConnection = undefined;
+          },
+          5 * 60 * 1000,
+        );
+      } else if (!closing)
         add(
           "Error",
           `${error instanceof Error ? error.message : String(error)}\n${
