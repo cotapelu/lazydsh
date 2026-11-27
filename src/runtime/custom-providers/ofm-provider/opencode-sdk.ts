@@ -331,9 +331,11 @@ export function streamOpencodeSdk(
             break;
           }
           case "session.step.failed":
+          case "session.execution.failed":
             failed = data?.error?.message ?? data?.message ?? "the free tier turn failed";
             break;
-          case "session.idle":
+          case "session.execution.succeeded":
+          case "session.execution.interrupted":
             stopped = true;
             break;
         }

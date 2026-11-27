@@ -32,8 +32,12 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { OpenCode } from "@opencode/client/promise";
 
-/** The port our OpenAI-compatible shim listens on. */
-export const BRIDGE_PORT = Number(process.env.OFM_OPENCODE_SDK_BRIDGE_PORT ?? 4097);
+/**
+ * The port our OpenAI-compatible shim listens on. Distinct from common agent
+ * runtime ports (which can occupy 4097 on a dev box), overridable via
+ * OFM_OPENCODE_SDK_BRIDGE_PORT.
+ */
+export const BRIDGE_PORT = Number(process.env.OFM_OPENCODE_SDK_BRIDGE_PORT ?? 40980);
 /** The agent the free-tier gate fingerprints. */
 const FREE_LANE_AGENT = "build";
 /** Provider id under which every free model is served on the OpenCode gateway. */
@@ -98,28 +102,51 @@ async function ensureServe(): Promise<ReturnType<typeof OpenCode.make>> {
 let bridge: { url: string; close(): void } | null = null;
 let bridgeStarting: Promise<void> | null = null;
 
-/** Start the shim once and keep it up for the life of the process. */
+/**
+ * Start the shim once and keep it up for the life of the process.
+ *
+ * Mirrors opencode's {@link probeResult}: a shim a prior run left behind is
+ * *probed* (not assumed) and reused, so repeated runs do not fight over the
+ * port. `undici`-style fetch is the global one; a 1s timeout keeps a wedged
+ * listener from stalling boot.
+ */
 export async function ensureBridge(): Promise<string> {
   if (bridge) return bridge.url;
   if (!bridgeStarting) {
-    bridgeStarting = new Promise<void>((resolve, reject) => {
+    bridgeStarting = (async () => {
+      if (await probe()) {
+        bridge = { url: BRIDGE_BASE_URL, close: () => {} };
+        return;
+      }
       const server = createServer((req, res) => {
         void handleRequest(req, res).catch((error) => {
           sendError(res, error instanceof Error ? error : new Error(String(error)));
         });
       });
-      server.on("error", (error: NodeJS.ErrnoException) => {
-        // A prior instance already holds the port: treat it as up.
-        if (error.code === "EADDRINUSE") {
-          bridge = { url: BRIDGE_BASE_URL, close: () => {} };
+      await new Promise<void>((resolve, reject) => {
+        server.once("error", (error: NodeJS.ErrnoException) => {
+          if (error.code === "EADDRINUSE") {
+            // Lost a race with a just-starting shim: wait for it to answer
+            // rather than assuming the port is usable.
+            void (async () => {
+              for (let attempt = 0; attempt < 50; attempt += 1) {
+                if (await probe()) {
+                  bridge = { url: BRIDGE_BASE_URL, close: () => {} };
+                  resolve();
+                  return;
+                }
+                await new Promise((r) => setTimeout(r, 100));
+              }
+              reject(new Error("port held but no healthy bridge answered"));
+            })();
+            return;
+          }
+          reject(error);
+        });
+        server.listen(BRIDGE_PORT, "127.0.0.1", () => {
+          bridge = { url: BRIDGE_BASE_URL, close: () => server.close() };
           resolve();
-          return;
-        }
-        reject(error);
-      });
-      server.listen(BRIDGE_PORT, "127.0.0.1", () => {
-        bridge = { url: BRIDGE_BASE_URL, close: () => server.close() };
-        resolve();
+        });
       });
       const stop = () => {
         try {
@@ -129,10 +156,22 @@ export async function ensureBridge(): Promise<string> {
         }
       };
       process.once("exit", stop);
-    });
+    })();
   }
   await bridgeStarting;
   return bridge!.url;
+}
+
+/** Health probe: is a shim already listening and answering here? */
+async function probe(): Promise<boolean> {
+  try {
+    const response = await fetch(`${BRIDGE_BASE_URL}/models`, {
+      signal: AbortSignal.timeout(1000),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 /** Tear the shim down (tests / shutdown). The shared service is left running. */
@@ -149,6 +188,12 @@ export function closeBridge(): void {
 // ── HTTP handling ──────────────────────────────────────────────────────────────
 async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? "/", `http://127.0.0.1:${BRIDGE_PORT}`);
+  // Health/listing route the reuse probe (and OpenAI clients) hit.
+  if (req.method === "GET" && url.pathname.endsWith("/models")) {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ object: "list", data: [] }));
+    return;
+  }
   if (req.method !== "POST" || !url.pathname.endsWith("/chat/completions")) {
     res.writeHead(404, { "content-type": "application/json" });
     res.end(JSON.stringify({ error: { message: "Not found. Use POST /v1/chat/completions." } }));
@@ -241,10 +286,16 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
           );
           break;
         }
+        // The turn's terminal signals on the shared feed are the execution
+        // lifecycle events, NOT `session.idle` (which never arrives here).
+        case "session.execution.succeeded":
+          stopped = true;
+          break;
+        case "session.execution.failed":
         case "session.step.failed":
           failed = data?.error?.message ?? data?.message ?? "the free-tier turn failed";
           break;
-        case "session.idle":
+        case "session.execution.interrupted":
           stopped = true;
           break;
       }
