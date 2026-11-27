@@ -850,7 +850,14 @@ export async function runUI(
       void probeCredentialSource(nextRoute.provider);
     } catch (error) {
       decision?.(null);
-      await runtime.close();
+      try {
+        await runtime.close();
+      } catch (closeError) {
+        add(
+          "Error",
+          `Failed to close runtime: ${closeError instanceof Error ? closeError.message : String(closeError)}`,
+        );
+      }
       if (startup && isAuthFailure(error))
         pendingStartupConnection = { route: nextRoute, sessionId };
       else if (!closing)
@@ -2049,7 +2056,7 @@ export async function runUI(
             }
             if (notification.method === "tool_execution_update") {
               const { toolCallId, partialResult } = notification.params;
-              const row = toolLog.find(toolCallId);
+              const row = toolLog.findAny(toolCallId);
               if (row && partialResult?.args) {
                 if (row instanceof ToolRow) {
                   row.updateArgs(partialResult.args);

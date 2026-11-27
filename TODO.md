@@ -34,13 +34,13 @@ Key completed items: two-phase boot with deferred plugins, overlay stack, safe r
 ### P1 — Critical path (do first)
 
 1. **Tách `ui.ts` god object** (~2765 dòng, `editor.onSubmit` ~790 dòng) — refactor before adding features. Clusters: pickModel/pickProviderModel, streaming loop, session management, keybinding input handler. (audit 3.5)
-2. **Bash streaming output in turn live** — `ToolLog.find()` chỉ trả `ToolRow`, bỏ qua `BashExecutionComponent`; wire `updateBashOutput`/`appendOutput` trong handler `tool_execution_update`. (audit 3.10)
-3. **`connect()` catch block** — bọc `await runtime.close()` trong try/catch riêng để tránh crash khi close() throw. (audit 3.11)
-4. **`ofmOpencodeSessionIds` leak** — clear entry khi session đóng/fork, không chỉ khi Runtime.close(). (audit 3.3)
+2. **Bash streaming output in turn live** — ~~`ToolLog.find()` chỉ trả `ToolRow`~~ **PARTIAL**: thêm `ToolLog.findAny()` + handler dùng findAny; bash branch `appendOutput` không còn dead code. Còn cần verify streaming thực sự hiển thị. (audit 3.10)
+3. ~~**`connect()` catch block**~~ **FIXED** — bọc `await runtime.close()` trong try/catch riêng. (audit 3.11)
+4. **`ofmOpencodeSessionIds` leak** — ~~clear entry khi session đóng/fork~~ **PARTIAL**: cap size 256 + clear khi vượt ngưỡng. Chưa clear per-session. (audit 3.3)
 
 ### P2 — UX / correctness
 
-5. **`OAuthSelectorComponent` animation perf** — `render()` gọi `updateList()` mỗi frame; chỉ gọi khi trạng thái hiển thị thay đổi. (audit 3.6)
+5. ~~**`OAuthSelectorComponent` animation perf**~~ **FIXED** — throttle `updateList()` 100ms thay vì mỗi frame. (audit 3.6)
 6. **`session-selector.ts` width** — dùng `process.stdout.columns` thay vì render width thực tế → label bị cắt sai khi resize. (audit 3.7)
 7. **`compressRequest` partial mutation** (token-saver) — payload mutate in-place khi filter throw; rollback hoặc không mutate. (audit 3.4)
 8. **`validateRoute`** — không validate model tồn tại trong catalog (hoặc cập nhật comment). (audit 4.4)

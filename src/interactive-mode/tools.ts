@@ -178,6 +178,12 @@ export class ToolLog {
       if (entry.callId === callId && entry.row instanceof ToolRow) return entry.row;
     return undefined;
   }
+  /** Like `find`, but also returns bash tool rows (BashExecutionComponent). */
+  findAny(callId: string | undefined): ToolRow | BashExecutionComponent | undefined {
+    if (!callId) return undefined;
+    for (const entry of this.entries.values()) if (entry.callId === callId) return entry.row;
+    return undefined;
+  }
   update(callId: string, text: string): ToolRow | undefined {
     const row = this.find(callId);
     row?.updateResult(text);

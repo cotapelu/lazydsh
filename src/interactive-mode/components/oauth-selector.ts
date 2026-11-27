@@ -135,8 +135,17 @@ export class OAuthSelectorComponent extends Container {
       );
   }
 
+  private lastListUpdateMs = 0;
   render(width: number): string[] {
-    if (this.stopAnimation && this.getSelectedBrandStyle()) this.updateList();
+    // Only rebuild the list when the brand animation actually needs a repaint;
+    // throttling avoids rebuilding the whole container on every frame.
+    if (this.stopAnimation && this.getSelectedBrandStyle()) {
+      const now = Date.now();
+      if (now - this.lastListUpdateMs >= 100) {
+        this.lastListUpdateMs = now;
+        this.updateList();
+      }
+    }
     return super.render(width);
   }
 

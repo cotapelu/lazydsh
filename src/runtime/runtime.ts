@@ -198,6 +198,8 @@ export class Runtime {
         let sessionId = this.ofmOpencodeSessionIds.get(seed);
         if (!sessionId) {
           sessionId = sessionFor(seed);
+          // Guard against unbounded growth: cap the number of retained seeds.
+          if (this.ofmOpencodeSessionIds.size >= 256) this.ofmOpencodeSessionIds.clear();
           this.ofmOpencodeSessionIds.set(seed, sessionId as string);
         }
         // sessionFor always returns a string (mints new if not exists)
