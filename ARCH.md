@@ -28,11 +28,11 @@ plugin, Runtime creation, `ask/resume/login/logout` commands), `types.ts`
 (barrel), plus the two contracts `interfaces.ts` (types that cross the boundary)
 and `runtime-events.ts` (event union + helpers).
 
-**runtime/ (11)** — everything DSH: the `Runtime` class, two-phase boot
+**runtime/ (13)** — everything DSH: the `Runtime` class, two-phase boot
 (`dsh-boot.ts`, `deferred.ts`, `plugin-patch.ts`), catalog/provider, DSH-native
 commands, preferences, pending-runtime proxy, upgrade. No pi-tui imports.
 
-**interactive-mode/ (84 files: 47 top-level + 31 components + 6 theme)** — the TUI:
+**interactive-mode/ (85 files: 47 top-level + 37 components + 1 theme)** — the TUI:
 `ui.ts` (orchestration), presentation primitives, tool rows + detail engine,
 selectors (model/session/effort/theme/permission), pickers, footer, header,
 status indicators, dialogs (login, approval, question), messages, theme system.
@@ -74,7 +74,7 @@ the live path.
   `CredentialSource`, `ApprovalRequest`, `QuestionResult`, `ModelRuntime`.
 - `runtime-events.ts`: `RuntimeEvent` union; `eventText` projects DSH session
   events (incl. tool `meta` for diffs) into transcript rows; `reasoningText`
-  for thinking rows. **Note:** `tool_execution_update` defined but never emitted.
+  for thinking rows. **Note:** `tool_execution_update` is emitted and wired to `ToolRow.updateArgs/updateResult` for live arg/result streaming; bash tool streaming via this channel is NOT wired (audit 3.10).
 - `detail.ts`: one renderer for arguments/diff/output — shared by the approval
   panel and expandable history rows.
 
@@ -129,8 +129,10 @@ the launcher only adds UI. Proxy: `installProxyFromEnvironment`.
 
 See `TODO.md` REMAINING + `AUDIT.md` §4 for full list. Key gaps:
 
-- **P2 Medium (2):** BashExecutionComponent unused for tool calls; model selector no test connection.
-- **P3 Low (4):** History no search/filter; footer no cost breakdown; session selector no multi-delete; theme no creator UI.
+- **P1:** `ui.ts` decomposition; bash streaming output in turn live (audit 3.10); `connect()` catch block (audit 3.11); `ofmOpencodeSessionIds` leak (audit 3.3).
+- **P2:** OAuth animation perf (3.6); session-selector width (3.7); compressRequest partial mutation (3.4); validateRoute (4.4); approval grants UI (4.5); runAfterFirstPaint retry (4.6); pendingStartupConnection orphan (4.7); ofm-provider god function (4.8); FREE_LANE_TOOL_ALIASES hardcode (4.9).
+- **P3:** Theme creator UI (only remaining UX gap); orphan files (see TODO.md P3).
+- Implemented (removed): boot progress, history virtualization, tool streaming wired, footer git watcher, theme DA1 async, Ctrl+C simplified, auth silent retry, nested panels ESC, mermaid streaming, BashExecutionComponent for tool calls, model test connection, history search/filter, footer cost breakdown, session multi-delete.
 
 Implemented (removed from list): boot progress indicator, history virtualization, fake OAuth options fixed, tool streaming wired, footer git watcher (FSWatcher), theme DA1 async, Ctrl+C simplified, auth silent retry fixed, nested panels global ESC, mermaid streaming enabled.
 

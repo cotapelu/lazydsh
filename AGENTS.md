@@ -11,7 +11,7 @@ own process and wraps the Agent in a `Runtime` class for the TUI.
   `src/runtime/plugin-patch.ts`)
 - UI: `@earendil-works/pi-tui` (React-like component system)
 - Language: TypeScript ESM, Node ≥ 24.9, bundled by `vite-plus`
-- Suite: 182/182 · `npm run check` (format + lint + types) · `npm run build`
+- Suite: 173/173 · `npm run check` (format + lint + types) · `npm run build`
 
 ## Architecture (3 layers + contracts)
 
@@ -29,7 +29,7 @@ src/
 │   ├── preferences.ts                  #   $DSH_HOME/lazydsh-model.json
 │   ├── pending-runtime.ts, upgrade.ts
 ├── interactive-mode/                   # the TUI (imports contracts, utils, runtime)
-│   ├── ui.ts                           #   orchestration (~2336 lines)
+│   ├── ui.ts                           #   orchestration (~2765 lines)
 │   ├── auth-flow.ts                    #   login/logout flows extracted from ui.ts
 │   ├── presentation.ts, presentation   #   editor/status/transcript primitives
 │   ├── tools.ts, detail.ts,            #   tool rows + the one render engine
@@ -38,7 +38,7 @@ src/
 │   ├── model-*.ts, session-*.ts,       #   selectors + search
 │   │   picker.ts, autocomplete.ts
 │   ├── theme.ts, theme/                #   tokens, controller, JSON themes
-│   └── components/ (31)                #   header, dialogs, selectors, messages (15 orphan)
+│   └── components/ (37)                #   header, dialogs, selectors, messages (15 orphan)
 └── utils/ (7)                          # pure: ansi, truncate, format, stats,
                                         # limits, models-are-equal, version
 ```
@@ -107,7 +107,7 @@ Events (`runtime-events.ts`): `session.event` (DSH events, incl. `llm/retry`,
 
 ```bash
 npm run check    # format + lint + types (must be warning-free)
-npm test         # vitest — 182 tests, 49 files
+npm test         # vitest — 173 tests, 48 files
 npm run build    # vite-plus bundle → dist/
 node dist/cli.mjs --version
 ```

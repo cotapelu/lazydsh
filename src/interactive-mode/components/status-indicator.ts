@@ -139,7 +139,6 @@ export class IdleStatus extends Container {
     this.text = new Text(String(theme.fg("muted", message)), 1, 0);
     this.addChild(new Spacer(1));
     this.addChild(this.text);
-    this.addChild(new Spacer(1));
   }
 
   setMessage(message: string): void {

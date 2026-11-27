@@ -216,7 +216,7 @@ export class PromptEditor extends Editor {
   override render(width: number): string[] {
     // pi Editor needs room for a wide glyph plus its cursor; keep drafts intact on tiny resizes.
     if (width < 8) return ["…"];
-    const prefix = `  ${accent("┃")} `;
+    const prefix = ` ${gray("┃")} `;
     const lines: string[] = [];
     let content = false;
     for (const line of super.render(Math.max(1, width - visibleWidth(prefix)))) {

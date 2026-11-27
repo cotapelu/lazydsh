@@ -24,7 +24,7 @@ root (cli, plugin, types, contracts) → may reference both layers
 | `runtime-events.ts` | contract: `RuntimeEvent` union, `eventText`, `reasoningText`, `contentText`, `isAuthFailure`                                                               |
 | `types.ts`          | (removed — contract lives in `interfaces.ts`)                                                                                                              |
 
-## runtime/ (11 files) — DSH bridge + boot
+## runtime/ (13 files) — DSH bridge + boot
 
 | File                 | Role                                                                                                  |
 | -------------------- | ----------------------------------------------------------------------------------------------------- |
@@ -40,7 +40,7 @@ root (cli, plugin, types, contracts) → may reference both layers
 | `pending-runtime.ts` | throwing proxy before the deferred plugins attach                                                     |
 | `upgrade.ts`         | self-upgrade (npm/pnpm/yarn/bun/vp)                                                                   |
 
-## interactive-mode/ (84 files: 47 top-level + 31 components + 6 theme)
+## interactive-mode/ (85 files: 47 top-level + 37 components + 1 theme)
 
 | File                                                                                       | Role                                                                        |
 | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
@@ -62,15 +62,16 @@ root (cli, plugin, types, contracts) → may reference both layers
 | `changelog.ts`, `show-changelog.ts`, `bug-report.ts`, `session-share.ts`                   | panels                                                                      |
 | `clipboard.ts`, `external-editor.ts`, `open-url.ts`, `program-status.ts`, `tui-console.ts` | OS integration                                                              |
 | `cli-auth.ts`, `command-runner.ts`                                                         | CLI auth (stdin prompts + terminal `AuthHost`) + ask/login/logout runners   |
-| `streaming.ts`, `stream-highlight.ts`, `highlight.ts`, `diff.ts`, `markdown-transform.ts`  | rendering helpers                                                           |
+| `stream-highlight.ts`, `highlight.ts`, `diff.ts`, `markdown-transform.ts`                  | rendering helpers (streaming.ts removed — dead code)                        |
 | `stats.ts`, `limits.ts` (FE copies live in `utils/`)                                       | footer/status formatting                                                    |
 
-### components/ (31)
+### components/ (37)
 
 header · assistant-message · user-message · login-dialog · oauth-selector ·
 auth-url · provider-brand · status-indicator · status-container · dynamic-border ·
-bordered-loader* · visual-truncate · countdown-timer ·
+bordered-loader* · visual-truncate · countdown-timer · trim-blanks* ·
 model-selector · session-selector · session-selector-search · thinking-selector ·
+config-selector* · custom-editor* · skill-invocation-message* · tree-selector* ·
 theme-selector · settings-submenu* · show-images-selector* · trust-selector* ·
 user-message-selector* · custom-entry* · custom-message* ·
 extension-editor* · extension-input* · extension-selector* ·
@@ -78,11 +79,9 @@ first-time-setup* · branch-summary-message* · compaction-summary-message* · i
 
 \* = ported but not wired (TODO REMAINING)
 
-### theme/ (6)
+### theme/ (1)
 
-theme.ts (facade) · theme-tokens.ts (83 tokens) · theme-controller.ts (DA1,
-auto-sync, live reload, preview) · theme-schema.ts (validation) ·
-theme-settings.ts (persistence) · system-theme.ts · dark.json · light.json
+theme.ts (single consolidated file ~420 lines; tokens, controller, schema, settings all in one)
 
 ## utils/ (7)
 

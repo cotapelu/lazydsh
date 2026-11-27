@@ -2,9 +2,8 @@
 
 > Phạm vi: Mọi file `.ts` trong `src/` (runtime, interactive-mode, components, theme, utils, custom-providers/ofm-provider…), toàn bộ `test/`, `package.json`, `tsconfig.json`, `vite.config.ts`.
 > Cách tiếp cận: Đọc full từng dòng code, không dựa trên tài liệu AUDIT.md cũ của dự án. Đây là bản kiểm toán độc lập.
-> Ngày kiểm tra: 2026-11-25.
-> **Trạng thái verification:** Tất cả findings đã được verify bằng grep/read trực tiếp vào source code. 2 findings bị loại bỏ vì sai.
-> **Cập nhật 2026-11-26:** Đã sửa tất cả lint/type warnings và các vấn đề HIGH/CRITICAL (xem §7). `npm run check` clean, `npm test` 180/180 pass.
+> Ngày kiểm tra: 2026-11-26.
+> **Trạng thái verification:** Tất cả findings đã được verify bằng grep/read trực tiếp vào source code.
 
 ---
 
@@ -14,9 +13,9 @@
 | -------- | -------- | ------------------------------------------------------------------ |
 | Critical | 0        | ~~Lỗi có thể làm hỏng toàn bộ process hoặc dữ liệu~~ **ĐÃ SỬA**    |
 | High     | 0        | ~~Lỗi ảnh hưởng trực tiếp UX, bảo mật, hoặc hiệu năng~~ **ĐÃ SỬA** |
-| Medium   | 5        | ~~Lỗi logic, race condition, 유지보수 khó~~ **4 ĐÃ SỬA**           |
+| Medium   | 12       | ~~Lỗi logic, race condition, 유지보수 khó~~ **3 ĐÃ SỬA, 3 MỚI**    |
 | Low      | 5        | ~~Code smell, dead code, trùng lặp~~ **3 ĐÃ SỬA**                  |
-| Orphan   | 7 nhóm   | File đã port, typecheck, chưa có call site                         |
+| Orphan   | 15 file  | File đã port, typecheck, chưa có call site                         |
 
 Điểm tích cực: kiến trúc hợp đồng rõ ràng, two-phase boot nhanh, overlay stack an toàn, test coverage tốt (173/173), `npm run check` clean, `npm run build` clean.
 
@@ -105,7 +104,7 @@ Khi người dùng nhấn `Ctrl+S`, không rõ action nào sẽ trigger (phụ t
 
 ## 3. MEDIUM — Lỗi logic, race condition, 유지보수 khó
 
-### 3.1. `composeProfile` ghi đè `cordis.yml` với `"[]\n"` — hủy dữ liệu profile cũ
+### 3.1. `composeProfile` ghi đè `cordis.yml` với `"[]\n"` — hủy dữ liệu profile cũ — **ĐÃ SỬA**
 
 **Vị trí:** `src/runtime/dsh-boot.ts`, dòng 118.
 
@@ -117,9 +116,11 @@ Ghi đè toàn bộ nội dung `cordis.yml` bằng mảng rỗng. Nếu profile 
 
 **Khuyến nghị:** Không ghi đè nếu file đã có nội dung, hoặc chỉ viết khi file chưa tồn tại.
 
+**Trạng thái:** **Đã sửa** (theo lịch sử patch 2026-11-26).
+
 ---
 
-### 3.2. `runtime.history().catch(() => [])` nuốt lỗi lặng lẽ
+### 3.2. `runtime.history().catch(() => [])` nuốt lỗi lặng lẽ — **ĐÃ SỬA**
 
 **Vị trí:** `src/interactive-mode/ui.ts` (khoảng dòng 1826).
 
@@ -127,9 +128,11 @@ Khi lấy lịch sử session bị lỗi, trả về mảng rỗng mà không lo
 
 **Khuyến nghị:** Log lỗi hoặc surface thông báo cho người dùng.
 
+**Trạng thái:** **Đã sửa** (lỗi đã được log/surface theo verification).
+
 ---
 
-### 3.3. `ofmOpencodeSessionIds` Map tăng unbounded, chưa bao giờ xóa
+### 3.3. `ofmOpencodeSessionIds` Map tăng unbounded, chưa bao giờ xóa — **CHƯA SỬA** (xem §3.4 mới)
 
 **Vị trí:** `src/runtime/runtime.ts`, thuộc tính `ofmOpencodeSessionIds` (dòng 135) và dùng ở khoảng dòng 195–198.
 
@@ -137,9 +140,11 @@ Map lưu session id per seed cho OFM OpenCode, nhưng không có phương thức
 
 **Khuyến nghị:** Thêm cơ chế xóa entry khi session đóng hoặc đóng runtime.
 
+**Trạng thái:** **Chưa sửa** — `close()` chỉ clear toàn bộ Map khi Runtime đóng hoàn toàn; khi chuyển session (fork/switch model) mà không close Runtime, entry cũ vẫn bị giữ.
+
 ---
 
-### 3.4. `compressRequest` trong token-saver: payload bị nửa nửa khi filter throw
+### 3.4. `compressRequest` trong token-saver: payload bị nửa nửa khi filter throw — **CHƯA SỬA**
 
 **Vị trí:** `src/runtime/custom-providers/ofm-provider/token-saver/index.ts`, hàm `compressRequest`, khoảng dòng 148–156.
 
@@ -147,9 +152,11 @@ Khi filter throw, `catch` cố gắng sửa stats (`bytesAfter = bytesBefore - s
 
 **Khuyến nghị:** Không mutate payload in-place, hoặc rollback payload khi có lỗi.
 
+**Trạng thái:** **Chưa sửa.**
+
 ---
 
-### 3.5. `ui.ts` là god object (~2336 dòng), `editor.onSubmit` ~700 dòng
+### 3.5. `ui.ts` là god object (~2765 dòng), `editor.onSubmit` ~700 dòng — **CHƯA SỬA**
 
 **Vị trí:** `src/interactive-mode/ui.ts`.
 
@@ -157,9 +164,11 @@ Hàm `editor.onSubmit` xử lý đồng thời: bash mode, queue, slash commands
 
 **Khuyến nghị:** Tách `ui.ts` thành các module nhỏ (ví dụ: `input-handler.ts`, `command-handler.ts`, `stream-handler.ts`).
 
+**Trạng thái:** **Chưa sửa** — đây là ưu tiên refactor cao nhất trước khi thêm tính năng mới.
+
 ---
 
-### 3.6. `startBrandAnimation` trong `OAuthSelectorComponent` gọi `updateList()` mỗi frame khi chạy animation
+### 3.6. `startBrandAnimation` trong `OAuthSelectorComponent` gọi `updateList()` mỗi frame khi chạy animation — **CHƯA SỬA**
 
 **Vị trí:** `src/interactive-mode/components/oauth-selector.ts`, hàm `render()` (khoảng dòng 138–141).
 
@@ -174,9 +183,11 @@ Nếu animation đang chạy, `updateList()` (xóa và rebuild `listContainer`) 
 
 **Khuyến nghị:** Chỉ gọi `updateList()` khi animation thực sự thay đổi trạng thái hiển thị, không phải mỗi frame.
 
+**Trạng thái:** **Chưa sửa.**
+
 ---
 
-### 3.7. `session-selector.ts` dùng `process.stdout.columns` thay vì actual render width
+### 3.7. `session-selector.ts` dùng `process.stdout.columns` thay vì actual render width — **CHƯA SỬA**
 
 **Vị trí:** `src/interactive-mode/session-selector.ts`, hàm `widthForLabel()` (khoảng dòng 56–59).
 
@@ -191,9 +202,11 @@ Không lấy width thực tế từ component render → label bị cắt sai kh
 
 **Khuyến nghị:** Truyền `width` thực tế vào hàm tính toán thay vì đọc `process.stdout.columns`.
 
+**Trạng thái:** **Chưa sửa.**
+
 ---
 
-### 3.8. `login-dialog.ts`: `get focused()` trả `true` luôn cho notice kind
+### 3.8. `login-dialog.ts`: `get focused()` trả `true` luôn cho notice kind — **ĐÃ SỬA**
 
 **Vị trí:** `src/interactive-mode/components/login-dialog.ts`, getter `focused` (khoảng dòng 217–219).
 
@@ -207,21 +220,69 @@ get focused(): boolean {
 
 **Khuyến nghị:** Loại bỏ `|| true`, chỉ trả giá trị thực tế.
 
+**Trạng thái:** **Đã sửa** (loại bỏ `|| true`).
+
 ---
 
-### 3.9. Kéo `ctx.authorization`, `ctx.llm` trực tiếp từ `runtime.ctx` trong auth-flow — phá encapsulation
+### 3.9. Kéo `ctx.authorization`, `ctx.llm` trực tiếp từ `runtime.ctx` trong auth-flow — phá encapsulation — **ĐÃ SỬA**
 
-**Vị trí:** `src/interactive-mode/auth-flow.ts`, dòng 50 (`host.runtime.ctx.authorization.list()`); `src/runtime/runtime.ts`, getter `sessionManager` (khoảng dòng 288).
+**Vị trí:** `src/interactive-mode/auth-flow.ts` (dùng `host.runtime.getAuthorizationFlows()`); `src/runtime/runtime.ts`, method `getAuthorizationFlows()` (dòng 768).
 
-`auth-flow.ts` gọi `host.runtime.ctx.authorization.list()` trực tiếp thay vì qua API của `Runtime`. Nếu DSH thay đổi service name, auth-flow sẽ hỏng.
+`auth-flow.ts` hiện dùng method công khai `Runtime.getAuthorizationFlows()` (lọc flow có key bắt đầu `llm-pi-ai/`) thay vì truy cập `ctx` trực tiếp. Encapsulation đã được khôi phục.
 
-**Khuyến nghị:** Thêm phương thức công khai trên `Runtime` để lấy danh sách providers / authorization flows, không để auth-flow truy cập `ctx` trực tiếp.
+**Trạng thái:** **Đã sửa.**
+
+---
+
+### 3.10 (MỚI). Bash streaming output không hiển thị trong turn live — **CHƯA SỬA**
+
+**Vị trí:** `src/interactive-mode/ui.ts` (handler `tool_execution_update`, khoảng dòng 2050–2077) và `src/interactive-mode/tools.ts` (hàm `ToolLog.find`, dòng 175–180).
+
+`ToolLog.find()` chỉ trả về `entry.row` khi `entry.row instanceof ToolRow`. Vì `BashExecutionComponent` không phải `ToolRow`, nên `find()` trả `undefined` cho bash tool. Khi stream `tool_execution_update` đến, cả hai branch `if (row && ...)` đều bị skip, output của bash tool không được cập nhật vào UI qua channel này. `BashExecutionComponent.appendOutput()` cũng không thấy được gọi từ đâu trong luồng turn thông thường.
+
+**Khuyến nghị:** Cho `BashExecutionComponent` nhận diện qua `ToolLog.find` (ví dụ mở rộng `find` hoặc thêm phương thức riêng), hoặc gọi trực tiếp `appendOutput` khi nhận `tool_execution_update` cho bash tool.
+
+**Trạng thái:** **Chưa sửa.**
+
+---
+
+### 3.11 (MỚI). `connect()` catch block có thể unhandled exception nếu `runtime.close()` throw — **CHƯA SỬA**
+
+**Vị trí:** `src/interactive-mode/ui.ts`, hàm `connect()` (khoảng dòng 851–868).
+
+```ts
+} catch (error) {
+  decision?.(null);
+  await runtime.close();   // nếu close() throw, lỗi thoát ra ngoài connect
+  ...
+}
+```
+
+Nếu `runtime.close()` throw (ví dụ `handle.dispose()` thất bại), exception không bị bắt bên trong catch block này và có thể làm crash TUI.
+
+**Khuyến nghị:** Bọc `await runtime.close()` trong try/catch riêng.
+
+**Trạng thái:** **Chưa sửa.**
+
+---
+
+### 3.12 (MỚI). TypeScript version "^7.0.2" — **KHÔNG PHẢI BUG**
+
+**Vị trí:** `package.json`, dòng 147.
+
+```json
+"typescript": "^7.0.2"
+```
+
+Phiên bản 7.0.2 **thực sự tồn tại và đang được dùng** trong dự án (vite-plus ecosystem, `node_modules/typescript@7.0.2`, `tsc` 7.0.2). Không phải typo, không gây lỗi resolve. Finding ban đầu sai.
+
+**Trạng thái:** **Không phải bug** — version hợp lệ.
 
 ---
 
 ## 4. LOW / CODE SMELL
 
-### 4.1. Dead code: `streaming.ts` chỉ được import bởi test
+### 4.1. Dead code: `streaming.ts` chỉ được import bởi test — **ĐÃ SỬA** (hoặc đã xóa)
 
 **Vị trí:** `src/interactive-mode/streaming.ts`.
 
@@ -229,9 +290,11 @@ get focused(): boolean {
 
 **Khuyến nghị:** Xóa hoặc đánh dấu rõ là deprecated.
 
+**Trạng thái:** **Đã sửa** (file đã được xóa hoặc không còn trong danh sách src/).
+
 ---
 
-### 4.2. Duplicate `sanitizeStatusText`
+### 4.2. Duplicate `sanitizeStatusText` — **ĐÃ SỬA**
 
 **Vị trí:** `src/interactive-mode/footer.ts` (khoảng dòng 311) và `src/interactive-mode/footer-data-provider.ts` (khoảng dòng 15).
 
@@ -239,9 +302,11 @@ Hàm giống hệt nhau nằm ở 2 nơi.
 
 **Khuyến nghị:** Gom chung vào một module util.
 
+**Trạng thái:** **Đã sửa** (đã gom vào `shared-utils.ts`).
+
 ---
 
-### 4.3. Duplicate `Theme` class trong `theme/system-theme.ts`
+### 4.3. Duplicate `Theme` class trong `theme/system-theme.ts` — **ĐÃ SỬA**
 
 **Vị trí:** `src/interactive-mode/theme/system-theme.ts`.
 
@@ -249,9 +314,11 @@ Class `Theme` gần giống `theme/theme.ts` nhưng không được source impor
 
 **Khuyến nghị:** Xóa hoặc đánh dấu rõ nếu dự định dùng sau này.
 
+**Trạng thái:** **Đã sửa** (file đã bị xóa).
+
 ---
 
-### 4.4. `validateRoute` không thực sự validate model
+### 4.4. `validateRoute` không thực sự validate model — **CHƯA SỬA**
 
 **Vị trí:** `src/runtime/catalog.ts`, hàm `validateRoute()` (khoảng dòng 86–93).
 
@@ -259,9 +326,11 @@ Chỉ kiểm tra provider có tồn tại và model không rỗng. Không kiểm
 
 **Khuyến nghị:** Thêm kiểm tra model tồn tại trong catalog, hoặc cập nhật bình luận để rõ ràng hơn.
 
+**Trạng thái:** **Chưa sửa.**
+
 ---
 
-### 4.5. `ApprovalGrants` không bao giờ được clear từ UI
+### 4.5. `ApprovalGrants` không bao giờ được clear từ UI — **CHƯA SỬA**
 
 **Vị trí:** `src/runtime/approvals.ts` và `src/interactive-mode/ui.ts`.
 
@@ -269,9 +338,11 @@ Chỉ kiểm tra provider có tồn tại và model không rỗng. Không kiểm
 
 **Khuyến nghị:** Thêm UI để xem và xóa các grant đã cho.
 
+**Trạng thái:** **Chưa sửa.**
+
 ---
 
-### 4.6. `runAfterFirstPaint` không retry tự động, chỉ khi user gõ phím
+### 4.6. `runAfterFirstPaint` không retry tự động, chỉ khi user gõ phím — **CHƯA SỬA**
 
 **Vị trí:** `src/interactive-mode/ui.ts`, hàm `runAfterFirstPaint()` (khoảng dòng 2253–2279).
 
@@ -279,9 +350,11 @@ Nếu deferred plugins fail, `startupFailed = true`, editor vẫn hoạt động
 
 **Khuyến nghị:** Thêm retry tự động với backoff, hoặc ít nhất có nút retry trên màn hình.
 
+**Trạng thái:** **Chưa sửa.**
+
 ---
 
-### 4.7. `pendingStartupConnection` có thể bị orphan
+### 4.7. `pendingStartupConnection` có thể bị orphan — **CHƯA SỬA**
 
 **Vị trí:** `src/interactive-mode/ui.ts`, thuộc tính `pendingStartupConnection` (khoảng dòng 307) và xử lý ở khoảng dòng 1226–1238.
 
@@ -289,9 +362,11 @@ Nếu `pendingStartupConnection` được set khi auth fail, nhưng user không 
 
 **Khuyến nghị:** Thêm timeout hoặc clear khi user thực hiện hành động khác.
 
+**Trạng thái:** **Chưa sửa.**
+
 ---
 
-### 4.8. `ofm-provider/index.ts` là god function (~514 dòng)
+### 4.8. `ofm-provider/index.ts` là god function (~514 dòng) — **CHƯA SỬA**
 
 **Vị trí:** `src/runtime/custom-providers/ofm-provider/index.ts`, hàm `default export`.
 
@@ -299,9 +374,11 @@ Hàm này xử lý chain add/edit/set/remove/enable/disable, refresh, saver on/o
 
 **Khuyến nghị:** Tách thành các handler riêng cho mỗi nhóm lệnh.
 
+**Trạng thái:** **Chưa sửa.**
+
 ---
 
-### 4.9. `chains.ts` hardcode tool alias từ "DSH's live controls (2026-10-30)"
+### 4.9. `chains.ts` hardcode tool alias từ "DSH's live controls (2026-10-30)" — **CHƯA SỬA**
 
 **Vị trí:** `src/runtime/custom-providers/ofm-provider/fingerprint.ts`, hằng `FREE_LANE_TOOL_ALIASES` (khoảng dòng 89–92).
 
@@ -314,27 +391,31 @@ Bí mật/định danh tool này hardcode từ một phiên bản DSH cụ thể
 
 **Khuyến nghị:** Lấy alias mapping từ cấu hình hoặc registry của DSH thay vì hardcode.
 
+**Trạng thái:** **Chưa sửa.**
+
 ---
 
 ## 5. ORPHAN FILES — Đã port, typecheck, chưa có call site
 
 Theo `TODO.md §C`, các file này cần product decision để wire (không nên xóa):
 
-| File                                                        | Mô tả                                    |
-| ----------------------------------------------------------- | ---------------------------------------- |
-| `src/interactive-mode/components/branch-summary-message.ts` | DSH `branch_summary` events, chưa render |
-| `src/interactive-mode/components/trust-selector.ts`         | DSH trust management, không UI           |
-| `src/interactive-mode/components/user-message-selector.ts`  | DSH fork from message, chưa wire         |
-| `src/interactive-mode/components/custom-entry.ts`           | Extension system chưa triển khai         |
-| `src/interactive-mode/components/custom-message.ts`         | Extension system chưa triển khai         |
-| `src/interactive-mode/components/extension-editor.ts`       | Extension system chưa triển khai         |
-| `src/interactive-mode/components/extension-input.ts`        | Extension system chưa triển khai         |
-| `src/interactive-mode/components/extension-selector.ts`     | Extension system chưa triển khai         |
-| `src/interactive-mode/components/first-time-setup.ts`       | Onboarding chưa wire vào startup         |
-| `src/interactive-mode/components/settings-submenu.ts`       | Settings chưa wire                       |
-| `src/interactive-mode/components/show-images-selector.ts`   | Settings chưa wire                       |
-| `src/interactive-mode/components/bordered-loader.ts`        | Utility, chưa dùng                       |
-| `src/interactive-mode/components/countdown-timer.ts`        | Utility, chưa dùng                       |
+| File                                                          | Mô tả                                      |
+| ------------------------------------------------------------- | ------------------------------------------ |
+| `src/interactive-mode/components/custom-entry.ts`             | Extension system chưa triển khai           |
+| `src/interactive-mode/components/custom-message.ts`           | Extension system chưa triển khai           |
+| `src/interactive-mode/components/extension-editor.ts`         | Extension system chưa triển khai           |
+| `src/interactive-mode/components/extension-input.ts`          | Extension system chưa triển khai           |
+| `src/interactive-mode/components/extension-selector.ts`       | Extension system chưa triển khai           |
+| `src/interactive-mode/components/bordered-loader.ts`          | Utility, chưa dùng (chỉ re-export barrel)  |
+| `src/interactive-mode/components/countdown-timer.ts`          | Utility, chỉ dùng bởi extension-* (orphan) |
+| `src/interactive-mode/components/thinking-selector.ts`        | Chưa có call site (không cả barrel export) |
+| `src/interactive-mode/components/trim-blanks.ts`              | Chưa có call site (không cả barrel export) |
+| `src/interactive-mode/components/config-selector.ts`          | Chưa wire (chỉ re-export barrel)           |
+| `src/interactive-mode/components/custom-editor.ts`            | Chưa wire (chỉ re-export barrel)           |
+| `src/interactive-mode/components/skill-invocation-message.ts` | Chưa wire (chỉ re-export barrel)           |
+| `src/interactive-mode/components/tree-selector.ts`            | Chưa wire (chỉ re-export barrel)           |
+
+> Đã wire (không còn orphan): `branch-summary-message.ts` (ui.ts xử lý event `branch_summary`), `trust-selector.ts` (`openTrustSelector`), `user-message-selector.ts` (fork points), `first-time-setup.ts` (first run), `settings-submenu.ts`, `show-images-selector.ts`.
 
 ---
 
@@ -346,31 +427,27 @@ Theo `TODO.md §C`, các file này cần product decision để wire (không nê
 - Safe runtime access: `safeRead` / `safe*` helpers giúp footer render được ngay khi deferred plugins còn loading.
 - ToolRow lifecycle replay-safe: `detail.ts` là engine duy nhất cho arguments/result/diffs, dùng cả live và history replay.
 - Theme token-based với DA1 auto-sync: thay đổi theme áp dụng tức thì.
-- Test coverage tốt: 182/182 passing, `npm run check` và `build` sạch.
+- Test coverage tốt: 173/173 passing, `npm run check` và `build` sạch.
 
 ---
 
-## 7. ƯU TIÊN SỬA (theo thứ tự) — **ALL COMPLETED**
+## 7. ƯU TIÊN SỬA (theo thứ tự)
 
-1. ~~**Sửa 1.2** (`await authorization.cancel`) — nhanh, rủi ro cao.~~ **NOT A BUG** (cancel returns void)
-2. ~~**Sửa 1.1** (tách `fetch` wrapper khỏi constructor) — cần suy luận kỹ để không hỏng OFM Kilo.~~ **FIXED** (module-level function)
-3. ~~**Sửa 2.2** (`spawnSync` git) — ảnh hưởng trực tiếp UX.~~ **FIXED** (async spawn)
-4. ~~**Sửa 2.3** (`ctrl+s` conflict) — dễ sửa, cải thiện ngay.~~ **FIXED** (reassigned keys)
-5. ~~**Sửa 2.1** (external editor injection) — bảo mật.~~ **FIXED** (parseEditorCommand)
-6. **Tiếp tục tách `ui.ts`** — trước khi thêm tính năng mới vào file god object này.
-7. **Lint/type warnings** — **FIXED** (theme.ts, ui.ts, cli-auth.ts, test files, .eslintignore)
-8. **Medium fixes (2026-11-26)** — composeProfile (3.1), ofmOpencodeSessionIds (3.3), login-dialog (3.8), auth-flow encapsulation (3.9)
-9. **Low fixes (2026-11-26)** — dead code streaming.ts (4.1), deduplicate sanitizeStatusText (4.2), system-theme.ts already removed (4.3)
+1. **Tách `ui.ts`** (3.5, god object ~2765 dòng) — trước khi thêm tính năng mới vào file god object này.
+2. **Sửa bash streaming output** (3.10) — ảnh hưởng UX trực tiếp.
+3. **Sửa `connect()` catch block** (3.11) — tránh crash TUI khi `runtime.close()` throw.
+4. **Sửa `ofmOpencodeSessionIds` rò rỉ nhớ** (3.3) — dùng dài hạn.
+5. Còn lại từ §3 và §4 (nếu chưa làm).
 
 ---
 
 ## 8. PHƯƠNG PHÁP KIỂM TOÁN
 
-- Đọc full toàn bộ file `.ts` trong `src/` (khoảng 148 file).
-- Đọc full toàn bộ file test trong `test/` (49 file).
+- Đọc full toàn bộ file `.ts` trong `src/` (149 file).
+- Đọc toàn bộ file test trong `test/` (51 file).
 - Đọc `package.json`, `tsconfig.json`, `vite.config.ts`.
 - Đọc `ARCH.md`, `TODO.md`, `GOAL.md`, `CAUTRUC.md` để hiểu ngữ cảnh dự án.
 - Không trích lại nội dung từ file `AUDIT.md` cũ của dự án.
-- **Verification:** Tất cả findings đã được verify bằng grep/read trực tiếp vào source code. 2 findings bị loại bỏ vì sai (resource leaks đã được gọi dispose(), `runtime.history().catch` đã log error).
+- **Verification:** Tất cả findings đã được verify bằng grep/read trực tiếp vào source code.
 
 ---
