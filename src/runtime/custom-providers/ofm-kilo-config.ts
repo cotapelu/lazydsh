@@ -1,4 +1,4 @@
-import type { PiAiProviderProfile } from "@deepseek-ai/dsh-llm-pi-ai";
+import type { PiAiProviderProfile } from "./types.ts";
 import { OFM_KILO_MODELS } from "./ofm-kilo-models.js";
 
 export const OFM_KILO_PROVIDER_ID = "ofm-kilo";

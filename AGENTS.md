@@ -28,6 +28,8 @@ src/
 │   ├── native-commands.ts              #   DSH /export, /effort registration
 │   ├── preferences.ts                  #   $DSH_HOME/lazydsh-model.json
 │   ├── pending-runtime.ts, upgrade.ts
+│   ├── provider-catalog.ts             #   shared provider catalog (NEW)
+│   └── custom-providers/types.ts       #   shared PiAiProviderProfile (NEW)
 ├── interactive-mode/                   # the TUI (imports contracts, utils, runtime)
 │   ├── ui.ts                           #   orchestration (~2765 lines)
 │   ├── auth-flow.ts                    #   login/logout flows extracted from ui.ts
@@ -38,9 +40,9 @@ src/
 │   ├── model-*.ts, session-*.ts,       #   selectors + search
 │   │   picker.ts, autocomplete.ts
 │   ├── theme.ts, theme/                #   tokens, controller, JSON themes
+│   ├── utils/ (5)                      #   TUI-only: ansi, format (tokens), models-are-equal, truncate, version
 │   └── components/ (37)                #   header, dialogs, selectors, messages (15 orphan)
-└── utils/ (7)                          # pure: ansi, truncate, format, stats,
-                                        # limits, models-are-equal, version
+└── utils/ (3)                          # shared pure: format (duration), limits, stats
 ```
 
 **Dependency rule:** `interactive-mode/` may import contracts, `utils/`,

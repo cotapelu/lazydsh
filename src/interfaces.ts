@@ -13,6 +13,9 @@ import type {
   AskUserQuestionRequest,
 } from "@deepseek-ai/dsh-user-questions";
 import type { AutocompleteItem } from "@earendil-works/pi-tui";
+import type { SessionStats } from "./utils/stats.ts";
+
+export type { SessionStats };
 
 export type { AutocompleteItem };
 
@@ -81,6 +84,14 @@ export type RunResult = {
   events: SessionEvent[];
 };
 
+/** Options for `run()`. */
+export type RunOptions = {
+  /** Whether to treat input as a slash command. */
+  commands?: boolean;
+  /** Whether to auto-authenticate on 401. */
+  authenticate?: boolean;
+};
+
 /** The narrow TUI surface lazydsh's components and loaders actually consume. */
 export interface TuiHost {
   requestRender(force?: boolean): void;
@@ -110,3 +121,80 @@ export interface ModelRuntime {
 
 /** Opaque id type used by the session layer. */
 export type SessionIdLike = string;
+
+/** Current model selection with optional effort. */
+export interface SelectionInfo extends Route {
+  effort?: string;
+}
+
+/** Available reasoning efforts for the current model. */
+export interface EffortsInfo {
+  current: string;
+  defaultEffort?: string;
+  options: readonly string[];
+}
+
+/** One saved session shown in the session picker. */
+export interface SessionSummary {
+  id: string;
+  title: string;
+  directory?: string;
+  archived: boolean;
+  pinned: boolean;
+  modified: number;
+  messageCount: number;
+}
+
+/** A fork point (completed turn) for session forking. */
+export interface ForkPoint {
+  value: string;
+  label: string;
+  description: string;
+}
+
+/** Background job summary. */
+export interface JobInfo {
+  id: string;
+  label: string;
+  status: string;
+  owner: string;
+  progress?: string;
+}
+
+/** Job output for detail view. */
+export interface JobOutput {
+  text: string;
+  lossy?: boolean;
+  chunks?: readonly unknown[];
+}
+
+/** Auth provider entry for login selector. */
+export interface AuthProvider {
+  value: string;
+  label: string;
+  description: string;
+}
+
+/** Authorization flow detail. */
+export interface AuthorizationFlow {
+  key: string;
+  label: string;
+  methods: readonly { id: string; label: string }[];
+}
+
+/** Generic choice set for pickers (sessions, directories, mode, permissions). */
+export interface ChoiceSet {
+  current?: string;
+  options: { value: string; label: string; description?: string }[];
+}
+
+/** Model connection test result. */
+export type ModelConnectionTestResult = { ok: true } | { ok: false; error: string };
+
+/** Tool definition shape (minimal). */
+export interface ToolDefinition {
+  name: string;
+  description?: string;
+  parameters?: Record<string, unknown>;
+  [key: string]: unknown;
+}

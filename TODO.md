@@ -10,11 +10,14 @@
 
 ```
 src/
-├── cli.ts plugin.ts               # wiring
-├── interfaces.ts runtime-events.ts # contracts (types + events only)
-├── runtime/ (13 files)            # DSH bridge + boot, no pi-tui imports
+├── cli.ts plugin.ts                       # wiring
+├── interfaces.ts runtime-events.ts        # contracts (types + events only)
+├── runtime/ (14 files)                    # DSH bridge + boot, no pi-tui imports
+│   ├── provider-catalog.ts                # shared provider catalog (NEW)
+│   └── custom-providers/types.ts          # shared PiAiProviderProfile (NEW)
 ├── interactive-mode/ (47 + 37 components + 1 theme)  # the TUI
-└── utils/ (7 files)               # pure helpers, no pi-tui, no dsh
+│   └── utils/ (3 files)                   # TUI-only pure helpers (NEW)
+└── utils/ (4 files)                       # shared pure helpers, no pi-tui, no dsh
 ```
 
 Rule: `interactive-mode/` → imports contracts, `utils/`, `runtime/`; `runtime/` → imports contracts, `utils/` only; root files may reference both.
@@ -26,6 +29,42 @@ Rule: `interactive-mode/` → imports contracts, `utils/`, `runtime/`; `runtime/
 Phases 1–7 (Layout & Footer, Tool Cards, Selectors, Keybindings & Theme, Message Components, Polish, Docs & Verification) complete. Phase 8 (Upstream Parity & Follow-ups) complete through §8.27. See git log for details.
 
 Key completed items: two-phase boot with deferred plugins, overlay stack, safe runtime access, ToolRow lifecycle with live streaming, incremental highlighting, Mermaid, theme system with DA1 auto-sync, status indicators, shutdown, bash mode, login unification (P0), approval "always allow" (P2), history virtualization, footer git watcher.
+
+### **Session 2026-11-27: Contracts & Architecture Cleanup**
+
+**Added to `interfaces.ts` (12 new contract types):**
+
+- `RunOptions` — type-safe params for `run()`
+- `SelectionInfo` — extends `Route` with optional `effort`
+- `EffortsInfo` — current/default/options for reasoning efforts
+- `SessionSummary` — session picker rows
+- `ForkPoint` — fork session dialog entries
+- `JobInfo` / `JobOutput` — background jobs panel
+- `AuthProvider` / `AuthorizationFlow` — login selectors
+- `ChoiceSet` — generic pickers (sessions, dirs, mode, permissions)
+- `SessionStats` — footer cost breakdown (re-export from utils)
+- `ModelConnectionTestResult` — model test connection feedback
+- `ToolDefinition` — tool metadata for approval panel
+
+**Runtime updates:**
+
+- All 30 public methods now use explicit contract return types
+- Removed anonymous object returns, replaced with interfaces.ts types
+- Updated imports to include all new contract types
+
+**Duplicate imports eliminated (2 shared files created):**
+
+- `src/runtime/provider-catalog.ts` — re-exports `builtinProviders`, `getBuiltinModels`, `getBuiltinProviders` (was imported in 3 files)
+- `src/runtime/custom-providers/types.ts` — re-exports `PiAiProviderProfile` (was imported in 3 files)
+
+**Utils reorganization by ownership:**
+
+- `src/utils/` (4 shared): `format.ts`, `limits.ts`, `stats.ts`, `version.ts`
+- `src/interactive-mode/utils/` (3 TUI-only): `ansi.ts`, `models-are-equal.ts`, `truncate.ts`
+
+**Tests updated:**
+
+- `test/runtime.test.ts` — handle `JobOutput` return type from `runtime.job()`
 
 ---
 
@@ -132,6 +171,19 @@ Utility chỉ dùng bởi orphan:
 3. ⏳ `connect()` catch block (P1#3)
 4. ⏳ `ofmOpencodeSessionIds` leak (P1#4)
 5. ⏳ Remaining P2/P3/P4/P5 items
+
+---
+
+## Completed This Session (2026-11-27)
+
+- [x] Contract types: added 12 types to `interfaces.ts`
+- [x] Runtime: all 30 methods use explicit contract types
+- [x] Duplicate imports: created `provider-catalog.ts` + `custom-providers/types.ts`
+- [x] Utils reorganization: `interactive-mode/utils/` for TUI-only helpers
+- [x] Tests: updated for new `JobOutput` type
+- [x] `npm run check` ✅ pass
+- [x] `npm run build` ✅ pass
+- [x] `npm test` ✅ 172/173 pass (1 flaky network test)
 
 ---
 

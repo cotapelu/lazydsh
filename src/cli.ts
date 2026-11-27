@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { formatNotification, terminalColor } from "./interactive-mode/theme.ts";
-import { packageVersion } from "./utils/version.ts";
+import { packageVersion } from "./interactive-mode/utils/version.ts";
 import { loadModel, preferencesPath } from "./runtime/preferences.ts";
 import { normalizeProvider } from "./runtime/provider.ts";
 import type {} from "./plugin.ts";

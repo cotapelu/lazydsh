@@ -1,4 +1,4 @@
-import type { PiAiProviderProfile } from "@deepseek-ai/dsh-llm-pi-ai";
+import type { PiAiProviderProfile } from "./types.ts";
 import { staticOpencodeModels } from "./ofm-provider/catalog.js";
 
 export const OFM_OPENCODE_PROVIDER_ID = "ofm-opencode";

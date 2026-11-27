@@ -21,7 +21,7 @@ import { DynamicBorder } from "./components/dynamic-border.ts";
 import { keyDisplayText, keyHint } from "./keybinding-hints.ts";
 import { refreshModelCatalogs } from "./model-catalog-refresh.ts";
 import { getDistinctModelName, getModelSelectorSearchText } from "./model-search.ts";
-import { modelsAreEqual } from "../utils/models-are-equal.ts";
+import { modelsAreEqual } from "./utils/models-are-equal.ts";
 
 const MAX_VISIBLE = 10;
 

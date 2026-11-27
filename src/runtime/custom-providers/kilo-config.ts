@@ -13,7 +13,7 @@
  * `GET {baseURL}/models`.
  */
 
-import type { PiAiProviderProfile } from "@deepseek-ai/dsh-llm-pi-ai";
+import type { PiAiProviderProfile } from "./types.ts";
 import { KILO_MODELS } from "./kilo-models.js";
 
 /** Route key in every `providers` dict, the `Models` collection, and the UI. */

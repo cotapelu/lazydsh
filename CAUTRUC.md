@@ -24,21 +24,23 @@ root (cli, plugin, types, contracts) → may reference both layers
 | `runtime-events.ts` | contract: `RuntimeEvent` union, `eventText`, `reasoningText`, `contentText`, `isAuthFailure`                                                               |
 | `types.ts`          | (removed — contract lives in `interfaces.ts`)                                                                                                              |
 
-## runtime/ (13 files) — DSH bridge + boot
+## runtime/ (15 files) — DSH bridge + boot
 
-| File                 | Role                                                                                                  |
-| -------------------- | ----------------------------------------------------------------------------------------------------- |
-| `runtime.ts`         | `Runtime` class: sessions, models, auth, tools, stats, events                                         |
-| `dsh-boot.ts`        | profile composition, two-phase mount, shutdown/interrupt                                              |
-| `deferred.ts`        | `RUNTIME_SERVICE_NAMES` (14 eager services), deferred row selection, activation                       |
-| `plugin-patch.ts`    | extra services beyond dsh-base (connection, upload, workspace, schedule, present, file references, …) |
-| `telemetry-patch.ts` | OTel opt-out                                                                                          |
-| `catalog.ts`         | providers + models table, route validation, provider patch                                            |
-| `provider.ts`        | provider id normalization                                                                             |
-| `native-commands.ts` | registers DSH-native commands (`/export`, `/effort`)                                                  |
-| `preferences.ts`     | `$DSH_HOME/lazydsh-model.json`                                                                        |
-| `pending-runtime.ts` | throwing proxy before the deferred plugins attach                                                     |
-| `upgrade.ts`         | self-upgrade (npm/pnpm/yarn/bun/vp)                                                                   |
+| File                        | Role                                                                                                  |
+| --------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `runtime.ts`                | `Runtime` class: sessions, models, auth, tools, stats, events                                         |
+| `dsh-boot.ts`               | profile composition, two-phase mount, shutdown/interrupt                                              |
+| `deferred.ts`               | `RUNTIME_SERVICE_NAMES` (14 eager services), deferred row selection, activation                       |
+| `plugin-patch.ts`           | extra services beyond dsh-base (connection, upload, workspace, schedule, present, file references, …) |
+| `telemetry-patch.ts`        | OTel opt-out                                                                                          |
+| `catalog.ts`                | providers + models table, route validation, provider patch                                            |
+| `provider.ts`               | provider id normalization                                                                             |
+| `native-commands.ts`        | registers DSH-native commands (`/export`, `/effort`)                                                  |
+| `preferences.ts`            | `$DSH_HOME/lazydsh-model.json`                                                                        |
+| `pending-runtime.ts`        | throwing proxy before the deferred plugins attach                                                     |
+| `upgrade.ts`                | self-upgrade (npm/pnpm/yarn/bun/vp)                                                                   |
+| `provider-catalog.ts`       | shared re-export: `builtinProviders`, `getBuiltinModels`, `getBuiltinProviders` (NEW)                 |
+| `custom-providers/types.ts` | shared re-export: `PiAiProviderProfile` (NEW)                                                         |
 
 ## interactive-mode/ (85 files: 47 top-level + 37 components + 1 theme)
 
@@ -83,10 +85,14 @@ first-time-setup* · branch-summary-message* · compaction-summary-message* · i
 
 theme.ts (single consolidated file ~420 lines; tokens, controller, schema, settings all in one)
 
-## utils/ (7)
+## utils/ (3) — shared pure helpers
 
-`ansi.ts` · `truncate.ts` · `format.ts` · `stats.ts` · `limits.ts` ·
-`models-are-equal.ts` · `version.ts`
+`format.ts` (formatDuration) · `limits.ts` (AccountLimits, parseLimits) ·
+`stats.ts` (SessionStats, latestRequestStats)
+
+## interactive-mode/utils/ (5) — TUI-only pure helpers
+
+`ansi.ts` (stripAnsi) · `format.ts` (formatTokens) · `models-are-equal.ts` (modelsAreEqual) · `truncate.ts` (truncateTail, DEFAULT_MAX_*) · `version.ts` (packageVersion)
 
 ## Resolutions vs the original plan
 

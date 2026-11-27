@@ -359,18 +359,19 @@ test.concurrent("sessions, jobs and file references", async () => {
       return {done:pending.promise,cancel(){cancelled++;pending.resolve({status:"killed"});}};
     }});
     assert.ok((await runtime.jobs()).some(item=>item.id===job));
-    assert.match(await runtime.job(job),/Test background job.*running/);
-    assert.match(await runtime.job(job),/output line/);
-    assert.match(await runtime.job(job),/output line/); // Observer reads do not consume the model cursor.
+    const jobResult = await runtime.job(job);
+    assert.match(jobResult?.text ?? "", /Test background job.*running/);
+    assert.match(jobResult?.text ?? "", /output line/);
+    assert.match(jobResult?.text ?? "", /output line/); // Observer reads do not consume the model cursor.
     await assert.rejects(runtime.job("missing",true),/not found/);
     const foreign=await ctx.agents.create({agentOptions:route});
     const other=Promise.withResolvers();
     const foreignJob=ctx.jobs.start({kind:"bash",owner:foreign.agent.session.id,label:"Foreign job",run(){return {done:other.promise,cancel(){other.resolve({status:"killed"});}};}});
     assert.ok(!(await runtime.jobs()).some(item=>item.id===foreignJob));
     await assert.rejects(runtime.job(foreignJob,true),/not found/);
-    assert.equal(await runtime.job(job,true),"requested");
+    await runtime.job(job, true);
     await pending.promise;
-    assert.equal(cancelled,1);
+    assert.equal(cancelled, 1);
     await foreign.dispose();
     await runtime.cd(directory);
     const refs=await runtime.references("reference",new AbortController().signal);

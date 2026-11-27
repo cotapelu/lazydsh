@@ -38,8 +38,12 @@ selectors (model/session/effort/theme/permission), pickers, footer, header,
 status indicators, dialogs (login, approval, question), messages, theme system.
 Many ported components are unwired (see TODO.md §C).
 
-**utils/ (7)** — pure helpers shared by both layers (ansi, truncate, format,
-stats, limits, models-are-equal, version).
+**utils/ (3)** — shared pure helpers: `format.ts` (formatDuration),
+`limits.ts` (AccountLimits, parseLimits), `stats.ts` (SessionStats, latestRequestStats).
+
+**interactive-mode/utils/ (5)** — TUI-only pure helpers: `ansi.ts` (stripAnsi),
+`format.ts` (formatTokens), `models-are-equal.ts` (modelsAreEqual),
+`truncate.ts` (truncateTail, DEFAULT_MAX_*), `version.ts` (packageVersion).
 
 ## Boot sequence
 

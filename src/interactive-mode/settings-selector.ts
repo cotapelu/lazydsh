@@ -3,7 +3,7 @@ import { theme, accent, dim } from "./theme.ts";
 import { DynamicBorder } from "./components/dynamic-border.ts";
 import { keyHint } from "./keybinding-hints.ts";
 import { keybindingsConfigPath } from "./keybindings.ts";
-import { packageVersion } from "../utils/version.ts";
+import { packageVersion } from "./utils/version.ts";
 
 /** Settings categories. */
 export type SettingsCategory = "general" | "appearance" | "keybindings" | "extensions" | "about";

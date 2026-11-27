@@ -3,7 +3,8 @@
 **Goal:** Achieve 100% pi-tui capability utilization in lazydsh  
 **Current:** ~85% (core fully exploited, advanced features untapped)  
 **Generated:** 2026-11-27 from full codebase audit (149 TS files)  
-**Updated:** 2026-11-27 with pi-tui internals analysis (theme system, component patterns)
+**Updated:** 2026-11-27 with pi-tui internals analysis (theme system, component patterns)  
+**Updated:** 2026-11-27 with markdown rendering audit (syntax highlighting, LaTeX, images, codeBlockIndent, bgColor)
 
 ---
 
@@ -16,9 +17,9 @@
 | Input & Interaction        | 90%     | 100%     | Low               |
 | Animation & Loading        | 80%     | 100%     | Low               |
 | Search & Navigation        | 70%     | 100%     | Medium            |
-| Rich Media (Images, LaTeX) | 10%     | 100%     | Medium-High       |
+| Rich Media (Images, LaTeX) | 15%     | 100%     | Medium-High       |
 | Extensibility & Themes     | 90%     | 100%     | Low               |
-| **Overall**                | **87%** | **100%** | **~35 dev hours** |
+| **Overall**                | **88%** | **100%** | **~40 dev hours** |
 
 ---
 
@@ -572,6 +573,144 @@ export function getMarkdownTheme() {
 
 ---
 
+### P1-6: Unified Syntax Highlighting & Full Markdown Feature Utilization
+
+**Files:** `src/interactive-mode/theme/theme.ts` (`getMarkdownTheme()`), `src/interactive-mode/components/assistant-message.ts`, `src/interactive-mode/components/user-message.ts`, `src/interactive-mode/components/custom-message.ts`, `src/interactive-mode/components/branch-summary-message.ts`, `src/interactive-mode/components/compaction-summary-message.ts`, `src/interactive-mode/components/skill-invocation-message.ts`, `src/interactive-mode/components/mermaid.ts`  
+**Benefit:** Consistent syntax highlighting across ALL message types, customizable code block indent, optional LaTeX toggle, full-line background styling, image protocol support
+
+**Current State (2026-11-27 Audit):**
+
+| Feature                            | pi-tui API                      | Used by                              | Missing in                                                                                   |
+| ---------------------------------- | ------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `highlightCode`                    | `MarkdownTheme.highlightCode`   | `assistant-message.ts` (incremental) | `user-message`, `custom-message`, `branch-summary`, `compaction-summary`, `skill-invocation` |
+| `codeBlockIndent`                  | `MarkdownTheme.codeBlockIndent` | Default only (" ")                   | All — not customized                                                                         |
+| `renderLatex` toggle               | `MarkdownOptions.renderLatex`   | Always `true`                        | No way to disable per-message                                                                |
+| `defaultTextStyle.bgColor`         | `DefaultTextStyle.bgColor`      | Never used                           | All — only `color` (fg) used                                                                 |
+| `defaultTextStyle` bold/italic/... | `DefaultTextStyle`              | Never used                           | All                                                                                          |
+| Image rendering (OSC 1337/8)       | `isImageLine` + `renderImage`   | Parser supports, **no component**    | All message components                                                                       |
+
+**Implementation:**
+
+```typescript
+// 1. theme.ts — Shared theme with syntax highlighting
+export function getMarkdownTheme() {
+  return {
+    // ... existing tokens ...
+
+    // NEW: Unified syntax highlighter (shiki / starry-night / custom)
+    highlightCode: (code: string, lang?: string): string[] => {
+      // Option A: Use shared highlighter (non-streaming messages)
+      // Option B: Delegate to incremental highlighter for assistant messages
+      return highlighter.highlight(code, lang ?? "txt");
+    },
+
+    // NEW: Customizable code block indent (e.g., "│ " for bordered look)
+    codeBlockIndent: "  ", // or "│ " for visual border
+
+    // NEW: Callout rendering (Obsidian-style > [!NOTE] ...)
+    callout: (type: "note" | "warning" | "error" | "tip", content: string[]) => {
+      const icons = { note: "💡", warning: "⚠️", error: "❌", tip: "💡" };
+      const colors = { note: "accent", warning: "warning", error: "error", tip: "success" };
+      return content.map((line) => theme.fg(colors[type], `${icons[type]} ${line}`));
+    },
+
+    // NEW: Task list rendering
+    taskList: (items: { checked: boolean; text: string }[]) =>
+      items.map(({ checked, text }) =>
+        theme.fg(checked ? "success" : "muted", `${checked ? "☑" : "☐"} ${text}`),
+      ),
+  };
+}
+
+// 2. assistant-message.ts — Use shared theme + incremental as cache layer
+private markdownThemeWithIncrementalHighlight(): ReturnType<typeof getMarkdownTheme> & {
+  highlightCode?: (code: string, lang?: string) => string[];
+} {
+  const baseTheme = getMarkdownTheme();
+  return {
+    ...baseTheme,
+    highlightCode: (code: string, language?: string) =>
+      this.incrementalHighlightCode.highlight(code, language), // Streaming optimization
+  };
+}
+
+// 3. ALL other message components — Use shared theme
+// user-message.ts, custom-message.ts, branch-summary-message.ts,
+// compaction-summary-message.ts, skill-invocation-message.ts
+new Markdown(
+  text,
+  0, 0,
+  getMarkdownTheme(), // ← Shared theme with highlightCode
+  { color: (t) => theme.fg("customMessageText", t) },
+  { transform: ... },
+);
+
+// 4. Per-message LaTeX control (if needed)
+// Pass renderLatex: false for thinking blocks or specific messages
+{ renderLatex: context.messageType === "assistant-thinking" ? false : true }
+
+// 5. Full-line background for message cards (optional enhancement)
+new Markdown(
+  text,
+  0, 0,
+  getMarkdownTheme(),
+  {
+    color: (t) => theme.fg("customMessageText", t),
+    bgColor: (t) => theme.bg("customMessageBg", t), // ← Extends to full width
+  },
+  { transform: ... },
+);
+
+// 6. Image content type + rendering (requires P1-1 pipeline)
+interface MessageContent {
+  type: "text" | "thinking" | "toolCall" | "image";
+  text?: string;
+  thinking?: string;
+  url?: string;       // For image
+  alt?: string;
+}
+
+// In assistant-message.ts updateContent():
+if (content.type === "image") {
+  addVisibleChild(
+    new Image({
+      src: content.url,
+      width: Math.min(80, availableWidth),
+      height: 30,
+      alt: content.alt ?? "Image",
+    }),
+  );
+}
+```
+
+**Mermaid → Image Pipeline (P1-1 dependency):**
+
+- `mermaid.ts` transformer outputs PNG via `mmdc` or headless browser
+- Inject `image` content block into message for `Image` component rendering
+- Fallback to Unicode art when terminal lacks image protocol
+
+**Effort:** 5-6 hours (shared highlighter + 5 component updates + image type + mermaid→PNG)
+
+**Testing:**
+
+```bash
+# Verify syntax highlighting in all message types
+npm run build && node dist/cli.mjs
+# Send: user message with code, assistant response with code, custom message with code
+# Check: all have colored syntax, not plain mdCodeBlock color
+
+# Verify LaTeX toggle
+# Thinking blocks should NOT render LaTeX (renderLatex: false)
+
+# Verify codeBlockIndent customization
+# theme.ts: codeBlockIndent: "│ " → code blocks have left border
+
+# Verify image rendering (requires Kitty/iTerm2/sixel terminal)
+# Mermaid diagram → shows as image, not raw markdown
+```
+
+---
+
 ## 🔧 P2 — POLISH & CODE REDUCTION (Full day each)
 
 ### P2-1: Migrate SessionSelector to Pure SelectList + Input + Box
@@ -826,23 +965,25 @@ npm test               # 173 tests pass
 | 1   | P0-1 Mouse, P0-2 HStack Footer, P0-3 CancellableLoader                      | `tui-renderer.ts`, `footer.ts`, `status-indicator.ts`                  |
 | 2   | P0-4 TruncatedText, P0-5 WheelScrollLines, P0-6 Input, P0-7 SelectListTheme | `bash-execution.ts`, `tui-renderer.ts`, `login-dialog.ts`, `picker.ts` |
 
-### Week 2: P1 High Impact (Days 3-6)
+### Week 2: P1 High Impact (Days 3-7)
 
-| Day | Task                                        | Files                                                       |
-| --- | ------------------------------------------- | ----------------------------------------------------------- |
-| 3   | P1-3 SettingsList                           | New `settings-list-ui.ts`, replace `settings-selector.ts`   |
-| 4   | P1-2 AltScreenSearch                        | New `transcript-search.ts`, `ui.ts` keybinding              |
-| 5   | P1-4 LaTeX                                  | `markdown-transform.ts`, `theme.ts`                         |
-| 6   | P1-5 Enhanced Markdown + P1-1 Image (start) | `theme.ts`, `markdown-transform.ts`, `assistant-message.ts` |
+| Day | Task                                             | Files                                                       |
+| --- | ------------------------------------------------ | ----------------------------------------------------------- |
+| 3   | P1-3 SettingsList                                | New `settings-list-ui.ts`, replace `settings-selector.ts`   |
+| 4   | P1-2 AltScreenSearch                             | New `transcript-search.ts`, `ui.ts` keybinding              |
+| 5   | P1-4 LaTeX                                       | `markdown-transform.ts`, `theme.ts`                         |
+| 6   | P1-5 Enhanced Markdown + P1-1 Image (start)      | `theme.ts`, `markdown-transform.ts`, `assistant-message.ts` |
+| 7   | P1-6 Unified Syntax Highlighting (all msg types) | `theme.ts`, 5 message components, `mermaid.ts`              |
 
-### Week 3: P1-1 Image Completion + P2 Migrations (Days 7-10)
+### Week 3: P1-1 Image Completion + P1-6 Completion + P2 Migrations (Days 8-11)
 
-| Day | Task                                            |
-| --- | ----------------------------------------------- |
-| 7   | Complete P1-1 Image pipeline (mermaid→PNG)      |
-| 8   | P2-1 SessionSelector migration                  |
-| 9   | P2-2 ModelSelector migration                    |
-| 10  | P2-3 SearchPicker cleanup, P2-4 Image component |
+| Day | Task                                                                 |
+| --- | -------------------------------------------------------------------- |
+| 8   | Complete P1-1 Image pipeline (mermaid→PNG)                           |
+| 9   | Complete P1-6: test all message types, LaTeX toggle, codeBlockIndent |
+| 10  | P2-1 SessionSelector migration                                       |
+| 11  | P2-2 ModelSelector migration                                         |
+| 12  | P2-3 SearchPicker cleanup, P2-4 Image component                      |
 
 ### Week 4: P2 Polish (Days 11-13)
 
@@ -868,15 +1009,19 @@ npm test               # 173 tests pass
 
 ### Metrics to Track
 
-| Metric                      | Target                          |
-| --------------------------- | ------------------------------- |
-| Lines of custom picker code | < 200 (from ~1000)              |
-| Settings UI code            | < 150 (from ~300)               |
-| Image rendering support     | ✅ Mermaid, charts, screenshots |
-| Transcript search           | ✅ Ctrl+F global search         |
-| LaTeX support               | ✅ Inline + block math          |
-| Mouse support               | ✅ Click, scroll, select        |
-| Cancel long ops             | ✅ Compaction, retry            |
+| Metric                      | Target                           |
+| --------------------------- | -------------------------------- |
+| Lines of custom picker code | < 200 (from ~1000)               |
+| Settings UI code            | < 150 (from ~300)                |
+| Image rendering support     | ✅ Mermaid, charts, screenshots  |
+| Transcript search           | ✅ Ctrl+F global search          |
+| LaTeX support               | ✅ Inline + block math           |
+| Mouse support               | ✅ Click, scroll, select         |
+| Cancel long ops             | ✅ Compaction, retry             |
+| Syntax highlighting         | ✅ All 6 message types           |
+| codeBlockIndent custom      | ✅ Configurable (default " ")    |
+| LaTeX per-message toggle    | ✅ Off for thinking blocks       |
+| Full-line bgColor           | ✅ Message cards extend to width |
 
 ---
 

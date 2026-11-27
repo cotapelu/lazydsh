@@ -265,3 +265,4 @@ This project builds upon and incorporates code from the following open-source pr
 - [lazydsh](https://github.com) by Yusuke Nakada
 - [senpi](https://github.com) by Yeongyu Kim
 - [dsh-our-free-model](https://github.com) by Ebony-Vinyl
+- [oh-my-claudecode](https://github.com) by Yeachan Heo

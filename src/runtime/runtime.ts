@@ -31,7 +31,7 @@ import { randomUUID } from "node:crypto";
 import { access, readFile, stat, readdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
-import { latestRequestStats, type SessionStats } from "../utils/stats.ts";
+import { latestRequestStats } from "../utils/stats.ts";
 import { readLimits, type AccountLimits } from "../utils/limits.ts";
 import type {} from "@deepseek-ai/dsh-session-title";
 import type {} from "@deepseek-ai/dsh-workspace";
@@ -39,7 +39,7 @@ import type {} from "@deepseek-ai/dsh-file-reference";
 import type {} from "@deepseek-ai/dsh-skill";
 import { JobId } from "@deepseek-ai/dsh-jobs";
 import { formatFileMention } from "@deepseek-ai/dsh-file-reference/grammar";
-import { builtinProviders } from "@earendil-works/pi-ai/providers/all";
+import { builtinProviders } from "./provider-catalog.ts";
 import {
   KILO_PROVIDER_ID,
   KILO_DISPLAY_NAME,
@@ -107,16 +107,42 @@ export type {
   ApprovalRequest,
   Callbacks,
   RunResult,
+  RunOptions,
   ModelRuntime,
   AutocompleteItem,
+  SelectionInfo,
+  EffortsInfo,
+  SessionSummary,
+  ForkPoint,
+  JobInfo,
+  JobOutput,
+  AuthProvider,
+  AuthorizationFlow,
+  ChoiceSet,
+  SessionStats,
+  ModelConnectionTestResult,
+  ToolDefinition,
 } from "../interfaces.ts";
 import type {
   Route,
   CredentialSource,
   RuntimeOptions,
+  RunOptions,
   Callbacks,
   RunResult,
   AutocompleteItem,
+  SelectionInfo,
+  EffortsInfo,
+  SessionSummary,
+  ForkPoint,
+  JobInfo,
+  JobOutput,
+  AuthProvider,
+  AuthorizationFlow,
+  ChoiceSet,
+  SessionStats,
+  ModelConnectionTestResult,
+  ToolDefinition,
 } from "../interfaces.ts";
 
 function describeCredentialRef(ref: string, info: CredentialInfo): CredentialSource {
@@ -366,10 +392,16 @@ export class Runtime {
     return await execution.result();
   }
 
-  getToolDefinition(name: string): any {
+  getToolDefinition(name: string): ToolDefinition | undefined {
     const tools = this.ctx.tools;
     if (!tools) return undefined;
-    return tools.get(name);
+    const tool = tools.get(name);
+    if (!tool) return undefined;
+    return {
+      name: tool.name ?? name,
+      description: tool.description,
+      parameters: tool.parameters,
+    };
   }
   private selectModel(agent: Agent, route: Route) {
     const previous = agent.model.current();
@@ -422,17 +454,17 @@ export class Runtime {
         });
     return this.agent.session.id;
   }
-  async efforts() {
+  async efforts(): Promise<EffortsInfo> {
     const current = this.agent.model.current()!;
     const info = await this.ctx.llm.resolveModelInfo(current.provider, current.model);
     return {
       current: current.reasoningEffort ?? "default",
       defaultEffort: info.reasoning?.defaultEffort,
-      options: info.reasoning?.efforts ?? [],
+      options: (info.reasoning?.efforts ?? []).map((e) => e.id),
     };
   }
   /** The current route and effort, suitable for persisting as a preference. */
-  selection() {
+  selection(): SelectionInfo | undefined {
     const current = this.agent.model.current();
     return current
       ? {
@@ -498,7 +530,7 @@ export class Runtime {
       }
     });
 
-    return records.map((record) => ({
+    return records.map((record): SessionSummary => ({
       id: record.header.id,
       title: titles.get(record.header.id) ?? record.header.id,
       directory: record.header.cwd,
@@ -545,11 +577,11 @@ export class Runtime {
     else if (action === "pin") await workspace.pinSession(sessionId);
     else await workspace.unpinSession(sessionId);
   }
-  forkPoints() {
+  forkPoints(): ForkPoint[] {
     const events = this.agent.session.snapshotEvents();
     return events
       .filter((event) => event.type === "turn/end")
-      .map((event) => {
+      .map((event): ForkPoint => {
         const prompt = events.findLast(
           (item) =>
             item.seq < event.seq &&
@@ -588,7 +620,7 @@ export class Runtime {
     this.handle = child;
     return child.agent.session.id;
   }
-  async jobs() {
+  async jobs(): Promise<JobInfo[]> {
     const registry = this.ctx.get("jobs");
     if (!registry) throw new Error("Background jobs are unavailable.");
     const descendants = await this.ctx.get("subagents")?.listDescendants(this.agent.session.id);
@@ -600,16 +632,27 @@ export class Runtime {
       ...new Map(
         owners.flatMap((owner) => registry.list(owner)).map((job) => [job.id, job]),
       ).values(),
-    ];
+    ].map((job): JobInfo => ({
+      id: job.id,
+      label: job.label,
+      status: job.status,
+      owner: job.owner ?? "",
+      progress: job.progress,
+    }));
   }
-  async job(id: string, stop = false) {
+  async job(id: string, stop = false): Promise<JobOutput | string | undefined> {
     const job = (await this.jobs()).find((job) => job.id === id);
     if (!job) throw new Error("Job not found in this session.");
     const registry = this.ctx.get("jobs")!;
-    if (stop) return registry.kill(JobId(id), job.owner, "Stopped from lazydsh");
-    const output = registry.readAt(JobId(id), 0, job.owner);
+    const owner = job.owner ? SessionId(job.owner) : this.agent.session.id;
+    if (stop) return registry.kill(JobId(id), owner, "Stopped from lazydsh");
+    const output = registry.readAt(JobId(id), 0, owner);
     const text = output.chunks.map((chunk) => chunk.text).join("");
-    return `${job.label} · ${job.status} · ${job.id}\n${output.lossy || text.length > 12000 ? "[Earlier output omitted]\n" : ""}${text.slice(-12000)}`;
+    return {
+      text: `${job.label} · ${job.status} · ${job.id}\n${output.lossy || text.length > 12000 ? "[Earlier output omitted]\n" : ""}${text.slice(-12000)}`,
+      lossy: output.lossy,
+      chunks: output.chunks as readonly unknown[],
+    };
   }
   async references(query: string, signal: AbortSignal): Promise<AutocompleteItem[]> {
     const cwd = await this.cd();
@@ -663,10 +706,7 @@ export class Runtime {
   async choices(
     kind: "sessions" | "directories" | "mode" | "permissions",
     value?: string,
-  ): Promise<{
-    current?: string;
-    options: { value: string; label: string; description?: string }[];
-  }> {
+  ): Promise<ChoiceSet> {
     const ctx = this.ctx;
     if (kind === "sessions") {
       const records = await this.sessions();
@@ -727,11 +767,11 @@ export class Runtime {
       ? this.ctx.workingDirectory.ensure(this.agent)
       : this.ctx.workingDirectory.set(this.agent, path);
   }
-  authProviders() {
+  authProviders(): AuthProvider[] {
     const fromAuthorization = this.ctx.authorization
       .list()
       .filter((flow) => flow.key.startsWith("llm-pi-ai/"))
-      .map((flow) => ({
+      .map((flow): AuthProvider => ({
         value: flow.key.slice("llm-pi-ai/".length),
         label: flow.label,
         description: `${flow.key.slice("llm-pi-ai/".length)} · ${flow.methods.map((method) => (method.id === "oauth" ? "OAuth" : "API key")).join(" / ")}`,
@@ -739,7 +779,7 @@ export class Runtime {
     // Custom routes such as Kilo do not ship an authorization flow through
     // llm-pi-ai (they are hand-declared), so they are offered here directly,
     // mirroring the DeepSeek seam, so the TUI can sign in to them.
-    const extras = [
+    const extras: AuthProvider[] = [
       {
         value: KILO_PROVIDER_ID,
         label: KILO_DISPLAY_NAME,
@@ -767,8 +807,15 @@ export class Runtime {
    * List all authorization flows for LLM providers.
    * Exposed for UI layer to avoid direct ctx access.
    */
-  getAuthorizationFlows() {
-    return this.ctx.authorization.list().filter((flow) => flow.key.startsWith("llm-pi-ai/"));
+  getAuthorizationFlows(): AuthorizationFlow[] {
+    return this.ctx.authorization
+      .list()
+      .filter((flow) => flow.key.startsWith("llm-pi-ai/"))
+      .map((flow): AuthorizationFlow => ({
+        key: flow.key,
+        label: flow.label,
+        methods: flow.methods.map((m) => ({ id: m.id, label: m.label })),
+      }));
   }
   /**
    * Describe where a route's credentials come from.
@@ -1054,7 +1101,11 @@ export class Runtime {
    * Test a specific provider/model connection by sending a minimal request.
    * This is used by the model selector to verify a route works before selecting it.
    */
-  async testModelConnection(provider: string, model: string, signal?: AbortSignal): Promise<void> {
+  async testModelConnection(
+    provider: string,
+    model: string,
+    signal?: AbortSignal,
+  ): Promise<ModelConnectionTestResult> {
     const activity = this.trackActivity(new AbortController());
     const combinedSignal = signal ? AbortSignal.any([signal, activity.signal]) : activity.signal;
     try {
@@ -1085,11 +1136,12 @@ export class Runtime {
               continue;
             }
           }
-          throw new Error(`[${failure.code}] ${failure.message}`);
+          return { ok: false, error: `[${failure.code}] ${failure.message}` };
         }
-        if (!finished) throw new Error("Model connection check did not finish.");
-        return;
+        if (!finished) return { ok: false, error: "Model connection check did not finish." };
+        return { ok: true };
       }
+      return { ok: false, error: "Max retries exceeded" };
     } finally {
       this.activities.delete(activity);
       if (this.activity === activity) this.activity = undefined;
@@ -1258,7 +1310,7 @@ export class Runtime {
     text: string,
     onEvent?: (event: RuntimeEvent) => void,
     attachments: AdmittedPromptContentPart[] = [],
-    options: { commands?: boolean; authenticate?: boolean } = {},
+    options: RunOptions = {},
   ): Promise<RunResult> {
     const ctx = this.ctx;
     const agent = this.agent;

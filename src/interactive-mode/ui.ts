@@ -1826,9 +1826,10 @@ export async function runUI(
       const stopping = jobCommand[1] === "stop";
       const perform = async (id: string) => {
         const result = await runtime.job(id, stopping);
-        if (stopping) add("Job", `${id} · ${result}`);
+        const text = typeof result === "string" ? result : (result?.text ?? "");
+        if (stopping) add("Job", `${id} · ${text || "stopped"}`);
         else {
-          transcript.addChild(new Text(safeText(result), 2, 1));
+          transcript.addChild(new Text(safeText(text), 2, 1));
           tui.requestRender();
         }
       };
@@ -2319,7 +2320,7 @@ export async function runUI(
     let current = "";
     try {
       const info = await runtime.efforts();
-      order = ["default", ...info.options.map((option) => option.id)];
+      order = ["default", ...info.options];
       current = info.current;
     } catch (error) {
       add("Error", error instanceof Error ? error.message : String(error));

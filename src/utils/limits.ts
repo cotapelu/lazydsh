@@ -3,7 +3,7 @@ import {
   credentialRef,
   type CredentialProvider,
 } from "@deepseek-ai/dsh-credentials";
-import { builtinProviders } from "@earendil-works/pi-ai/providers/all";
+import { builtinProviders } from "../runtime/provider-catalog.ts";
 import { formatDuration } from "./format.ts";
 
 export interface AccountLimits {

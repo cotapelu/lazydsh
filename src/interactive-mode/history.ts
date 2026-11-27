@@ -1,4 +1,5 @@
-import { formatDuration, formatTokens } from "../utils/format.ts";
+import { formatDuration } from "../utils/format.ts";
+import { formatTokens } from "./utils/format.ts";
 import { accent, dim } from "./theme.ts";
 import type { SessionEvent } from "@deepseek-ai/dsh-session";
 import { eventText, reasoningText } from "../runtime-events.ts";

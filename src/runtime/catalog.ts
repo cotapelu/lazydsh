@@ -1,4 +1,4 @@
-import { getBuiltinModels, getBuiltinProviders } from "@earendil-works/pi-ai/providers/all";
+import { getBuiltinModels, getBuiltinProviders } from "./provider-catalog.ts";
 import { normalizeProvider } from "./provider.ts";
 import { KILO_MODELS } from "./custom-providers/kilo-models.js";
 import { KILO_PROVIDER_ID, kiloRoutes } from "./custom-providers/kilo-config.js";
