@@ -17,8 +17,8 @@
 | Animation & Loading        | 80%     | 100%     | Low               |
 | Search & Navigation        | 70%     | 100%     | Medium            |
 | Rich Media (Images, LaTeX) | 10%     | 100%     | Medium-High       |
-| Extensibility & Themes     | 85%     | 100%     | Medium            |
-| **Overall**                | **85%** | **100%** | **~40 dev hours** |
+| Extensibility & Themes     | 90%     | 100%     | Low               |
+| **Overall**                | **87%** | **100%** | **~35 dev hours** |
 
 ---
 
@@ -26,25 +26,26 @@
 
 **Critical finding:** pi-tui v1.5.2 **does NOT provide a global semantic theme/token system.**
 
-| What pi-tui provides | What pi-tui does NOT provide |
-|----------------------|------------------------------|
-| `Color` type (Indexed/RGB/OKLCH) | ❌ Global token registry |
-| `parseColor`, `mixColors`, `foregroundAnsi`, `backgroundAnsi` | ❌ Semantic token names (`"warning"`, `"dim"`, `"success"`, `"borderMuted"`...) |
-| `styleText`, `styleTextWithAnsi` | ❌ Slot system (fg vs bg per token) |
-| Component theme factories: `getMarkdownTheme()`, `getSelectListTheme()`, `getEditorTheme()` | ❌ Persistence (`theme.json`), hot-reload, `ThemeController` |
-| Color science: OKLCH/OKHSL mixing, gamut mapping | ❌ User custom themes (`~/.config/lazydsh/themes/*.json`) |
+| What pi-tui provides                                                                        | What pi-tui does NOT provide                                                    |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `Color` type (Indexed/RGB/OKLCH)                                                            | ❌ Global token registry                                                        |
+| `parseColor`, `mixColors`, `foregroundAnsi`, `backgroundAnsi`                               | ❌ Semantic token names (`"warning"`, `"dim"`, `"success"`, `"borderMuted"`...) |
+| `styleText`, `styleTextWithAnsi`                                                            | ❌ Slot system (fg vs bg per token)                                             |
+| Component theme factories: `getMarkdownTheme()`, `getSelectListTheme()`, `getEditorTheme()` | ❌ Persistence (`theme.json`), hot-reload, `ThemeController`                    |
+| Color science: OKLCH/OKHSL mixing, gamut mapping                                            | ❌ User custom themes (`~/.config/lazydsh/themes/*.json`)                       |
 
 **Pi-tui expects apps to provide their own theme system** and inject it into component factories:
 
 ```typescript
 // Pi-tui intended pattern
-const myTheme = createMyThemeSystem();  // ← App writes this
+const myTheme = createMyThemeSystem(); // ← App writes this
 const markdown = new Markdown({
-  theme: getMarkdownTheme(myTheme),     // ← Inject semantic tokens
+  theme: getMarkdownTheme(myTheme), // ← Inject semantic tokens
 });
 ```
 
 **Lazydsh correctly implements** `src/interactive-mode/theme/theme.ts` as the app-level theme system:
+
 - `THEME_TOKENS` registry (70+ tokens with fg/bg slots)
 - Singleton `Theme` class + proxy `theme.fg("token", text)` / `theme.bg("token", text)`
 - `ThemeController` for load/save/preview/hot-reload
@@ -95,28 +96,40 @@ return new TuiAltScreen(terminal, options.showHardwareCursor, options.logDirecto
 
 ---
 
-### P0-2: Use HStack for Footer Layout
+### P0-2: Use HStack + Text for Footer Layout (Fixes Double-Dim Bug)
 
 **File:** `src/interactive-mode/footer.ts:172-315` (entire `render()` method)  
-**Change:** Replace manual padding/alignment with `HStack` flexbox  
-**Benefit:** Cleaner code, automatic responsive truncation, proper alignment
+**Root Cause:** Footer bypasses pi-tui component system → manual ANSI string concat → **double-dim on right side** (tokens already have embedded `dim` for bullets `•` `→` `()`, then entire remainder wrapped in `dim` again)
+
+**Change:** Replace manual padding/alignment with `HStack` + `Text` components  
+**Benefit:** Cleaner code, automatic responsive truncation, proper alignment, **fixes color mismatch**
 
 ```typescript
 // Imports
-import { HStack, Text } from "@earendil-works/pi-tui";
+import { HStack, Text, Spacer } from "@earendil-works/pi-tui";
 
 // In render(width):
-const left = new Text(dimStatsLeft);
-const right = new Text(dimRemainder);
+// Left side: stats (tokens, cost, context%) — apply dim at component level
+const leftText = new Text(statsLeft); // statsLeft = raw text, NO theme.fg("dim", ...)
+leftText.setCustomBgFn((t) => theme.fg("dim", t)); // or style via theme at leaf level
+
+// Right side: model + thinking + routed — ALREADY has embedded dim for bullets
+const rightText = new Text(rightSide); // rightSide = pre-styled with theme.fg("dim", "•") etc.
+
+// HStack handles layout, padding, truncation automatically
 const hstack = new HStack([
-  { component: left, grow: 1, shrink: 1, minSize: 10 },
-  { component: right, shrink: 0 },
+  { component: leftText, grow: 1, shrink: 1, minSize: 10 },
+  { component: new Spacer(1), shrink: 0 }, // minimum 1 cell gap
+  { component: rightText, shrink: 0 },
 ]);
+
 const statsLine = hstack.render(width)[0] ?? "";
 // Return [pwdLine, statsLine, ...extensionLines]
 ```
 
-**Delete:** Manual `truncateToWidth`, `visibleWidth`, padding calculation logic (~80 lines)
+**Delete:** Manual `truncateToWidth`, `visibleWidth`, padding calculation, double-dim logic (~80 lines)
+
+**Key insight:** pi-tui `Text` component preserves ANSI codes across layout — no manual width math needed. Style at **leaf level** (per segment), not whole concatenated string.
 
 ---
 
@@ -868,6 +881,12 @@ npm test               # 173 tests pass
 ---
 
 ## 📝 NOTES & GOTCHAS
+
+### Pi-tui Theme System — App Responsibility
+
+**Pi-tui v1.5.2 has NO global theme system** — only component factories (`getMarkdownTheme()`, `getSelectListTheme()`, `getEditorTheme()`).  
+**Lazydsh correctly implements** `src/interactive-mode/theme/theme.ts` as the app-level semantic token registry.  
+See [PI-TUI THEME SYSTEM — CLARIFICATION](#-pi-tui-theme-system--clarification-2026-11-27) for details.
 
 ### Pi-tui Version Lock
 
