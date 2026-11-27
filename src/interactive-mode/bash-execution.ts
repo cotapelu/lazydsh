@@ -113,7 +113,7 @@ export class BashExecutionComponent extends Container {
           ? "error"
           : this.status === "cancelled"
             ? "warning"
-            : "success";
+            : "bashSuccess";
     const header = new Text(
       theme.fg(headerColor, theme.bold(`$ ${this.command}`)),
       this.outputPad,

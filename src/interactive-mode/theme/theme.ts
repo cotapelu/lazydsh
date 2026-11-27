@@ -68,6 +68,7 @@ export const THEME_TOKENS: Record<string, TokenDescriptor> = {
   toolDiffAdded: { slot: "foreground" },
   toolDiffRemoved: { slot: "foreground" },
   bashMode: { slot: "foreground" },
+  bashSuccess: { slot: "foreground" },
 } as const;
 
 export type ThemeTokenName = keyof typeof THEME_TOKENS;
@@ -116,6 +117,7 @@ const BUILTIN_COLORS: Record<string, string> = {
   toolDiffAdded: "#64ff64",
   toolDiffRemoved: "#ff6464",
   bashMode: "#ffb86c",
+  bashSuccess: "#2e7d32",
 };
 
 // ──────────────────────────────────────────────────────────────────────
