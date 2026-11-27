@@ -54,6 +54,10 @@ import {
   OFM_OPENCODE_PROVIDER_ID,
   OFM_OPENCODE_DISPLAY_NAME,
 } from "./custom-providers/ofm-opencode-config.js";
+import {
+  PROVIDER_ID as OFM_OPENCODE_SDK_PROVIDER_ID,
+  OFM_OPENCODE_SDK_DISPLAY_NAME,
+} from "./custom-providers/ofm-provider/opencode-sdk.js";
 import { gatewayHeaders, sessionFor } from "./custom-providers/ofm-provider/fingerprint.js";
 import { registerCommands } from "./native-commands.ts";
 import { ApprovalGrants, resolveApprovalOutcome } from "./approvals.ts";
@@ -380,7 +384,7 @@ export class Runtime {
    */
   async shell(
     command: string,
-    options: { timeoutMs?: number; signal?: AbortSignal } = {},
+    options: { timeoutMs?: number; signal?: AbortSignal; onOutput?: (chunk: string) => void } = {},
   ): Promise<ShellRunResult> {
     // The unchecked accessor: this plugin does not inject `shell` (only the
     // agent's bash tool consumes it), and an unmounted service must read as
@@ -389,6 +393,25 @@ export class Runtime {
     if (!executor) throw new Error("Shell executor is unavailable; is the tool set loaded?");
     const spec = executor.resolve({ command, ...options });
     const execution = await executor.execute(spec);
+    const { onOutput } = options;
+
+    // Stream output in real-time if callback provided
+    if (onOutput) {
+      const streamDone = (async () => {
+        while (execution.status === "running") {
+          const read = execution.readOutput();
+          if (read.delta) onOutput(read.delta);
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        // Final read after completion
+        const finalRead = execution.readOutput();
+        if (finalRead.delta) onOutput(finalRead.delta);
+      })();
+      const result = await execution.result();
+      await streamDone;
+      return result;
+    }
+
     return await execution.result();
   }
 
@@ -795,6 +818,11 @@ export class Runtime {
         label: OFM_OPENCODE_DISPLAY_NAME,
         description: `${OFM_OPENCODE_PROVIDER_ID} · No credentials required`,
       },
+      {
+        value: OFM_OPENCODE_SDK_PROVIDER_ID,
+        label: OFM_OPENCODE_SDK_DISPLAY_NAME,
+        description: `${OFM_OPENCODE_SDK_PROVIDER_ID} · No credentials required`,
+      },
     ];
     const known = new Set([...fromAuthorization.map((item) => item.value), "deepseek-official"]);
     return [
@@ -864,6 +892,9 @@ export class Runtime {
       return { kind: "keyless", label: "No credentials required" };
     }
     if (route === OFM_OPENCODE_PROVIDER_ID) {
+      return { kind: "keyless", label: "No credentials required" };
+    }
+    if (route === OFM_OPENCODE_SDK_PROVIDER_ID) {
       return { kind: "keyless", label: "No credentials required" };
     }
     if (route === KILO_PROVIDER_ID) {
@@ -999,6 +1030,8 @@ export class Runtime {
           );
         } else if (provider === OFM_KILO_PROVIDER_ID) {
           await this.ctx.credentials.set(credentialRef(OFM_KILO_API_KEY_ENV), "public");
+        } else if (provider === OFM_OPENCODE_SDK_PROVIDER_ID) {
+          await this.ctx.credentials.set(credentialRef("OFM_OPENCODE_SDK_API_KEY"), "public");
         } else if (provider === KILO_PROVIDER_ID) {
           await ctx.credentials.set(
             credentialRef(KILO_API_KEY_ENV),
@@ -1077,6 +1110,8 @@ export class Runtime {
       await this.ctx.credentials.unset(credentialRef("DEEPSEEK_API_KEY"));
     else if (provider === KILO_PROVIDER_ID) {
       await this.ctx.credentials.unset(credentialRef(KILO_API_KEY_ENV));
+    } else if (provider === OFM_OPENCODE_SDK_PROVIDER_ID) {
+      await this.ctx.credentials.unset(credentialRef("OFM_OPENCODE_SDK_API_KEY"));
     } else {
       const key = credentialKey("llm-pi-ai", provider);
       if (!this.ctx.authorization.list().some((flow) => flow.key === key))
@@ -1089,8 +1124,10 @@ export class Runtime {
         ? ["DEEPSEEK_API_KEY"]
         : provider === KILO_PROVIDER_ID
           ? [KILO_API_KEY_ENV]
-          : (this.ctx.llm.listConfigurableProviders().find((item) => item.provider === provider)
-              ?.nativeAuth?.env ?? []);
+          : provider === OFM_OPENCODE_SDK_PROVIDER_ID
+            ? ["OFM_OPENCODE_SDK_API_KEY"]
+            : (this.ctx.llm.listConfigurableProviders().find((item) => item.provider === provider)
+                ?.nativeAuth?.env ?? []);
     const remaining: string[] = [];
     for (const ref of refs)
       if ((await this.ctx.credentials.describe(credentialRef(ref))).configured) remaining.push(ref);

@@ -9,11 +9,21 @@ import {
   OFM_OPENCODE_PROVIDER_ID,
   ofmOpenencodeRoutes,
 } from "./custom-providers/ofm-opencode-config.js";
+import { OFM_OPENCODE_SDK_MODELS } from "./custom-providers/ofm-opencode-sdk-models.js";
+import {
+  PROVIDER_ID as OFM_OPENCODE_SDK_PROVIDER_ID,
+  ofmOpencodeSdkRoutes,
+} from "./custom-providers/ofm-provider/opencode-sdk.js";
 
 export { normalizeProvider } from "./provider.ts";
 
 /** Routes mounted by our own provider declarations rather than pi-ai's catalog. */
-export const CUSTOM_PROVIDERS = [KILO_PROVIDER_ID, OFM_KILO_PROVIDER_ID, OFM_OPENCODE_PROVIDER_ID];
+export const CUSTOM_PROVIDERS = [
+  KILO_PROVIDER_ID,
+  OFM_KILO_PROVIDER_ID,
+  OFM_OPENCODE_PROVIDER_ID,
+  OFM_OPENCODE_SDK_PROVIDER_ID,
+];
 
 const preferred = ["deepseek-official", "opencode-go", "opencode", "openai-codex", "kilo"];
 export const providers = [
@@ -53,6 +63,15 @@ export function models(provider: string) {
       inputModalities: model.vision ? ["text", "image"] : ["text"],
     }));
   }
+  if (provider === OFM_OPENCODE_SDK_PROVIDER_ID) {
+    return OFM_OPENCODE_SDK_MODELS.map((model) => ({
+      id: model.id,
+      name: model.name,
+      contextWindow: model.contextWindow,
+      maxTokens: model.maxTokens,
+      inputModalities: model.vision ? ["text", "image"] : ["text"],
+    }));
+  }
   return getBuiltinModels(
     (provider === "deepseek-official" ? "deepseek" : provider) as Parameters<
       typeof getBuiltinModels
@@ -77,6 +96,7 @@ export function providerPatch() {
           ...kiloRoutes(),
           ...ofmKiloRoutes(),
           ...ofmOpenencodeRoutes(),
+          ...ofmOpencodeSdkRoutes(),
         },
       },
     },

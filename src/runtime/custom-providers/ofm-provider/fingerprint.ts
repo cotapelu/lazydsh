@@ -15,11 +15,11 @@
  */
 
 /** The client the v2 gate fingerprints. Shape `opencode/<channel>/<version>/<client>`; major >= 2. */
-export const CLIENT_UA = "opencode/latest/2.0.26/cli";
+export const CLIENT_UA = "opencode/latest/2.2.5/cli";
 
 const BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
-/** The two tools the v2 gate requires. Verbatim from OpenCode v2.0.26 — never reword. */
+/** The two tools the v2 gate requires. Verbatim from OpenCode v2.2.5 — never reword. */
 export const FINGERPRINT_TOOL_DEFINITIONS = {
   read: {
     description:

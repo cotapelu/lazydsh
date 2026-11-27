@@ -41,6 +41,11 @@ import { activePrompts, CAVEMAN_LEVELS, PONYTAIL_LEVELS, OFF } from "./token-sav
 import { noticeText, shouldNotice, writeAck } from "./disclaimer.js";
 import { kiloModels, kiloProvider, PROVIDER_ID as KILO_ID } from "./kilo.js";
 import { opencodeModels, opencodeProvider, PROVIDER_ID as OPENECODE_ID } from "./opencode.js";
+import {
+  opencodeSdkProvider,
+  PROVIDER_ID as OPENECODE_SDK_ID,
+  fetchModels as fetchOpencodeSdkModels,
+} from "./opencode-sdk.js";
 
 /** Resolve one `provider/model` address against the live registry. */
 function resolveLink(ctx: any, address: string) {
@@ -130,14 +135,16 @@ function describeChains(ctx: any, chains: any[]) {
  * route upstream.
  */
 export default async function (pi: any) {
-  const [kilo, opencode, chains] = await Promise.all([
+  const [kilo, opencode, opencodeSdk, chains] = await Promise.all([
     kiloModels(),
     opencodeModels(),
+    fetchOpencodeSdkModels(),
     Promise.resolve(readChains()),
   ]);
 
   pi.registerProvider(KILO_ID, kiloProvider({ models: kilo }));
   pi.registerProvider(OPENECODE_ID, opencodeProvider({ models: opencode }));
+  pi.registerProvider(OPENECODE_SDK_ID, opencodeSdkProvider({ models: opencodeSdk }));
   registerChains(pi, chains);
 
   // The first time these lanes appear on this machine, say what they cost. A

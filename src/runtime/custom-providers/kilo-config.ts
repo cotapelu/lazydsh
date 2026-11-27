@@ -62,7 +62,21 @@ export const KILO_PROVIDER_PROFILE: PiAiProviderProfile = {
   api: "openai-completions",
   baseURL: KILO_BASE_URL,
   models: KILO_MODEL_PROFILES,
-  retryPolicy: { mode: "normal", maxRetries: 2 },
+  retryPolicy: {
+    mode: "normal",
+    maxRetries: 5,
+    // Kilo's free gateway returns 429 with code "PROMOTION_MODEL_LIMIT_REACHED"
+    // which doesn't match the standard "rate limit" text. Add it explicitly so
+    // the retry policy treats it as transient and backs off.
+    retryableCodes: [
+      "RATE_LIMIT",
+      "PROMOTION_MODEL_LIMIT_REACHED",
+      "SERVER",
+      "TIMEOUT",
+      "TRANSPORT",
+    ],
+    backoff: { initialDelayMs: 1000, maxDelayMs: 30000, jitterRatio: 0.2 },
+  },
 };
 
 /** The route table this module contributes, keyed by provider. */

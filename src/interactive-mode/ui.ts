@@ -518,11 +518,14 @@ export async function runUI(
     try {
       const result = await runtime.shell(intent.command, {
         signal: options.signal,
+        onOutput: (chunk: string) => {
+          card.appendOutput(chunk);
+          scroll.scrollToEnd();
+          update();
+        },
       });
       const stdout = result.stdout?.text ?? "";
       const stderr = result.stderr?.text ?? "";
-      const combined = [stdout, stderr].filter((part) => part !== "").join("\n");
-      if (combined !== "") card.appendOutput(combined);
       const truncated = result.stdout?.truncated === true || result.stderr?.truncated === true;
       const spillPath = result.stdout?.spillPath ?? result.stderr?.spillPath;
       card.setComplete(
@@ -536,6 +539,16 @@ export async function runUI(
           : undefined,
         spillPath,
       );
+      // Sandbox info
+      if (result.sandbox) {
+        // Only show if denied or runner failed
+        if (result.sandbox.denied || result.sandbox.runnerFailed) {
+          add(
+            "Bash",
+            result.sandbox.denied ? "Sandbox denied a file operation." : "Sandbox runner failed.",
+          );
+        }
+      }
       const block = bashContextBlock(intent, {
         exitCode: result.exitCode,
         stdout,

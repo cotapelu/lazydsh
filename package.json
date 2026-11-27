@@ -141,6 +141,7 @@
     "@earendil-works/pi-coding-agent": "^1.5.2",
     "@earendil-works/pi-tui": "1.5.2",
     "@oh-my-pi/pi-coding-agent": "^16.3.7",
+    "@opencode/sdk": "^2.4.2",
     "@types/diff": "^7.0.2",
     "diff": "^9.0.0",
     "highlight.js": "11.12.0",
