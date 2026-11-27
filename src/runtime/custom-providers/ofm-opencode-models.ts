@@ -1,5 +1,15 @@
-/** OFM OpenCode free models (static snapshot from live listing v2.2.5) */
-
+/**
+ * OFM OpenCode free models — the OpenCode Zen *gateway* free pool, direct to
+ * cloud. Verified against the live `opencode serve` listing filtered to
+ * `providerID === "opencode"` (the keyless free gateway, NOT `opencode-go`,
+ * NOT `kilo`), every row cost 0.
+ *
+ * The `ofm-opencode` route speaks these straight to
+ * `https://opencode.ai/inference/openai/v1` through DSH's llm-pi-ai, so DSH
+ * owns tool execution. See `ofm-opencode-config.ts` for the fingerprint headers.
+ *
+ * @module pi-extension/ofm-opencode-models.js
+ */
 export interface OfmOpencodeModelConfig {
   id: string;
   name: string;
@@ -9,377 +19,12 @@ export interface OfmOpencodeModelConfig {
   maxTokens: number;
 }
 
-/** Static snapshot from opencode v2.2.5 free tier listing (live fetch) */
 export const OFM_OPENCODE_MODELS: OfmOpencodeModelConfig[] = [
-  // Reflection models
-  {
-    id: "reflection/beam-free",
-    name: "Reflection: Beam (Free)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 1048576,
-    maxTokens: 131072,
-  },
-  // Beam models
-  {
-    id: "beam-free",
-    name: "Beam (Free)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 131072,
-    maxTokens: 32768,
-  },
-  // Kilo auto router
-  {
-    id: "kilo-auto/free",
-    name: "Kilo Auto Free (router)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 256000,
-    maxTokens: 32768,
-  },
-  // NVIDIA Nemotron free models
-  {
-    id: "nvidia/nemotron-3.5-super-vl:free",
-    name: "NVIDIA: Nemotron 3.5 Super VL (free)",
-    reasoning: true,
-    vision: true,
-    contextWindow: 1000000,
-    maxTokens: 131072,
-  },
-  {
-    id: "nvidia/nemotron-3.5-lightning:free",
-    name: "NVIDIA: Nemotron 3.5 Lightning (free)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 1000000,
-    maxTokens: 65536,
-  },
-  {
-    id: "nvidia/nemotron-3-ultra-550b-a55b:free",
-    name: "NVIDIA: Nemotron 3 Ultra (free)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 1000000,
-    maxTokens: 65536,
-  },
-  {
-    id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-    name: "NVIDIA: Nemotron 3 Nano Omni (free)",
-    reasoning: true,
-    vision: true,
-    contextWindow: 256000,
-    maxTokens: 65536,
-  },
-  // Nemotron free aliases
-  {
-    id: "nemotron-3.5-super-vl-free",
-    name: "Nemotron 3.5 Super VL (free)",
-    reasoning: true,
-    vision: true,
-    contextWindow: 1000000,
-    maxTokens: 131072,
-  },
-  {
-    id: "nemotron-3.5-lightning-free",
-    name: "Nemotron 3.5 Lightning (free)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 1000000,
-    maxTokens: 65536,
-  },
-  // Qwen models
-  {
-    id: "qwen-2.5-coder",
-    name: "Qwen 2.5 Coder",
-    reasoning: true,
-    vision: false,
-    contextWindow: 131072,
-    maxTokens: 32768,
-  },
-  // GLM models
-  {
-    id: "glm-5.2",
-    name: "GLM 5.2",
-    reasoning: true,
-    vision: false,
-    contextWindow: 131072,
-    maxTokens: 32768,
-  },
-  {
-    id: "glm-5.3",
-    name: "GLM 5.3",
-    reasoning: true,
-    vision: false,
-    contextWindow: 131072,
-    maxTokens: 32768,
-  },
-  {
-    id: "glm-5.3-flash",
-    name: "GLM 5.3 Flash",
-    reasoning: true,
-    vision: false,
-    contextWindow: 131072,
-    maxTokens: 32768,
-  },
-  // MiniMax models
-  {
-    id: "minimax-m3",
-    name: "MiniMax M3",
-    reasoning: true,
-    vision: false,
-    contextWindow: 131072,
-    maxTokens: 32768,
-  },
-  // Hunyuan models
-  {
-    id: "hy3",
-    name: "Hunyuan 3",
-    reasoning: true,
-    vision: false,
-    contextWindow: 131072,
-    maxTokens: 32768,
-  },
-  {
-    id: "hy4",
-    name: "Hunyuan 4",
-    reasoning: true,
-    vision: false,
-    contextWindow: 131072,
-    maxTokens: 32768,
-  },
-  {
-    id: "hy4-preview",
-    name: "Hunyuan 4 Preview",
-    reasoning: true,
-    vision: false,
-    contextWindow: 131072,
-    maxTokens: 32768,
-  },
-  // Mimo models
-  {
-    id: "mimo-v2.6-flash-free",
-    name: "Mimo v2.6 Flash (free)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 131072,
-    maxTokens: 32768,
-  },
-  // Dots Studio
-  {
-    id: "dots-studio/dots-3-note-preview:free",
-    name: "Dots Studio: Dots 3 Note Preview (free)",
-    reasoning: true,
-    vision: true,
-    contextWindow: 512000,
-    maxTokens: 460800,
-  },
-  // Particle AI
-  {
-    id: "particle-ai/particle-1:free",
-    name: "Particle AI: Particle-1 (free)",
-    reasoning: true,
-    vision: true,
-    contextWindow: 1048576,
-    maxTokens: 131072,
-  },
-  // Iceman
-  {
-    id: "iceman-free",
-    name: "Iceman (free)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 131072,
-    maxTokens: 32768,
-  },
-  {
-    id: "iceman-contributor-free",
-    name: "Iceman Contributor (free)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 131072,
-    maxTokens: 32768,
-  },
-  // Liquid AI
-  {
-    id: "liquid/lfm-3-1.7b:free",
-    name: "LiquidAI: LFM3-1.7B (free)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 262144,
-    maxTokens: 8192,
-  },
-  // Recursive
-  {
-    id: "recursive/flint-v1.0:free",
-    name: "Recursive: Flint (free)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 262144,
-    maxTokens: 235929,
-  },
-  // DeepSeek
-  {
-    id: "deepseek-v4.1-flash-free",
-    name: "DeepSeek v4.1 Flash (free)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 1048576,
-    maxTokens: 384000,
-  },
-  // InclusionAI
-  {
-    id: "inclusionai/ling-3.2-flash:free",
-    name: "inclusionAI: Ling 3.2 Flash (free)",
-    reasoning: true,
-    vision: true,
-    contextWindow: 1048576,
-    maxTokens: 262144,
-  },
-  // Baidu
-  {
-    id: "baidu/ernie-5.5-flash-preview:free",
-    name: "Baidu: ERNIE-5.5-Flash-Preview (free)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 1024000,
-    maxTokens: 921600,
-  },
-  // Hungerg
-  {
-    id: "hungerg-free",
-    name: "Hungerg (free)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 131072,
-    maxTokens: 32768,
-  },
-  // Tidepool
-  {
-    id: "tidepool-alpha-free",
-    name: "Tidepool Alpha (free)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 131072,
-    maxTokens: 32768,
-  },
-  // OpenRouter
-  {
-    id: "openrouter/free",
-    name: "OpenRouter Free Models Router",
-    reasoning: true,
-    vision: true,
-    contextWindow: 200000,
-    maxTokens: 32000,
-  },
-  // Flint
-  {
-    id: "flint-40b-free",
-    name: "Flint 40B (free)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 262144,
-    maxTokens: 235929,
-  },
-  // Nemotron free aliases (from live listing)
-  {
-    id: "nemotron-3.5-super-vl-free",
-    name: "Nemotron 3.5 Super VL (free)",
-    reasoning: true,
-    vision: true,
-    contextWindow: 1000000,
-    maxTokens: 131072,
-  },
-  {
-    id: "nemotron-3.5-lightning-free",
-    name: "Nemotron 3.5 Lightning (free)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 1000000,
-    maxTokens: 65536,
-  },
-  // OpenRouter free
-  {
-    id: "openrouter/free",
-    name: "OpenRouter Free Models Router",
-    reasoning: true,
-    vision: true,
-    contextWindow: 200000,
-    maxTokens: 32000,
-  },
-  // Kilo auto variants
-  {
-    id: "kilo-auto/free",
-    name: "Kilo Auto Free (router)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 256000,
-    maxTokens: 32768,
-  },
-  {
-    id: "kilo-auto/frontier",
-    name: "Kilo Auto Frontier",
-    reasoning: true,
-    vision: false,
-    contextWindow: 256000,
-    maxTokens: 32768,
-  },
-  {
-    id: "kilo-auto/balanced",
-    name: "Kilo Auto Balanced",
-    reasoning: true,
-    vision: false,
-    contextWindow: 256000,
-    maxTokens: 32768,
-  },
-  {
-    id: "kilo-auto/small",
-    name: "Kilo Auto Small",
-    reasoning: true,
-    vision: false,
-    contextWindow: 256000,
-    maxTokens: 32768,
-  },
-  {
-    id: "kilo-auto/efficient",
-    name: "Kilo Auto Efficient",
-    reasoning: true,
-    vision: false,
-    contextWindow: 256000,
-    maxTokens: 32768,
-  },
-  // Gemina 4 Argon
-  {
-    id: "gemini-4-argon",
-    name: "Gemini 4 Argon",
-    reasoning: true,
-    vision: true,
-    contextWindow: 1048576,
-    maxTokens: 32768,
-  },
-  // Stealth
-  {
-    id: "stealth/glyph-cluster",
-    name: "Glyph Cluster",
-    reasoning: true,
-    vision: false,
-    contextWindow: 256000,
-    maxTokens: 256000,
-  },
-  // Additional free models from live listing (v2.2.5)
   {
     id: "seaglass-alpha-free",
     name: "Seaglass Alpha Free",
     reasoning: true,
     vision: false,
-    contextWindow: 131072,
-    maxTokens: 32768,
-  },
-  {
-    id: "hungerg-free",
-    name: "Hungerg Free",
-    reasoning: true,
-    vision: true,
     contextWindow: 1048576,
     maxTokens: 131072,
   },
@@ -388,8 +33,8 @@ export const OFM_OPENCODE_MODELS: OfmOpencodeModelConfig[] = [
     name: "Tidepool Alpha Free",
     reasoning: true,
     vision: false,
-    contextWindow: 131072,
-    maxTokens: 32768,
+    contextWindow: 1048576,
+    maxTokens: 131072,
   },
   {
     id: "hy4-flash-free",
@@ -397,126 +42,70 @@ export const OFM_OPENCODE_MODELS: OfmOpencodeModelConfig[] = [
     reasoning: true,
     vision: true,
     contextWindow: 1048576,
-    maxTokens: 131072,
-  },
-  {
-    id: "baidu/ernie-5.5-flash-preview:free",
-    name: "Baidu: ERNIE-5.5-Flash-Preview (free)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 1024000,
-    maxTokens: 921600,
+    maxTokens: 65536,
   },
   {
     id: "iceman-free",
     name: "Iceman Free",
     reasoning: true,
     vision: false,
-    contextWindow: 131072,
-    maxTokens: 32768,
-  },
-  {
-    id: "liquid/lfm-3-1.7b:free",
-    name: "LiquidAI: LFM3-1.7B (free)",
-    reasoning: true,
-    vision: false,
     contextWindow: 262144,
-    maxTokens: 8192,
-  },
-  {
-    id: "inclusionai/ling-3.2-flash:free",
-    name: "inclusionAI: Ling 3.2 Flash (free)",
-    reasoning: true,
-    vision: true,
-    contextWindow: 1048576,
-    maxTokens: 262144,
-  },
-  {
-    id: "particle-ai/particle-1:free",
-    name: "Particle AI: Particle-1 (free)",
-    reasoning: true,
-    vision: true,
-    contextWindow: 1048576,
     maxTokens: 131072,
   },
   {
-    id: "iceman-contributor-free",
-    name: "Iceman Contributor Free",
-    reasoning: true,
-    vision: false,
-    contextWindow: 131072,
-    maxTokens: 32768,
-  },
-  {
-    id: "recursive/flint-v1.0:free",
-    name: "Recursive: Flint (free)",
+    id: "flint-40b-free",
+    name: "Flint 40B Free",
     reasoning: true,
     vision: false,
     contextWindow: 262144,
-    maxTokens: 235929,
-  },
-  {
-    id: "dots-studio/dots-3-note-preview:free",
-    name: "Dots Studio: Dots 3 Note Preview (free)",
-    reasoning: true,
-    vision: true,
-    contextWindow: 512000,
-    maxTokens: 460800,
+    maxTokens: 65536,
   },
   {
     id: "deepseek-v4.1-flash-free",
-    name: "DeepSeek v4.1 Flash Free",
+    name: "DeepSeek V4.1 Flash Free",
+    reasoning: true,
+    vision: true,
+    contextWindow: 200000,
+    maxTokens: 32000,
+  },
+  {
+    id: "nemotron-3.5-super-vl-free",
+    name: "Nemotron 3.5 Super VL Free",
     reasoning: true,
     vision: true,
     contextWindow: 1048576,
-    maxTokens: 384000,
-  },
-  {
-    id: "nvidia/nemotron-3.5-super-vl:free",
-    name: "NVIDIA: Nemotron 3.5 Super VL (free)",
-    reasoning: true,
-    vision: true,
-    contextWindow: 1000000,
     maxTokens: 131072,
   },
   {
-    id: "nvidia/nemotron-3.5-lightning:free",
-    name: "NVIDIA: Nemotron 3.5 Lightning (free)",
+    id: "beam-free",
+    name: "Beam Free",
     reasoning: true,
     vision: false,
-    contextWindow: 1000000,
-    maxTokens: 65536,
-  },
-  {
-    id: "nvidia/nemotron-3-ultra-550b-a55b:free",
-    name: "NVIDIA: Nemotron 3 Ultra (free)",
-    reasoning: true,
-    vision: false,
-    contextWindow: 1000000,
-    maxTokens: 65536,
-  },
-  {
-    id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-    name: "NVIDIA: Nemotron 3 Nano Omni (free)",
-    reasoning: true,
-    vision: true,
-    contextWindow: 256000,
-    maxTokens: 65536,
-  },
-  {
-    id: "gemini-4-argon",
-    name: "Gemini 4 Argon",
-    reasoning: true,
-    vision: true,
     contextWindow: 1048576,
-    maxTokens: 32768,
+    maxTokens: 131072,
   },
   {
-    id: "stealth/glyph-cluster",
-    name: "Glyph Cluster",
+    id: "mimo-v2.6-flash-free",
+    name: "MiMo-V2.6-Flash Free",
+    reasoning: true,
+    vision: true,
+    contextWindow: 200000,
+    maxTokens: 32000,
+  },
+  {
+    id: "nemotron-3.5-lightning-free",
+    name: "Nemotron 3.5 Lightning Free",
     reasoning: true,
     vision: false,
-    contextWindow: 256000,
-    maxTokens: 256000,
+    contextWindow: 262144,
+    maxTokens: 262144,
+  },
+  {
+    id: "big-pickle",
+    name: "Big Pickle",
+    reasoning: true,
+    vision: false,
+    contextWindow: 200000,
+    maxTokens: 32000,
   },
 ];

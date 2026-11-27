@@ -40,10 +40,9 @@ import { describeSavings } from "./token-saver/index.js";
 import { activePrompts, CAVEMAN_LEVELS, PONYTAIL_LEVELS, OFF } from "./token-saver/prompts.js";
 import { noticeText, shouldNotice, writeAck } from "./disclaimer.js";
 import { kiloModels, kiloProvider, PROVIDER_ID as KILO_ID } from "./kilo.js";
-import { opencodeModels, opencodeProvider, PROVIDER_ID as OPENECODE_ID } from "./opencode.js";
 import {
   opencodeSdkProvider,
-  PROVIDER_ID as OPENECODE_SDK_ID,
+  PROVIDER_ID as OPENCODE_ID,
   opencodeSdkModels,
 } from "./opencode-sdk.js";
 
@@ -135,18 +134,13 @@ function describeChains(ctx: any, chains: any[]) {
  * route upstream.
  */
 export default async function (pi: any) {
-  const [kilo, opencode, chains] = await Promise.all([
-    kiloModels(),
-    opencodeModels(),
-    Promise.resolve(readChains()),
-  ]);
-  // The OpenCode-SDK lane lists its roster offline (no server spawn at boot);
-  // the local `opencode serve` is started lazily on the first turn.
-  const opencodeSdk = opencodeSdkModels();
+  const [kilo, chains] = await Promise.all([kiloModels(), Promise.resolve(readChains())]);
+  // The OpenCode lane lists its roster offline (no server spawn at boot); the
+  // shared `opencode` service is used lazily on the first turn.
+  const opencode = opencodeSdkModels();
 
   pi.registerProvider(KILO_ID, kiloProvider({ models: kilo }));
-  pi.registerProvider(OPENECODE_ID, opencodeProvider({ models: opencode }));
-  pi.registerProvider(OPENECODE_SDK_ID, opencodeSdkProvider({ models: opencodeSdk }));
+  pi.registerProvider(OPENCODE_ID, opencodeSdkProvider({ models: opencode }));
   registerChains(pi, chains);
 
   // The first time these lanes appear on this machine, say what they cost. A
@@ -430,13 +424,16 @@ export default async function (pi: any) {
       }
 
       if (head === "refresh") {
-        const [nextKilo, nextOpencode] = await Promise.all([kiloModels(), opencodeModels()]);
+        const [nextKilo, nextOpencode] = await Promise.all([
+          kiloModels(),
+          Promise.resolve(opencodeSdkModels()),
+        ]);
         pi.unregisterProvider(KILO_ID);
-        pi.unregisterProvider(OPENECODE_ID);
+        pi.unregisterProvider(OPENCODE_ID);
         pi.registerProvider(KILO_ID, kiloProvider({ models: nextKilo }));
-        pi.registerProvider(OPENECODE_ID, opencodeProvider({ models: nextOpencode }));
+        pi.registerProvider(OPENCODE_ID, opencodeSdkProvider({ models: nextOpencode }));
         notify(
-          `refreshed: ofm-kilo ${nextKilo.length} models · ofm-opencode ${nextOpencode.length} models`,
+          `refreshed: ofm-kilo ${nextKilo.length} models · ofm-opencode ${nextOpencode.length} models (roster is offline)`,
         );
         return;
       }
@@ -513,7 +510,7 @@ export default async function (pi: any) {
       }
 
       notify(
-        `ofm-kilo: ${ctx.modelRegistry.getModelsOfType("chat", KILO_ID).length} free models · ofm-opencode: ${ctx.modelRegistry.getModelsOfType("chat", OPENECODE_ID).length} free models · chains: ${chains.length}`,
+        `ofm-kilo: ${ctx.modelRegistry.getModelsOfType("chat", KILO_ID).length} free models · ofm-opencode: ${ctx.modelRegistry.getModelsOfType("chat", OPENCODE_ID).length} free models · chains: ${chains.length}`,
       );
     },
   });

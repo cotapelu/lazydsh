@@ -37,7 +37,7 @@ import { OpenCode } from "@opencode/client/promise";
  * runtime ports (which can occupy 4097 on a dev box), overridable via
  * OFM_OPENCODE_SDK_BRIDGE_PORT.
  */
-export const BRIDGE_PORT = Number(process.env.OFM_OPENCODE_SDK_BRIDGE_PORT ?? 40980);
+export const BRIDGE_PORT = Number(process.env.OFM_OPENCODE_SDK_BRIDGE_PORT ?? 47183);
 /** The agent the free-tier gate fingerprints. */
 const FREE_LANE_AGENT = "build";
 /** Provider id under which every free model is served on the OpenCode gateway. */
@@ -216,8 +216,6 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   }
 
   const sdk = await ensureServe();
-  const subscribeController = new AbortController();
-  req.on("close", () => subscribeController.abort());
 
   res.writeHead(200, {
     "content-type": "text/event-stream; charset=utf-8",
@@ -240,80 +238,26 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   // Announce the role once so OpenAI clients assemble a message.
   sendDelta({ role: "assistant" });
 
-  let stopped = false;
-  let failed: string | undefined;
-  const deadline = Date.now() + TURN_TIMEOUT_MS;
-  const events = sdk.event.subscribe({ signal: subscribeController.signal });
-
+  let sessionID: string | undefined;
   try {
     const session = await sdk.session.create({
       model: { id: model, providerID: GATEWAY_PROVIDER },
       agent: FREE_LANE_AGENT,
     });
-    const sessionID = session.id;
-    void sdk.session.prompt({ sessionID, text: promptText }).catch((error: unknown) => {
-      failed = error instanceof Error ? error.message : String(error);
-    });
-
-    for await (const event of events) {
-      const data = (event as any)?.data;
-      if (!data || data.sessionID !== sessionID) continue;
-      switch (event.type) {
-        case "session.reasoning.delta":
-          sendDelta({ reasoning_content: String(data.delta ?? "") });
-          break;
-        case "session.text.delta":
-          sendDelta({ content: String(data.delta ?? "") });
-          break;
-        case "session.tool.called": {
-          const name = String(data.tool ?? data.toolCall?.name ?? "tool");
-          const args = data.toolCall?.arguments ?? data.input ?? {};
-          sendDelta(
-            {
-              tool_calls: [
-                {
-                  index: 0,
-                  id: String(data.callID ?? data.id ?? ""),
-                  type: "function",
-                  function: {
-                    name,
-                    arguments: typeof args === "string" ? args : JSON.stringify(args),
-                  },
-                },
-              ],
-            },
-            "tool_calls",
-          );
-          break;
-        }
-        // The turn's terminal signals on the shared feed are the execution
-        // lifecycle events, NOT `session.idle` (which never arrives here).
-        case "session.execution.succeeded":
-          stopped = true;
-          break;
-        case "session.execution.failed":
-        case "session.step.failed":
-          failed = data?.error?.message ?? data?.message ?? "the free-tier turn failed";
-          break;
-        case "session.execution.interrupted":
-          stopped = true;
-          break;
-      }
-      if (stopped || failed !== undefined) break;
-      if (Date.now() > deadline) {
-        failed = "the free-tier turn exceeded its time budget";
-        break;
-      }
-    }
-    subscribeController.abort();
-    void sdk.session.interrupt({ sessionID }).catch(() => {});
-
-    sendDelta({}, "stop");
-    if (failed !== undefined) {
-      res.write(
-        `data: ${JSON.stringify({ error: { message: failed, type: "server_error" } })}\n\n`,
-      );
-    }
+    sessionID = session.id;
+    // The light path: ONE model call (`session.generate`), no agent loop and no
+    // tool execution. It still sends the build-agent system prompt + tool list,
+    // which is the fingerprint the free-tier gate checks, but opencode does the
+    // least possible work — one forward, one answer.
+    const out = await Promise.race([
+      sdk.session.generate({ sessionID, prompt: promptText }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("generate exceeded its time budget")), TURN_TIMEOUT_MS),
+      ),
+    ]);
+    const text = String(out?.text ?? "");
+    if (text !== "") sendDelta({ content: text }, "stop");
+    else sendDelta({}, "stop");
   } catch (error) {
     sendDelta({}, "stop");
     res.write(
@@ -325,7 +269,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       })}\n\n`,
     );
   } finally {
-    subscribeController.abort();
+    if (sessionID !== undefined) {
+      void sdk.session.interrupt({ sessionID }).catch(() => {});
+      void sdk.session.remove({ sessionID }).catch(() => {});
+    }
     res.write("data: [DONE]\n\n");
     res.end();
   }

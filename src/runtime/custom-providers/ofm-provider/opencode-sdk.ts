@@ -40,9 +40,9 @@ import { OFM_OPENCODE_SDK_MODELS } from "../ofm-opencode-sdk-models.js";
 import { BRIDGE_BASE_URL } from "./opencode-bridge.js";
 
 /** Provider id, also the pi model prefix: `ofm-opencode-sdk/<model>`. */
-export const PROVIDER_ID = "ofm-opencode-sdk";
+export const PROVIDER_ID = "ofm-opencode";
 /** Display name shown by selectors and configuration surfaces. */
-export const OFM_OPENCODE_SDK_DISPLAY_NAME = "OFM OpenCode Free (SDK)";
+export const OFM_OPENCODE_SDK_DISPLAY_NAME = "OFM OpenCode Free";
 
 /** The agent the free tier gate fingerprints; the default "build" agent. */
 const FREE_LANE_AGENT = "build";

@@ -27,12 +27,25 @@ export const OFM_OPENCODE_MODEL_PROFILES = OFM_OPENCODE_MODELS.map((model) => {
   };
 });
 
+/**
+ * Static part of the OpenCode free-lane fingerprint. The dynamic per-turn
+ * session headers (minted `ses_…` id, the four matching session headers) are
+ * injected per request by the `llm-pi-ai/request-headers` hook in `runtime.ts`.
+ */
+export const OFM_OPENCODE_FINGERPRINT_HEADERS = {
+  "user-agent": "opencode/latest/2.2.5/cli",
+  "x-opencode-client": "cli",
+  "x-opencode-project": "global",
+  authorization: "Bearer public",
+} as const;
+
 export const OFM_OPENCODE_PROVIDER_PROFILE: PiAiProviderProfile = {
   apiKeyEnv: undefined,
   displayName: OFM_OPENCODE_DISPLAY_NAME,
   api: "openai-completions",
   baseURL: OFM_OPENCODE_BASE_URL,
   models: OFM_OPENCODE_MODEL_PROFILES,
+  headers: { ...OFM_OPENCODE_FINGERPRINT_HEADERS },
   retryPolicy: { mode: "normal", maxRetries: 2 },
 };
 

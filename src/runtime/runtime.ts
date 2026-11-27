@@ -9,7 +9,6 @@ import {
   type Session,
 } from "@deepseek-ai/dsh-session";
 import { createUserMessage } from "@deepseek-ai/dsh-llm/message";
-import { ensureBridge, closeBridge } from "./custom-providers/ofm-provider/opencode-bridge.js";
 import type { TokenUsage } from "@deepseek-ai/dsh-llm";
 import { credentialRef, credentialKey, type CredentialInfo } from "@deepseek-ai/dsh-credentials";
 import { AuthorizationDeclinedError } from "@deepseek-ai/dsh-authorization";
@@ -55,10 +54,6 @@ import {
   OFM_OPENCODE_PROVIDER_ID,
   OFM_OPENCODE_DISPLAY_NAME,
 } from "./custom-providers/ofm-opencode-config.js";
-import {
-  PROVIDER_ID as OFM_OPENCODE_SDK_PROVIDER_ID,
-  OFM_OPENCODE_SDK_DISPLAY_NAME,
-} from "./custom-providers/ofm-provider/opencode-sdk.js";
 import { gatewayHeaders, sessionFor } from "./custom-providers/ofm-provider/fingerprint.js";
 import { registerCommands } from "./native-commands.ts";
 import { ApprovalGrants, resolveApprovalOutcome } from "./approvals.ts";
@@ -197,18 +192,12 @@ export class Runtime {
   private limits?: AccountLimits;
   /** Tool names the user allowed for the whole session ("always allow"). */
   private readonly approvalGrants = new ApprovalGrants();
-  /** OFM OpenCode session id per conversation seed (DSH session id). */
+  /** OpenCode session id per DSH conversation, so the four matching session headers are stable across a conversation. */
   private readonly ofmOpencodeSessionIds = new Map<string, string>();
   authFailed = false;
   constructor(ctx: Context, options: RuntimeOptions = {}) {
     this.ctx = ctx;
     this.options = options;
-    // Start the OpenCode free-tier bridge (cheap HTTP shim; `opencode serve`
-    // spawns lazily on the first completions request). Non-blocking so boot is
-    // not delayed; the shim binds in milliseconds, long before any turn.
-    void ensureBridge().catch((error) => {
-      console.warn("lazydsh: ofm-opencode-sdk bridge failed to start:", error);
-    });
     registerCommands(ctx);
     ctx.on("approval/request", async (request, next) => {
       if (!this.owns(request.agent)) return next();
@@ -230,23 +219,22 @@ export class Runtime {
       const result = next();
       if (request.provider === OFM_KILO_PROVIDER_ID) result.delete("authorization");
       if (request.provider === OFM_OPENCODE_PROVIDER_ID) {
-        // Inject OpenCode free-lane fingerprint headers
+        // Mint (and reuse) a stable OpenCode session id per DSH conversation,
+        // then emit the four matching session headers the free gate checks. The
+        // static UA/client/project/authorization come from the route profile.
         const seed = request.sessionId ?? "global";
         let sessionId = this.ofmOpencodeSessionIds.get(seed);
         if (!sessionId) {
           sessionId = sessionFor(seed);
-          // Guard against unbounded growth: cap the number of retained seeds.
           if (this.ofmOpencodeSessionIds.size >= 256) this.ofmOpencodeSessionIds.clear();
           this.ofmOpencodeSessionIds.set(seed, sessionId as string);
         }
-        // sessionFor always returns a string (mints new if not exists)
-        const fpHeaders = gatewayHeaders({ session: sessionId!, stream: true });
-        for (const [key, value] of Object.entries(fpHeaders)) {
-          if (key.toLowerCase() !== "authorization" && key.toLowerCase() !== "content-type") {
-            result.set(key, value);
-          }
+        for (const [key, value] of Object.entries(
+          gatewayHeaders({ session: sessionId!, stream: true }),
+        )) {
+          const name = key.toLowerCase();
+          if (name !== "authorization" && name !== "content-type") result.set(key, value);
         }
-        // Ensure authorization is the pooled public credential
         result.set("authorization", "Bearer public");
       }
       return result;
@@ -806,11 +794,6 @@ export class Runtime {
         label: OFM_OPENCODE_DISPLAY_NAME,
         description: `${OFM_OPENCODE_PROVIDER_ID} · No credentials required`,
       },
-      {
-        value: OFM_OPENCODE_SDK_PROVIDER_ID,
-        label: OFM_OPENCODE_SDK_DISPLAY_NAME,
-        description: `${OFM_OPENCODE_SDK_PROVIDER_ID} · No credentials required`,
-      },
     ];
     const known = new Set([...fromAuthorization.map((item) => item.value), "deepseek-official"]);
     return [
@@ -880,9 +863,6 @@ export class Runtime {
       return { kind: "keyless", label: "No credentials required" };
     }
     if (route === OFM_OPENCODE_PROVIDER_ID) {
-      return { kind: "keyless", label: "No credentials required" };
-    }
-    if (route === OFM_OPENCODE_SDK_PROVIDER_ID) {
       return { kind: "keyless", label: "No credentials required" };
     }
     if (route === KILO_PROVIDER_ID) {
@@ -1018,7 +998,7 @@ export class Runtime {
           );
         } else if (provider === OFM_KILO_PROVIDER_ID) {
           await this.ctx.credentials.set(credentialRef(OFM_KILO_API_KEY_ENV), "public");
-        } else if (provider === OFM_OPENCODE_SDK_PROVIDER_ID) {
+        } else if (provider === OFM_OPENCODE_PROVIDER_ID) {
           await this.ctx.credentials.set(credentialRef("OFM_OPENCODE_SDK_API_KEY"), "public");
         } else if (provider === KILO_PROVIDER_ID) {
           await ctx.credentials.set(
@@ -1098,7 +1078,7 @@ export class Runtime {
       await this.ctx.credentials.unset(credentialRef("DEEPSEEK_API_KEY"));
     else if (provider === KILO_PROVIDER_ID) {
       await this.ctx.credentials.unset(credentialRef(KILO_API_KEY_ENV));
-    } else if (provider === OFM_OPENCODE_SDK_PROVIDER_ID) {
+    } else if (provider === OFM_OPENCODE_PROVIDER_ID) {
       await this.ctx.credentials.unset(credentialRef("OFM_OPENCODE_SDK_API_KEY"));
     } else {
       const key = credentialKey("llm-pi-ai", provider);
@@ -1112,7 +1092,7 @@ export class Runtime {
         ? ["DEEPSEEK_API_KEY"]
         : provider === KILO_PROVIDER_ID
           ? [KILO_API_KEY_ENV]
-          : provider === OFM_OPENCODE_SDK_PROVIDER_ID
+          : provider === OFM_OPENCODE_PROVIDER_ID
             ? ["OFM_OPENCODE_SDK_API_KEY"]
             : (this.ctx.llm.listConfigurableProviders().find((item) => item.provider === provider)
                 ?.nativeAuth?.env ?? []);
@@ -1535,10 +1515,6 @@ export class Runtime {
     } finally {
       if (this.handle === handle) this.handle = undefined;
       this.closing = undefined;
-      this.ofmOpencodeSessionIds.clear();
-      // The bridge + spawned opencode serve outlive a single agent;
-      // stop them when the whole runtime is torn down.
-      closeBridge();
     }
   }
 }
