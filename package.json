@@ -50,9 +50,11 @@
     "prepack": "vp pack",
     "generate-ofm-kilo-models": "node scripts/generate-ofm-kilo-models.mjs",
     "prepare": "husky",
-    "release": "standard-version",
-    "release:minor": "standard-version --release-as minor",
-    "release:major": "standard-version --release-as major"
+    "version": "standard-version",
+    "version:minor": "standard-version --release-as minor",
+    "version:major": "standard-version --release-as major",
+    "release": "npm run version && git push --follow-tags && npm publish",
+    "release:github": "gh release create v$(node -p 'require(\"./package.json\").version') --generate-notes"
   },
   "dependencies": {
     "@code-yeongyu/senpi": "^2026.11.21-2",
