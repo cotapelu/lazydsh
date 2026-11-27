@@ -53,8 +53,9 @@
     "version": "standard-version",
     "version:minor": "standard-version --release-as minor",
     "version:major": "standard-version --release-as major",
-    "release": "npm run version && git push --follow-tags && npm publish",
-    "release:github": "gh release create v$(node -p 'require(\"./package.json\").version') --generate-notes"
+    "push-tags": "git push --follow-tags",
+    "release": "npm run version && npm run push-tags && gh release create v$(node -p 'require(\"./package.json\").version') --generate-notes",
+    "publish": "npm publish"
   },
   "dependencies": {
     "@code-yeongyu/senpi": "^2026.11.21-2",
