@@ -10,6 +10,7 @@ import {
   type DeferredPlan,
 } from "./runtime/deferred.ts";
 import { createPendingRuntime } from "./runtime/pending-runtime.ts";
+import { ensureBridge } from "./runtime/custom-providers/ofm-provider/opencode-bridge.js";
 import { loadModel, preferencesPath } from "./runtime/preferences.ts";
 import { resolve } from "node:path";
 
@@ -98,6 +99,11 @@ export function apply(ctx: Context, config: PluginOptions = {}) {
     const pending = fullDefer ? createPendingRuntime() : undefined;
     if (pending === undefined) await waitForRuntimeServices(ctx);
     const runtime = pending?.runtime ?? (await createRuntime(ctx, options, effort));
+    // Guarantee the OpenCode free-tier shim is listening before any turn, so an
+    // `ofm-opencode-sdk` route never races the (cheap) bridge bind.
+    await ensureBridge().catch((error) => {
+      console.warn("lazydsh: ofm-opencode-sdk bridge failed to start:", error);
+    });
     if (config.command) {
       const { runCommand } = await import("./interactive-mode/command-runner.ts");
       await runCommand(

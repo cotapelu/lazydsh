@@ -11,6 +11,88 @@ export interface OfmOpencodeSdkModelConfig {
 
 /** Static snapshot from opencode v2.2.5 free tier listing (live fetch) */
 export const OFM_OPENCODE_SDK_MODELS: OfmOpencodeSdkModelConfig[] = [
+  // ── OpenCode gateway free pool (providerID: opencode) — CLI-proven routable ──
+  {
+    id: "seaglass-alpha-free",
+    name: "Seaglass Alpha Free",
+    reasoning: true,
+    vision: false,
+    contextWindow: 1048576,
+    maxTokens: 131072,
+  },
+  {
+    id: "tidepool-alpha-free",
+    name: "Tidepool Alpha Free",
+    reasoning: true,
+    vision: false,
+    contextWindow: 1048576,
+    maxTokens: 131072,
+  },
+  {
+    id: "hy4-flash-free",
+    name: "Hy4 Flash Free",
+    reasoning: true,
+    vision: true,
+    contextWindow: 1048576,
+    maxTokens: 65536,
+  },
+  {
+    id: "iceman-free",
+    name: "Iceman Free",
+    reasoning: true,
+    vision: false,
+    contextWindow: 262144,
+    maxTokens: 131072,
+  },
+  {
+    id: "flint-40b-free",
+    name: "Flint 40B Free",
+    reasoning: true,
+    vision: false,
+    contextWindow: 262144,
+    maxTokens: 65536,
+  },
+  {
+    id: "deepseek-v4.1-flash-free",
+    name: "DeepSeek V4.1 Flash Free",
+    reasoning: true,
+    vision: true,
+    contextWindow: 200000,
+    maxTokens: 32000,
+  },
+  {
+    id: "nemotron-3.5-super-vl-free",
+    name: "Nemotron 3.5 Super VL Free",
+    reasoning: true,
+    vision: true,
+    contextWindow: 1048576,
+    maxTokens: 131072,
+  },
+  {
+    id: "beam-free",
+    name: "Beam Free",
+    reasoning: true,
+    vision: false,
+    contextWindow: 1048576,
+    maxTokens: 131072,
+  },
+  {
+    id: "mimo-v2.6-flash-free",
+    name: "MiMo-V2.6-Flash Free",
+    reasoning: true,
+    vision: true,
+    contextWindow: 200000,
+    maxTokens: 32000,
+  },
+  {
+    id: "nemotron-3.5-lightning-free",
+    name: "Nemotron 3.5 Lightning Free",
+    reasoning: true,
+    vision: false,
+    contextWindow: 262144,
+    maxTokens: 262144,
+  },
+  // ── Remaining snapshot rows (kilo gateway + extras) ──
   // Reflection models
   {
     id: "reflection/beam-free",

@@ -44,7 +44,7 @@ import { opencodeModels, opencodeProvider, PROVIDER_ID as OPENECODE_ID } from ".
 import {
   opencodeSdkProvider,
   PROVIDER_ID as OPENECODE_SDK_ID,
-  fetchModels as fetchOpencodeSdkModels,
+  opencodeSdkModels,
 } from "./opencode-sdk.js";
 
 /** Resolve one `provider/model` address against the live registry. */
@@ -135,12 +135,14 @@ function describeChains(ctx: any, chains: any[]) {
  * route upstream.
  */
 export default async function (pi: any) {
-  const [kilo, opencode, opencodeSdk, chains] = await Promise.all([
+  const [kilo, opencode, chains] = await Promise.all([
     kiloModels(),
     opencodeModels(),
-    fetchOpencodeSdkModels(),
     Promise.resolve(readChains()),
   ]);
+  // The OpenCode-SDK lane lists its roster offline (no server spawn at boot);
+  // the local `opencode serve` is started lazily on the first turn.
+  const opencodeSdk = opencodeSdkModels();
 
   pi.registerProvider(KILO_ID, kiloProvider({ models: kilo }));
   pi.registerProvider(OPENECODE_ID, opencodeProvider({ models: opencode }));

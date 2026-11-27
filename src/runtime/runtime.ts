@@ -9,6 +9,7 @@ import {
   type Session,
 } from "@deepseek-ai/dsh-session";
 import { createUserMessage } from "@deepseek-ai/dsh-llm/message";
+import { ensureBridge, closeBridge } from "./custom-providers/ofm-provider/opencode-bridge.js";
 import type { TokenUsage } from "@deepseek-ai/dsh-llm";
 import { credentialRef, credentialKey, type CredentialInfo } from "@deepseek-ai/dsh-credentials";
 import { AuthorizationDeclinedError } from "@deepseek-ai/dsh-authorization";
@@ -202,6 +203,12 @@ export class Runtime {
   constructor(ctx: Context, options: RuntimeOptions = {}) {
     this.ctx = ctx;
     this.options = options;
+    // Start the OpenCode free-tier bridge (cheap HTTP shim; `opencode serve`
+    // spawns lazily on the first completions request). Non-blocking so boot is
+    // not delayed; the shim binds in milliseconds, long before any turn.
+    void ensureBridge().catch((error) => {
+      console.warn("lazydsh: ofm-opencode-sdk bridge failed to start:", error);
+    });
     registerCommands(ctx);
     ctx.on("approval/request", async (request, next) => {
       if (!this.owns(request.agent)) return next();
@@ -384,7 +391,7 @@ export class Runtime {
    */
   async shell(
     command: string,
-    options: { timeoutMs?: number; signal?: AbortSignal; onOutput?: (chunk: string) => void } = {},
+    options: { timeoutMs?: number; signal?: AbortSignal } = {},
   ): Promise<ShellRunResult> {
     // The unchecked accessor: this plugin does not inject `shell` (only the
     // agent's bash tool consumes it), and an unmounted service must read as
@@ -393,25 +400,6 @@ export class Runtime {
     if (!executor) throw new Error("Shell executor is unavailable; is the tool set loaded?");
     const spec = executor.resolve({ command, ...options });
     const execution = await executor.execute(spec);
-    const { onOutput } = options;
-
-    // Stream output in real-time if callback provided
-    if (onOutput) {
-      const streamDone = (async () => {
-        while (execution.status === "running") {
-          const read = execution.readOutput();
-          if (read.delta) onOutput(read.delta);
-          await new Promise((resolve) => setTimeout(resolve, 50));
-        }
-        // Final read after completion
-        const finalRead = execution.readOutput();
-        if (finalRead.delta) onOutput(finalRead.delta);
-      })();
-      const result = await execution.result();
-      await streamDone;
-      return result;
-    }
-
     return await execution.result();
   }
 
@@ -1548,6 +1536,9 @@ export class Runtime {
       if (this.handle === handle) this.handle = undefined;
       this.closing = undefined;
       this.ofmOpencodeSessionIds.clear();
+      // The bridge + spawned opencode serve outlive a single agent;
+      // stop them when the whole runtime is torn down.
+      closeBridge();
     }
   }
 }

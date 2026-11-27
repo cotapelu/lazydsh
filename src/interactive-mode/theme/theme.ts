@@ -116,8 +116,8 @@ const BUILTIN_COLORS: Record<string, string> = {
   toolOutput: "#c8c8c8",
   toolDiffAdded: "#64ff64",
   toolDiffRemoved: "#ff6464",
-  bashMode: "#d4924a",
-  bashSuccess: "#89b4fa",
+  bashMode: "#8b5a2b",
+  bashSuccess: "#5080c0",
 };
 
 // ──────────────────────────────────────────────────────────────────────
