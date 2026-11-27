@@ -70,12 +70,13 @@ export function registerCommands(ctx: Context) {
           if (!current) throw new Error("No model selected");
           const info = await ctx.llm.resolveModelInfo(current.provider, current.model, signal);
           const level = rawInput.trim();
-          if (!level)
+          if (!level || level === "undefined")
             return {
               kind: "success",
               text: `Effort: ${current.reasoningEffort ?? "default"} · available: default${info.reasoning?.efforts.map((item) => `, ${item.id}`).join("") ?? ""}`,
             };
-          if (level !== "default" && !info.reasoning?.efforts.some((item) => item.id === level))
+          const efforts = info.reasoning?.efforts ?? [];
+          if (level !== "default" && !efforts.some((item) => item.id === level))
             throw new Error(`Unsupported effort: ${level}`);
           const selection = {
             provider: current.provider,

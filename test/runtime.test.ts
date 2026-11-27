@@ -116,8 +116,9 @@ test.concurrent("providers, commands and lifecycle", async () => {
       await runtime.run("/goal");
       const effort = await runtime.efforts();
       if (effort.options.length) {
-        await runtime.run("/effort "+effort.options[0].id);
-        assert.equal((await runtime.efforts()).current,effort.options[0].id);
+        const firstOption = effort.options[0];
+        await runtime.run("/effort " + firstOption);
+        assert.equal((await runtime.efforts()).current, firstOption);
       }
       await runtime.run("/effort default");
       await assert.rejects(runtime.run("/effort unsupported"), /Unsupported effort/);
