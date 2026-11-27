@@ -48,7 +48,11 @@
     "check": "vp check",
     "test": "vp test run",
     "prepack": "vp pack",
-    "generate-ofm-kilo-models": "node scripts/generate-ofm-kilo-models.mjs"
+    "generate-ofm-kilo-models": "node scripts/generate-ofm-kilo-models.mjs",
+    "prepare": "husky",
+    "release": "standard-version",
+    "release:minor": "standard-version --release-as minor",
+    "release:major": "standard-version --release-as major"
   },
   "dependencies": {
     "@code-yeongyu/senpi": "^2026.11.21-2",
@@ -144,6 +148,9 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.2",
+    "standard-version": "^9.5.0",
     "typescript": "^7.0.2",
     "vite-plus": "^1.6.0"
   },
@@ -151,6 +158,11 @@
     "@modelcontextprotocol/client": "2.3.0",
     "fflate": "0.8.3",
     "undici": "8.12.2"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "vp check --fix"
+    ]
   },
   "engines": {
     "node": ">=24.9.0"
