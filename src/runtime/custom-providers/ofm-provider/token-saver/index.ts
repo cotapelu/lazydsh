@@ -139,6 +139,14 @@ export function compressRequest(
   if (!enabled) return { payload, stats };
   if (payload === null || typeof payload !== "object") return { payload, stats };
 
+  // Snapshot so a partial in-place mutation can be rolled back on failure.
+  let snapshot: unknown;
+  try {
+    snapshot = structuredClone(payload);
+  } catch {
+    snapshot = undefined;
+  }
+
   try {
     if (wire === "chat") compressChatPayload(payload as Record<string, unknown>, stats);
     else if (wire === "messages")
@@ -149,10 +157,20 @@ export function compressRequest(
     console.warn(
       `[rtk] compressRequest error: ${error instanceof Error ? error.message : String(error)}`,
     );
-    // A blob whose walk threw was counted as "before" but never as "after";
-    // putting the books back in order keeps the stats invariant true even on
-    // the failure path (the blob is treated as passed through untouched).
-    stats.bytesAfter = stats.bytesBefore - stats.hits.reduce((sum, hit) => sum + hit.saved, 0);
+    // Roll back any partial in-place mutation so payload stays consistent.
+    if (snapshot !== undefined && payload && typeof payload === "object") {
+      try {
+        for (const key of Object.keys(payload as Record<string, unknown>))
+          delete (payload as Record<string, unknown>)[key];
+        Object.assign(payload as Record<string, unknown>, snapshot as Record<string, unknown>);
+      } catch {
+        // best-effort
+      }
+    }
+    // Treat the request as passed through untouched on the failure path.
+    stats.bytesAfter = stats.bytesBefore;
+    stats.saved = 0;
+    stats.hits = [];
   }
 
   stats.saved = stats.bytesBefore - stats.bytesAfter;

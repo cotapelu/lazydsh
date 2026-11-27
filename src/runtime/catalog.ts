@@ -89,6 +89,7 @@ export function validateRoute(provider: string, model: string, customPatches: st
     throw new Error(`Unknown provider: ${provider}. Use --list or configure a route with --patch.`);
   }
   if (!model?.trim()) throw new Error("A model ID is required. Use --list to see the catalog.");
-  // Exact route validation belongs to dsh; a user patch can add models newer than this catalog.
+  // Exact model validation belongs to dsh: a user --patch can add models newer
+  // than this catalog, so we only require a non-empty model id here.
   return { provider, model };
 }

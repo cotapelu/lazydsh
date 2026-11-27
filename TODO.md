@@ -43,7 +43,7 @@ Key completed items: two-phase boot with deferred plugins, overlay stack, safe r
 5. ~~**`OAuthSelectorComponent` animation perf**~~ **FIXED** — throttle `updateList()` 100ms thay vì mỗi frame. (audit 3.6)
 6. **`session-selector.ts` width** — dùng `process.stdout.columns` thay vì render width thực tế → label bị cắt sai khi resize. (audit 3.7)
 7. **`compressRequest` partial mutation** (token-saver) — payload mutate in-place khi filter throw; rollback hoặc không mutate. (audit 3.4)
-8. **`validateRoute`** — không validate model tồn tại trong catalog (hoặc cập nhật comment). (audit 4.4)
+8. ~~**`validateRoute`**~~ **FIXED** (comment clarified) — exact model validation thuộc dsh do --patch. (audit 4.4)
 9. **Approval grants UI** — "Always allow" lưu per-Runtime, không có UI xóa grant. (audit 4.5)
 10. **`runAfterFirstPaint` auto-retry** — hiện chỉ retry khi user gõ phím; thêm backoff/retry button. (audit 4.6)
 11. **`pendingStartupConnection` orphan** — thêm timeout hoặc clear khi user action khác. (audit 4.7)
