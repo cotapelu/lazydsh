@@ -246,6 +246,7 @@ export const accent = (t: string) => _theme.fg("accent", t);
 export const dim = (t: string) => _theme.fg("dim", t);
 export const success = (t: string) => _theme.fg("success", t);
 export const error = (t: string) => _theme.fg("error", t);
+export const warning = (t: string) => _theme.fg("warning", t);
 export const bold = (t: string) => _theme.bold(t);
 export const italic = (t: string) => _theme.italic(t);
 export const underline = (t: string) => _theme.underline(t);

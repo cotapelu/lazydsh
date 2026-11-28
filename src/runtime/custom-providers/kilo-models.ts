@@ -707,7 +707,7 @@ export const KILO_MODELS: readonly KiloModelConfig[] = [
       cacheWrite: 0,
     },
     contextWindow: 1048576,
-    maxTokens: 131072,
+    maxTokens: 943718,
   },
   {
     id: "prism-ml/ternary-bonsai-2-9b",
@@ -1962,7 +1962,7 @@ export const KILO_MODELS: readonly KiloModelConfig[] = [
     input: ["text"],
     cost: {
       input: 0.0000000456,
-      output: 0.0000003,
+      output: 0.00000027,
       cacheRead: 0.000000035,
       cacheWrite: 0,
     },
@@ -1977,7 +1977,7 @@ export const KILO_MODELS: readonly KiloModelConfig[] = [
     input: ["text"],
     cost: {
       input: 0.0000000456,
-      output: 0.0000003,
+      output: 0.00000027,
       cacheRead: 0.000000035,
       cacheWrite: 0,
     },
@@ -2831,9 +2831,9 @@ export const KILO_MODELS: readonly KiloModelConfig[] = [
     reasoningLevels: ["low", "medium", "high"],
     input: ["text"],
     cost: {
-      input: 0.00000036011,
-      output: 0.0000015791,
-      cacheRead: 0.00000024,
+      input: 0.00000089,
+      output: 0.0000015069,
+      cacheRead: 0.0000002,
       cacheWrite: 0,
     },
     contextWindow: 1048576,
@@ -5651,9 +5651,9 @@ export const KILO_MODELS: readonly KiloModelConfig[] = [
     reasoningLevels: ["low", "medium", "high"],
     input: ["text"],
     cost: {
-      input: 0,
-      output: 0,
-      cacheRead: 0,
+      input: 0.000001,
+      output: 0.0000052,
+      cacheRead: 0.0000002,
       cacheWrite: 0,
     },
     contextWindow: 1000000,

@@ -209,9 +209,10 @@ test("finished rows reuse their rendered lines instead of re-truncating every fr
   message.invalidate();
   assert.equal(message.render(80), message.render(80));
 
-  const row = new ToolRow("✓ read src/main.ts");
+  const row = new ToolRow("✓ read src/main.ts:1-200  5.2KB · 45ms");
   assert.equal(row.render(80), row.render(80));
-  row.setSummary("✗ read src/main.ts — denied");
+  // Use finish() to properly set error state
+  row.finish("error", "denied", "denied", undefined, 0);
   assert.match(row.render(80).join(""), /denied/);
 });
 

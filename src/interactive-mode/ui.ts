@@ -2104,6 +2104,11 @@ export async function runUI(
               liveText = "";
               liveReasoning = "";
               streamedAnswer = false;
+              // Mark the tool as running
+              const row = toolLog.findAny(notification.params.toolCallId);
+              if (row instanceof ToolRow) {
+                row.setRunning();
+              }
               tui.requestRender();
               return;
             }

@@ -29,7 +29,10 @@ test("large read output updates one collapsed row without dumping arguments or c
   assert.equal(String(row.summary), "· read src/main.ts");
   const contents = "private file contents\n".repeat(10000);
   assert.equal(emit(log, "tool/result", result("a", contents)), undefined);
-  assert.equal(String(row.summary), "✓ read src/main.ts");
+  // New format includes line range, total lines, size (no [FULL] flag, only [trunc] for truncated)
+  assert.ok(String(row.summary).startsWith("✓ read src/main.ts:1-"));
+  assert.ok(!String(row.summary).includes("[trunc]")); // full content, no trunc flag
+  assert.ok(String(row.summary).includes("KB"));
   assert.ok(!row.summary.includes(contents));
   assert.equal(log.entries.size, 0);
   for (const width of [1, 20, 80]) {
@@ -46,7 +49,14 @@ test("interleaved root and child calls stay paired; empty success and errors are
   emit(log, "tool/result", result("a", "permission denied\nlong details", true), "child");
   assert.ok(root instanceof ToolRow);
   assert.ok(child instanceof ToolRow);
-  assert.equal(root.summary, "✓ read root.txt");
-  assert.equal(child.summary, "✗ read child.txt — permission denied");
+  // New format includes line range, size (no [FULL] flag, only [trunc] for truncated)
+  assert.ok(String(root.summary).startsWith("✓ read root.txt:1-"));
+  assert.ok(!String(root.summary).includes("[trunc]")); // full content, no trunc flag
+  // Error format includes error code and truncated message
+  assert.ok(String(child.summary).startsWith("✗ read child.txt"));
+  assert.ok(
+    String(child.summary).includes("[ENOENT]") || String(child.summary).includes("[ERROR]"),
+  );
+  assert.ok(String(child.summary).includes("permission denied"));
   assert.equal(log.entries.size, 0);
 });

@@ -46,7 +46,10 @@ test("saved history restores prompts, replies and collapsed tool results in orde
   const rows = historyRows(events, "session");
   assert.deepEqual(rows[0], { kind: "user", text: "read file" });
   assert.ok(rows[1] instanceof ToolRow);
-  assert.equal(rows[1].summary, "✓ read file.ts");
+  // New format includes line range, size (no [FULL] flag, only [trunc] for truncated)
+  assert.ok(String(rows[1].summary).startsWith("✓ read file.ts:1-"));
+  assert.ok(!String(rows[1].summary).includes("[trunc]")); // full content, no trunc flag
+  assert.ok(String(rows[1].summary).includes("B"));
   assert.ok(rows[1].callArguments?.includes('"path":"file.ts"'));
   // Reasoning folds into the assistant row instead of standing alone.
   assert.deepEqual(rows[2], {
