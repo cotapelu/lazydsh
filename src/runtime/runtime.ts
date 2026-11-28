@@ -9,6 +9,7 @@ import {
   type Session,
 } from "@deepseek-ai/dsh-session";
 import { createUserMessage } from "@deepseek-ai/dsh-llm/message";
+import { bunFetch, shouldTunnel } from "./custom-providers/ofm-provider/bun-fetch.js";
 import type { TokenUsage } from "@deepseek-ai/dsh-llm";
 import { credentialRef, credentialKey, type CredentialInfo } from "@deepseek-ai/dsh-credentials";
 import { AuthorizationDeclinedError } from "@deepseek-ai/dsh-authorization";
@@ -60,40 +61,45 @@ import { ApprovalGrants, resolveApprovalOutcome } from "./approvals.ts";
 import { ActivitySet } from "./activities.ts";
 import { contentText, isAuthFailure, type RuntimeEvent } from "../runtime-events.ts";
 
-/** Module-level fetch wrapper for OFM Kilo - applied once at import. */
-function wrapFetchForOfmKilo(): void {
+/**
+ * Module-level fetch wrapper, applied once at import. Two lane fixes in ONE
+ * wrapper (a second global reassignment upsets the native test fixture, which
+ * reads `globalThis.fetch` identity at boot):
+ *  - Kilo gateway requests drop their Authorization header (keyless pool);
+ *  - OpenCode free-tier requests ride a Bun worker (their TLS gate).
+ * Passthrough defers to the CURRENT `globalThis.fetch`, so a later monkeypatch
+ * (a test stub) is honoured rather than shadowed.
+ */
+function wrapFetchForLanes(): void {
   if ((globalThis as any).__ofmFetchWrapped) return;
   (globalThis as any).__ofmFetchWrapped = true;
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (input: any, init?: any) => {
-    try {
-      const url = typeof input === "string" ? input : input?.url;
-      if (typeof url === "string" && url.includes("api.kilo.ai/api/gateway")) {
-        if (init?.headers) {
-          if (init.headers instanceof Headers) init.headers.delete("authorization");
-          else if (Array.isArray(init.headers)) {
-            init.headers = init.headers.filter(
-              (entry: any) =>
-                !String(entry?.[0] ?? entry?.name ?? "")
-                  .toLowerCase()
-                  .startsWith("authorization"),
-            );
-          } else if (typeof init.headers === "object") {
-            for (const key of Object.keys(init.headers)) {
-              if (key.toLowerCase() === "authorization") delete init.headers[key];
-            }
-          }
+  const prior = globalThis.fetch;
+  const wrapper = (async (input: any, init?: any) => {
+    const url = typeof input === "string" ? input : input?.url;
+    if (typeof url === "string") {
+      if (shouldTunnel(url)) return bunFetch(input, init);
+      if (url.includes("api.kilo.ai/api/gateway") && init?.headers) {
+        if (init.headers instanceof Headers) init.headers.delete("authorization");
+        else if (Array.isArray(init.headers)) {
+          init.headers = init.headers.filter(
+            (entry: any) =>
+              !String(entry?.[0] ?? entry?.name ?? "")
+                .toLowerCase()
+                .startsWith("authorization"),
+          );
+        } else if (typeof init.headers === "object") {
+          for (const key of Object.keys(init.headers))
+            if (key.toLowerCase() === "authorization") delete init.headers[key];
         }
       }
-    } catch {
-      // best-effort
     }
-    return originalFetch(input, init);
-  };
+    return prior(input, init);
+  }) as typeof fetch;
+  globalThis.fetch = wrapper;
 }
 
 // Apply once at module load
-wrapFetchForOfmKilo();
+wrapFetchForLanes();
 
 export { eventText, isAuthFailure } from "../runtime-events.ts";
 export type { RuntimeEvent } from "../runtime-events.ts";
