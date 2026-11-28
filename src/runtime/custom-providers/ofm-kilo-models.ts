@@ -19,15 +19,6 @@ export const OFM_KILO_MODELS = [
     maxTokens: 32768,
   },
   {
-    id: "inclusionai/ling-3.2-flash:free",
-    name: "inclusionAI: Ling 3.2 Flash (free)",
-    reasoning: true,
-    canDisable: true,
-    vision: true,
-    contextWindow: 1048576,
-    maxTokens: 262144,
-  },
-  {
     id: "baidu/ernie-5.5-flash-preview:free",
     name: "Baidu: ERNIE-5.5-Flash-Preview (free)",
     reasoning: true,
@@ -52,7 +43,7 @@ export const OFM_KILO_MODELS = [
     canDisable: true,
     vision: true,
     contextWindow: 1048576,
-    maxTokens: 131072,
+    maxTokens: 943718,
   },
   {
     id: "recursive/flint-v1.0:free",
@@ -71,15 +62,6 @@ export const OFM_KILO_MODELS = [
     vision: true,
     contextWindow: 1000000,
     maxTokens: 131072,
-  },
-  {
-    id: "dots-studio/dots-3-note-preview:free",
-    name: "Dots Studio: Dots3-Note Preview (free)",
-    reasoning: true,
-    canDisable: true,
-    vision: true,
-    contextWindow: 512000,
-    maxTokens: 460800,
   },
   {
     id: "nvidia/nemotron-3.5-lightning:free",
@@ -107,15 +89,6 @@ export const OFM_KILO_MODELS = [
     vision: true,
     contextWindow: 256000,
     maxTokens: 65536,
-  },
-  {
-    id: "openrouter/free",
-    name: "OpenRouter Free Models Router",
-    reasoning: true,
-    canDisable: false,
-    vision: true,
-    contextWindow: 200000,
-    maxTokens: 32000,
   },
   {
     id: "reflection/beam-free",
